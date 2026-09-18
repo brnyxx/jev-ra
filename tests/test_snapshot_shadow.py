@@ -77,6 +77,25 @@ def test_typing_into_a_same_origin_frame_field_works(session, fixture_server):
     assert value == "Zurich"
 
 
+def test_a_click_into_a_just_committed_frame_is_retried_until_the_field_has_focus(session, fixture_server):
+    real_click = session.click
+    clicks = []
+
+    def drop_the_first(target):
+        clicks.append(target)
+        if len(clicks) > 1:
+            real_click(target)
+
+    session.click = drop_the_first
+    page = session.open(f"{fixture_server}/iframe.html")
+    session.act(action_for(page, "Frame field", "fill"), page, text="Zurich")
+    assert len(clicks) >= 2
+    value = session.evaluate(
+        "document.getElementById('same-origin').contentDocument.getElementById('frame-field').value"
+    )
+    assert value == "Zurich"
+
+
 def test_a_cross_origin_frame_is_one_opaque_element(session, fixture_server):
     page = session.open(f"{fixture_server}/iframe.html")
     frames = [element for element in page["elements"] if element["role"] == "frame"]

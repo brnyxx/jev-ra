@@ -56,6 +56,11 @@ CALL_TIMEOUT_S = 5.0
 EVALUATE_TIMEOUT_S = 30.0
 WAIT_SLEEP_S = 0.1
 SETTLE_ATTEMPTS = 10
+# A frame that just committed its first paint can swallow the first click into it: the resolver's
+# hit test passes, the input event lands on the parent, and the field never takes focus. Click
+# again until the field itself holds focus, so a typed value cannot go nowhere.
+FOCUS_ATTEMPTS = 3
+FOCUS_SLEEP_S = 0.05
 # After input, keep reading the marker until two readings agree. A single-page app re-renders
 # well after its two frames are up, and a half-rendered page reads as one with nothing to do.
 QUIET_INTERVAL_S = 0.06
@@ -130,6 +135,13 @@ SETTLE_JS = """(action => new Promise(resolve => {
   };
   requestAnimationFrame(ready);
 }))"""
+
+# Whether the observed field itself holds focus, wherever it lives: a document, a shadow root or
+# a same-origin frame. Typing is only safe once this is true.
+FOCUSED_JS = """(node => {
+  const e=window.__jevRa?.nodes.get(node);
+  return !!e && (e.ownerDocument.activeElement===e || e.getRootNode()?.activeElement===e);
+})"""
 
 
 class Session:
@@ -363,13 +375,31 @@ class Session:
             raise ValueError("Invalid observed node")
         if action["kind"] == "fill" and not isinstance(text, str):
             raise ValueError("TYPE_TEXT needs a string; none was supplied")
+        if action["kind"] == "select":
+            if self.evaluate(f"{RESOLVE_JS}({json.dumps(action)})") is None:
+                raise StalePage("Dropdown execution was not confirmed. Observe again.")
+            return
+        for attempt in range(FOCUS_ATTEMPTS):
+            self.click(self.resolve(action))
+            if action["kind"] != "fill" or self.focused(action["node"]):
+                break
+            if attempt < FOCUS_ATTEMPTS - 1:
+                time.sleep(FOCUS_SLEEP_S)
+        else:
+            raise StalePage("The field never took focus. Observe again.")
+        if action["kind"] == "fill":
+            self.select_all()
+            self.call("Input.insertText", text=text)
+
+    def resolve(self, action):
+        """The target's live top-level coordinates, or a stale page when it moved or is covered."""
         target = self.evaluate(f"{RESOLVE_JS}({json.dumps(action)})")
         if target is None:
-            if action["kind"] == "select":
-                raise StalePage("Dropdown execution was not confirmed. Observe again.")
             raise StalePage("Target changed or is covered. Observe again.")
-        if action["kind"] == "select":
-            return
+        return target
+
+    def click(self, target):
+        """A pointer move and two trusted mouse events at the resolved point."""
         # A pointer arrives before it presses. Menus that open on hover and nothing else - a
         # shop's category bar, a docs site's version picker - never open for a click alone, and
         # the pointer stays where it was put, so the next observation sees what opened.
@@ -383,9 +413,10 @@ class Session:
                 button="left",
                 clickCount=1,
             )
-        if action["kind"] == "fill":
-            self.select_all()
-            self.call("Input.insertText", text=text)
+
+    def focused(self, node):
+        """Whether the observed field itself holds focus."""
+        return bool(self.evaluate(f"({FOCUSED_JS})({node})"))
 
     def select_all(self):
         """Select the focused field's contents so the next insert replaces them."""
