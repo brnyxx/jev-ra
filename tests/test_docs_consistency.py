@@ -10,6 +10,8 @@ ROOT = Path(__file__).resolve().parents[1]
 README = ROOT / "README.md"
 AGENTS = ROOT / "AGENTS.md"
 AGENT = ROOT / "jev_ra" / "agent.py"
+RELEASE = ROOT / ".github" / "workflows" / "release.yml"
+RUNBOOK = ROOT / "docs" / "RELEASING.md"
 
 
 def section(text, title):
@@ -97,3 +99,12 @@ def source_environment_names():
 def test_the_readme_environment_table_matches_the_config():
     assert readme_environment_names() == set(config.ENV_VARIABLES)
     assert source_environment_names() <= set(config.ENV_VARIABLES)
+
+
+def test_the_release_runbook_names_the_workflow_and_its_environments():
+    workflow = RELEASE.read_text()
+    runbook = RUNBOOK.read_text()
+    assert f"`{RELEASE.name}`" in runbook
+    environments = re.findall(r"^\s+environment: (\S+)$", workflow, re.MULTILINE)
+    assert environments
+    assert all(f"`{name}`" in runbook for name in environments)
