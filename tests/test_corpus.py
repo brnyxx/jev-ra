@@ -243,3 +243,11 @@ def test_a_url_check_reads_the_address_not_its_casing():
     assert corpus.check({"url_contains": ["fetch"]}, row) == (True, "")
     assert corpus.check({"url_not_contains": ["fetch"]}, row)[0] is False
     assert corpus.check({"url_contains": ["xhr"]}, row)[0] is False
+
+
+def test_a_text_check_reads_typographic_punctuation_as_what_it_stands_for():
+    row = page(text="What\u2019s New In Python 3.14 \u2014 the \u201cnew\u201d release")
+    assert corpus.check({"text_any": ["What's New"]}, row) == (True, "")
+    assert corpus.check({"text_contains": ['the "new" release']}, row) == (True, "")
+    assert corpus.check({"text_contains": ["3.14 - the"]}, row) == (True, "")
+    assert corpus.check({"text_any": ["What's Old"]}, row)[0] is False

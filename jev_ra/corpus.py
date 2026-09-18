@@ -45,6 +45,10 @@ RESULTS = ROOT / "corpus" / "results"
 TEXT_CHARS = 6000
 PASS_RATE = 0.9
 ACTIVE = {"true", "page", "step", "on"}
+QUOTES = "\u2018\u2019\u201a\u201b\u2032\u201c\u201d\u201e\u201f\u2033"
+DASHES = "\u2010\u2011\u2012\u2013\u2014\u2212"
+SPACES = "\u00a0\u202f\u2009"
+TYPESET = str.maketrans(QUOTES + DASHES + SPACES, "'" * 5 + '"' * 5 + "-" * 6 + " " * 3)
 
 
 @dataclass(frozen=True)
@@ -81,11 +85,16 @@ def families(tasks):
     return seen
 
 
+def typeset(value):
+    """A string with typographic punctuation folded back to the characters a spec is typed with."""
+    return (value or "").translate(TYPESET)
+
+
 def check(spec, row):
     """Whether the page satisfies a task's verify spec, and the first thing that failed."""
     url = (row.get("url") or "").lower()
-    text = row.get("text") or ""
-    labels = " \n".join((element.get("label") or "") for element in row.get("elements") or [])
+    text = typeset(row.get("text"))
+    labels = typeset(" \n".join((element.get("label") or "") for element in row.get("elements") or []))
     for needle in spec.get("url_contains", []):
         if needle.lower() not in url:
             return False, f"url does not contain {needle!r}"
@@ -93,19 +102,19 @@ def check(spec, row):
         if needle.lower() in url:
             return False, f"url still contains {needle!r}"
     for needle in spec.get("text_contains", []):
-        if needle not in text:
+        if typeset(needle) not in text:
             return False, f"page text does not contain {needle!r}"
     any_of = spec.get("text_any", [])
-    if any_of and not any(needle in text for needle in any_of):
+    if any_of and not any(typeset(needle) in text for needle in any_of):
         return False, f"page text contains none of {any_of}"
     label_any = spec.get("label_any", [])
-    if label_any and not any(needle in labels for needle in label_any):
+    if label_any and not any(typeset(needle) in labels for needle in label_any):
         return False, f"no observed control matches {label_any}"
     if len(text) < spec.get("min_text", 0):
         return False, f"page text is {len(text)} characters, under {spec['min_text']}"
     for label in spec.get("active_label", []):
         if not any(
-            label in (element.get("label") or "")
+            typeset(label) in typeset(element.get("label"))
             and any(str(element.get(key, "")).lower() in ACTIVE for key in ("selected", "checked", "expanded"))
             for element in row.get("elements") or []
         ):
