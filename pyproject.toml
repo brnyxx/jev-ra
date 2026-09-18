@@ -39,7 +39,8 @@ build-backend = "hatchling.build"
 packages = ["jev_ra"]
 
 [dependency-groups]
-dev = ["pytest>=8.4,<9", "ruff>=0.14,<1"]
+# pillow renders the side-by-side benchmark GIFs in scripts/; it is not a runtime dependency.
+dev = ["pytest>=8.4,<9", "ruff>=0.14,<1", "pillow>=11,<14"]
 
 [tool.ruff]
 line-length = 120
