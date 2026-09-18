@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Filters</title>
+<style>#panel[hidden]{display:none}</style></head>
+<body>
+<h1>Filters</h1>
+<!-- A disclosure that reveals nothing new to click: the only thing the click changes is the
+     button's own aria-expanded, which an action set keyed on id and kind cannot see. -->
+<button id="toggle" aria-expanded="false" aria-controls="panel">Brand</button>
+<div id="panel" hidden><p>Nike, Adidas, Puma</p></div>
+<script>
+  const toggle = document.getElementById('toggle');
+  toggle.addEventListener('click', () => {
+    const open = toggle.getAttribute('aria-expanded') === 'true';
+    toggle.setAttribute('aria-expanded', String(!open));
+    document.getElementById('panel').hidden = open;
+  });
+</script>
+</body>
+</html>

@@ -86,7 +86,7 @@ SETTLE_BUDGET_S = 2.0
 SETTLE_INTERVAL_CAP_S = 0.32
 SETTLE_BACKOFF = 1.5
 # The marker, as snapshot.js builds it: origin, address, scroll, size, then the page itself.
-MARKER_ORIGIN, MARKER_URL, MARKER_ACTIONS = 0, 1, 9
+MARKER_ORIGIN, MARKER_URL, MARKER_CONTROLS = 0, 1, 8
 MARKER_CONTENT = slice(6, None)
 # Fonts and media cost bytes and answer nothing. Images are deliberately NOT here: blocking
 # them on en.wikipedia.org drops the observed controls from 62 to 34, because real layouts
@@ -309,7 +309,7 @@ class Session:
             if not marker:
                 return
             if not opened:
-                differs = (marker[MARKER_URL], action_set(marker[MARKER_ACTIONS])) != before
+                differs = (marker[MARKER_URL], control_set(marker[MARKER_CONTROLS])) != before
                 opened, differed = differs and differed, differs
             if opened and routed(marker, was):
                 if marker == previous:
@@ -356,7 +356,7 @@ class Session:
         """The action itself: guard, then trusted input."""
         if not self.fresh(page, action):
             raise StalePage("Page changed since this decision. Observe again.")
-        self.before_input = (page.get("url", ""), action_set(page.get("actions")))
+        self.before_input = (page.get("url", ""), control_set(page.get("elements")))
         kind = action["kind"]
         if kind == "wait":
             time.sleep(WAIT_SLEEP_S)
@@ -491,9 +491,16 @@ class Session:
         self.close()
 
 
-def action_set(actions):
-    """The identity of every action a page offers, for comparing two readings of it."""
-    return frozenset((action.get("id"), action.get("kind")) for action in actions or ())
+# What a click can change about a control without adding or removing one: a menu button flips
+# aria-expanded, a filter flips checked, a tab flips selected, a panel relabels what is already
+# there. None of that reaches the action list, which carries only an id and a kind, so the state
+# has to be read from the element view the snapshot builds beside it.
+CONTROL_KEYS = ("ref", "role", "label", "value", "checked", "selected", "expanded", "current")
+
+
+def control_set(elements):
+    """The identity and state of every control a page offers, for comparing two readings of it."""
+    return frozenset(tuple(element.get(key) for key in CONTROL_KEYS) for element in elements or ())
 
 
 def routed(marker, was):
