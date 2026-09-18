@@ -3,7 +3,11 @@
 import argparse
 import json
 import logging
+import shlex
+import shutil
+import subprocess
 import sys
+import time
 from pathlib import Path
 
 from . import __version__
@@ -18,6 +22,26 @@ logger = logging.getLogger(__name__)
 
 SCREENSHOT_DEFAULT = Path("screenshot.jpg")
 SUMMARY_TEXT_CHARS = 1500
+SCOPES = ("user", "project", "local")
+AGENTS = ("claude", "codex")
+CHROME_HINT = """No Chrome answered over CDP. Start a dedicated automation profile, then retry:
+  /Applications/Google\\ Chrome.app/Contents/MacOS/Google\\ Chrome \\
+    --remote-debugging-port=9222 --user-data-dir="$HOME/.jev-ra-chrome" &
+  export BU_CDP_URL=http://127.0.0.1:9222"""
+DOCTOR_QUESTIONS = {
+    "operation": {
+        "type": "choice",
+        "criteria": {"DONE": "The connectivity check is complete.", "BLOCKED": "Nothing can be decided."},
+        "instructions": "Answer DONE. This request only checks that the decision endpoint replies.",
+    }
+}
+DOCTOR_STATE = {
+    "goal": "Confirm the decision endpoint answers.",
+    "page": {"url": "about:blank", "title": "", "text": "connectivity check"},
+    "elements": [],
+    "recent_actions": [],
+    "values_available": [],
+}
 
 
 class SessionMissing(Exception):
@@ -200,6 +224,117 @@ def cmd_close(args):
     return emit(args, {"ok": True}, ["closed"])
 
 
+def install_argv(agent, scope, config):
+    """The exact argv to exec. The key travels as a value here and is never printed."""
+    command = ["jev-ra", "mcp"]
+    if agent == "claude":
+        argv = ["claude", "mcp", "add", "jev-ra", "-s", scope]
+        flag = "-e"
+    else:
+        argv = ["codex", "mcp", "add", "jev-ra"]
+        flag = "--env"
+    if config.api_key and config.key_variable and config.key_variable != "config.json":
+        argv += [flag, f"{config.key_variable}={config.api_key}"]
+    return argv + ["--", *command]
+
+
+def install_display(argv, key_variable):
+    """The same command with the key replaced by a shell reference to the variable it came from."""
+    shown = [
+        f"{key_variable}=${key_variable}" if key_variable and part.startswith(f"{key_variable}=") else part
+        for part in argv
+    ]
+    return shlex.join(shown).replace(f"'{key_variable}=${key_variable}'", f'{key_variable}="${key_variable}"')
+
+
+def cmd_install(args):
+    config = load()
+    argv = install_argv(args.agent, args.scope, config)
+    display = install_display(argv, config.key_variable)
+    source = (
+        f"forwarding {config.key_variable}"
+        if config.api_key and config.key_variable != "config.json"
+        else "no key variable to forward; set OPENROUTER_API_KEY before starting the server"
+    )
+    if shutil.which(argv[0]) is None:
+        lines = [f"{argv[0]} is not on PATH. Run this once it is installed:", f"  {display}", source]
+        return emit(args, {"installed": False, "command": display, "key_source": source}, lines) or 1
+    finished = subprocess.run(argv, capture_output=True, text=True)
+    output = (finished.stdout + finished.stderr).strip()
+    lines = [f"  {display}", source, output] if output else [f"  {display}", source]
+    report = {
+        "installed": finished.returncode == 0,
+        "command": display,
+        "key_source": source,
+        "output": output,
+    }
+    emit(args, report, lines)
+    return finished.returncode
+
+
+def chrome_check(config):
+    try:
+        session = Session(config)
+    except Exception as error:
+        return False, str(error)
+    try:
+        session.open("about:blank")
+        return True, f"viewport {config.viewport.width}x{config.viewport.height}"
+    except Exception as error:
+        return False, str(error)
+    finally:
+        session.close()
+
+
+def cmd_doctor(args):
+    config = load()
+    report = {
+        "key": bool(config.api_key),
+        "key_variable": config.key_variable,
+        "endpoint": config.endpoint,
+        "model": config.model,
+        "provider": config.provider,
+        "text_model": config.text_model.model if config.text_model else None,
+    }
+    lines = [
+        f"key: {'found in ' + str(config.key_variable) if config.api_key else 'missing'}",
+        f"endpoint: {config.endpoint} ({config.provider})",
+        f"model: {config.model}",
+        f"text model: {report['text_model'] or 'none (host supplies values)'}",
+    ]
+    if not config.api_key:
+        lines.append("Set JEV_RA_API_KEY, TYPESAFE_API_KEY or OPENROUTER_API_KEY, then run `jev-ra doctor` again.")
+        emit(args, report, lines)
+        return 1
+    ok, detail = chrome_check(config)
+    report["chrome"] = {"ok": ok, "detail": detail}
+    lines.append(f"chrome: {'ok, ' + detail if ok else 'unreachable'}")
+    if not ok:
+        lines.append(CHROME_HINT)
+    client = DecisionClient(config)
+    started = time.perf_counter()
+    try:
+        reply = client.decide(DOCTOR_STATE, DOCTOR_QUESTIONS)
+    except JevError as error:
+        report["decision"] = {"ok": False, "error": str(error)}
+        lines.append(f"decision: failed ({error})")
+        emit(args, report, lines)
+        return 1
+    finally:
+        client.close()
+    latency_ms = round((time.perf_counter() - started) * 1000)
+    report["decision"] = {
+        "ok": True,
+        "latency_ms": latency_ms,
+        "model": reply.model,
+        "choice": reply.answers["operation"]["choice"],
+        "cost": reply.cost,
+    }
+    lines.append(f"decision: {reply.answers['operation']['choice']} in {latency_ms} ms via {reply.model}")
+    emit(args, report, lines)
+    return 0 if ok else 1
+
+
 def cmd_mcp(_args):
     from .mcp_server import main as serve
 
@@ -274,6 +409,14 @@ def build_parser():
     close.set_defaults(handler=cmd_close)
 
     sub.add_parser("mcp", help="run the MCP stdio server").set_defaults(handler=cmd_mcp)
+
+    install = add_json(sub.add_parser("install", help="register jev-ra as an MCP server with a coding agent"))
+    install.add_argument("agent", choices=AGENTS)
+    install.add_argument("--scope", choices=SCOPES, default="user", help="claude only")
+    install.set_defaults(handler=cmd_install)
+
+    doctor = add_json(sub.add_parser("doctor", help="check the key, the endpoint, Chrome and one live decision"))
+    doctor.set_defaults(handler=cmd_doctor)
     return parser
 
 

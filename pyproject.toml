@@ -36,6 +36,8 @@ dev = ["pytest>=8.4,<9", "ruff>=0.14,<1"]
 
 [tool.ruff]
 line-length = 120
+# Authored brand assets and recorded benchmark runs are not project source.
+extend-exclude = ["assets", "docs/benchmarks"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I"]
