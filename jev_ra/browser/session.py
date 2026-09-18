@@ -66,14 +66,17 @@ IDEMPOTENT = (
     "Emulation.setFocusEmulationEnabled",
     "Network.enable",
     "Network.setBlockedURLs",
+    "DOM.focus",
+    "Runtime.releaseObject",
 )
 EVALUATE_TIMEOUT_S = 30.0
 WAIT_SLEEP_S = 0.1
 SETTLE_ATTEMPTS = 10
 # A frame that just committed its first paint can swallow the first click into it: the resolver's
-# hit test passes, the input event lands on the parent, and the field never takes focus. Click
-# again until the field itself holds focus, so a typed value cannot go nowhere.
-FOCUS_ATTEMPTS = 3
+# hit test passes, the input event lands on the parent, and the field never takes focus. Give the
+# focus a moment to arrive on its own, then ask for it directly. Clicking again is not an option:
+# a search palette and a date picker both close on the second click, so chasing focus that way
+# throws away what the first click opened.
 FOCUS_SLEEP_S = 0.05
 # After input, keep reading the marker until two readings agree. A single-page app re-renders
 # well after its two frames are up, and a half-rendered page reads as one with nothing to do.
@@ -401,14 +404,11 @@ class Session:
             if self.evaluate(f"{RESOLVE_JS}({json.dumps(action)})") is None:
                 raise StalePage("Dropdown execution was not confirmed. Observe again.")
             return
-        for attempt in range(FOCUS_ATTEMPTS):
-            self.click(self.resolve(action))
-            if action["kind"] != "fill" or self.focused(action["node"]):
-                break
-            if attempt < FOCUS_ATTEMPTS - 1:
-                time.sleep(FOCUS_SLEEP_S)
-        else:
-            raise StalePage("The field never took focus. Observe again.")
+        self.click(self.resolve(action))
+        if action["kind"] == "fill" and not self.focused(action["node"]):
+            time.sleep(FOCUS_SLEEP_S)
+            if not self.focused(action["node"]) and not self.focus(action["node"]):
+                raise StalePage("The field never took focus. Observe again.")
         if action["kind"] == "fill":
             self.select_all()
             self.call("Input.insertText", text=text)
@@ -439,6 +439,26 @@ class Session:
     def focused(self, node):
         """Whether the observed field itself holds focus."""
         return bool(self.evaluate(f"({FOCUSED_JS})({node})"))
+
+    def focus(self, node):
+        """Ask the browser to focus one observed node, and say whether it now holds focus."""
+        handle = self.call(
+            "Runtime.evaluate",
+            timeout=EVALUATE_TIMEOUT_S,
+            expression=f"window.__jevRa?.nodes.get({node})",
+            returnByValue=False,
+        )
+        object_id = (handle.get("result") or {}).get("objectId")
+        if not object_id:
+            return False
+        try:
+            self.call("DOM.focus", objectId=object_id)
+        except ChromeError:
+            logger.info("The browser would not focus the observed field")
+            return False
+        finally:
+            self.call("Runtime.releaseObject", objectId=object_id)
+        return self.focused(node)
 
     def select_all(self):
         """Select the focused field's contents so the next insert replaces them."""

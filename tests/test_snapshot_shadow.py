@@ -77,7 +77,7 @@ def test_typing_into_a_same_origin_frame_field_works(session, fixture_server):
     assert value == "Zurich"
 
 
-def test_a_click_into_a_just_committed_frame_is_retried_until_the_field_has_focus(session, fixture_server):
+def test_a_click_into_a_just_committed_frame_still_lands_its_value(session, fixture_server):
     real_click = session.click
     clicks = []
 
@@ -89,7 +89,7 @@ def test_a_click_into_a_just_committed_frame_is_retried_until_the_field_has_focu
     session.click = drop_the_first
     page = session.open(f"{fixture_server}/iframe.html")
     session.act(action_for(page, "Frame field", "fill"), page, text="Zurich")
-    assert len(clicks) >= 2
+    assert len(clicks) == 1
     value = session.evaluate(
         "document.getElementById('same-origin').contentDocument.getElementById('frame-field').value"
     )

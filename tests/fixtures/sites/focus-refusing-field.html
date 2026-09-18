@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Archive</title>
+<style>#panel[hidden]{display:none}</style></head>
+<body>
+<h1>Archive</h1>
+<!-- The field refuses the pointer's focus, the way one inside a frame that has just painted
+     does, and every click on it toggles the suggestion panel. Clicking again to chase the
+     focus would close what the first click opened. -->
+<input id="q" aria-label="Search the archive">
+<div id="panel" hidden><p>Recent searches</p></div>
+<p id="clicks">0</p>
+<script>
+  const q = document.getElementById('q');
+  let clicks = 0;
+  q.addEventListener('mousedown', event => event.preventDefault());
+  q.addEventListener('click', () => {
+    clicks += 1;
+    document.getElementById('clicks').textContent = String(clicks);
+    const panel = document.getElementById('panel');
+    panel.hidden = !panel.hidden;
+  });
+</script>
+</body>
+</html>
