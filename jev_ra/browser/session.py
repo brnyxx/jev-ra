@@ -38,6 +38,10 @@ BLOCKED_URLS = (
     "*.woff", "*.woff2", "*.ttf", "*.otf", "*.eot",
     "*.mp4", "*.webm", "*.mp3", "*.m4a", "*.avi", "*.mov",
 )
+# An action with a target is guarded by that target: its identity, its state and the text of the
+# block it sits in, plus the page key. The whole-page marker carries every word on the page, so a
+# departures board or a price ticker would refuse every action on a page that is working fine.
+TARGETED = {"click", "select", "fill"}
 KEYS = {
     "Enter": (13, "Enter", "\r"),
     "Escape": (27, "Escape", ""),
@@ -221,7 +225,7 @@ class Session:
 
     def fresh(self, page, action=None):
         """Whether the observed page still describes what is about to be acted on."""
-        if action is not None and action.get("kind") in {"click", "select"}:
+        if action is not None and action.get("kind") in TARGETED:
             node = action["node"]
             current = self.evaluate(guard_expression(node))
             return current == [page["page_key"], page["guards"].get(str(node))]

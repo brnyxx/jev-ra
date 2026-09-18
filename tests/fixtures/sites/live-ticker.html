@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Live ticker</title>
+<style>
+  body { font: 14px/1.5 system-ui; margin: 0; padding: 16px; }
+  .ticker { color: #666; }
+  form { margin-top: 16px; display: flex; gap: 8px; }
+  input { padding: 6px 8px; width: 240px; }
+</style>
+</head>
+<body>
+<!-- A page that never stops changing: a departures board, a price ticker, a "12 people are
+     viewing this" line. The text of the page differs on every frame, while the field the
+     caller means to type into does not move at all. -->
+<p class="ticker">Next update in <span id="tick">0</span> ms</p>
+
+<form onsubmit="event.preventDefault(); document.getElementById('out').textContent = 'searched: ' + q.value;">
+  <input id="q" name="q" type="search" aria-label="Where from" placeholder="Where from">
+  <button type="submit">Search</button>
+</form>
+<p id="out"></p>
+
+<script>
+  const tick = document.getElementById('tick');
+  const started = performance.now();
+  const beat = () => {
+    tick.textContent = Math.round(performance.now() - started);
+    requestAnimationFrame(beat);
+  };
+  beat();
+</script>
+</body>
+</html>
