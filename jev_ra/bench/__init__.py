@@ -3,6 +3,10 @@
 import contextlib
 import functools
 import json
+import logging
+import statistics
+import subprocess
+import sys
 import threading
 import time
 from dataclasses import dataclass, field
@@ -13,7 +17,10 @@ from ..agent import Agent
 from ..browser.session import Session
 from ..config import load
 from ..decide.client import DecisionClient
+from . import verify as predicates
 from .scripted import scripted
+
+logger = logging.getLogger(__name__)
 
 PAGES = Path(__file__).with_name("pages")
 BASELINE_GLOB = "docs/benchmarks/*-browser-use-baseline"
@@ -34,10 +41,15 @@ class OfflineTask:
 @dataclass(frozen=True)
 class LiveTask:
     key: str
-    url: str
     goal: str
+    verify: object
+    url: str = ""
+    query: str = ""
+    page: str = ""
+    kind: str = "run"
     values: dict = field(default_factory=dict)
     max_steps: int = 25
+    max_pages: int = 3
 
 
 OFFLINE_TASKS = (
@@ -68,6 +80,7 @@ LIVE_TASKS = (
         url="https://en.wikipedia.org/wiki/Main_Page",
         goal="Find and open the Wikipedia article about Godel incompleteness theorems.",
         values={"search_query": "Godel incompleteness theorems"},
+        verify=predicates.wikipedia,
     ),
     LiveTask(
         key="flights",
@@ -77,6 +90,7 @@ LIVE_TASKS = (
             "and show the list of results."
         ),
         values={"origin": "Zurich", "destination": "London", "departure_date": "2026-09-20"},
+        verify=predicates.flights,
     ),
     LiveTask(
         key="oliveyoung_sort",
@@ -85,6 +99,23 @@ LIVE_TASKS = (
             "?dispCatNo=100000100010014&trackingCd=Cat100000100010014_Small"
         ),
         goal="Sort this product list by 신상품순.",
+        verify=predicates.oliveyoung_sort,
+    ),
+    LiveTask(
+        key="search_fact",
+        kind="search",
+        query="Python 3.12 release date",
+        goal="What year was Python 3.12 released? Cite the page that says it.",
+        verify=predicates.search_fact,
+        max_pages=3,
+    ),
+    LiveTask(
+        key="form_fill",
+        page="checkout.html",
+        goal="Place an order for Ada Lovelace at ada@example.com with express shipping.",
+        values={"name": "Ada Lovelace", "email": "ada@example.com"},
+        verify=predicates.form_fill,
+        max_steps=8,
     ),
 )
 
@@ -153,33 +184,41 @@ def flash_baseline(directory=None):
     }
 
 
-def ratio_rows(measured, baseline=None):
-    """One row per measured task: our ms, the flash_mode ms, the ratio and whether it clears the bar."""
+def ratio_rows(summary, baseline=None):
+    """One row per task: our median, the flash_mode ms, the ratio and whether it clears the bar.
+
+    A task with no recorded browser-use row has no ratio; it still has to verify on every run.
+    """
     baseline = flash_baseline() if baseline is None else baseline
     rows = []
-    for item in measured:
+    for item in summary:
         reference = baseline.get(item["task"])
-        ratio = round(reference / item["elapsed_ms"], 2) if reference and item["elapsed_ms"] else None
+        ours = item.get("median_ms")
+        ratio = round(reference / ours, 2) if reference and ours else None
+        verified_every_run = item.get("success_rate") == 1.0
         rows.append(
             {
                 "task": item["task"],
-                "jev_ra_ms": item["elapsed_ms"],
+                "jev_ra_ms": ours,
                 "flash_mode_ms": reference,
                 "ratio": ratio,
-                "status": item.get("status"),
-                "steps": item.get("steps"),
-                "decisions": item.get("decisions"),
-                "cost": item.get("cost", 0.0),
-                "passed": bool(ratio and ratio >= ACCEPTANCE_RATIO and item.get("status") == "done"),
+                "success_rate": item.get("success_rate"),
+                "runs": item.get("runs"),
+                "decisions": item.get("median_decisions"),
+                "cost": item.get("median_cost"),
+                "passed": verified_every_run and (ratio is None or ratio >= ACCEPTANCE_RATIO),
             }
         )
     return rows
 
 
+VERIFY_TEXT_CHARS = 4000
+
+
 def measure(agent, task, url, values, max_steps):
     started = time.perf_counter()
     result = agent.run(task.goal, values=values, max_steps=max_steps, url=url)
-    return {
+    row = {
         "task": task.key,
         "status": result.status,
         "reason": result.reason,
@@ -189,39 +228,167 @@ def measure(agent, task, url, values, max_steps):
         "text_calls": len(result.text_calls),
         "cost": result.cost,
         "url": result.url,
+        "text": (result.final_page.get("text") or "")[:VERIFY_TEXT_CHARS],
+        "elements": result.final_page.get("elements") or [],
     }
+    return verified(row, getattr(task, "verify", None))
 
 
-def run_offline(config=None, tasks=OFFLINE_TASKS, session=None):
+def verified(row, verify):
+    """A run only counts when the page says the task was done."""
+    row["ok"] = bool(verify(row)) if verify else row.get("status") == "done"
+    if not row["ok"] and row.get("status") == "done":
+        row["reason"] = "finished but the page does not show the task done"
+    return row
+
+
+def median(values):
+    return round(statistics.median(values)) if values else None
+
+
+def percentile(values, fraction=0.9):
+    if not values:
+        return None
+    ordered = sorted(values)
+    index = min(len(ordered) - 1, max(0, round(fraction * (len(ordered) - 1))))
+    return round(ordered[index])
+
+
+def summarise(rows):
+    """Per task: medians over the runs that actually worked, plus the success rate over all of them."""
+    summary = {}
+    for row in rows:
+        summary.setdefault(row["task"], []).append(row)
+    table = []
+    for task, runs in summary.items():
+        good = [run for run in runs if run.get("ok")]
+        times = [run["elapsed_ms"] for run in good]
+        table.append(
+            {
+                "task": task,
+                "runs": len(runs),
+                "successes": len(good),
+                "success_rate": round(len(good) / len(runs), 3) if runs else 0.0,
+                "median_ms": median(times),
+                "p90_ms": percentile(times),
+                "median_steps": median([run["steps"] for run in good]),
+                "median_decisions": median([run["decisions"] for run in good]),
+                "median_cost": round(statistics.median([run["cost"] for run in good]), 6) if good else None,
+                "text_calls": sum(run.get("text_calls", 0) for run in runs),
+                "failures": sorted({run.get("reason") or run.get("status") for run in runs if not run.get("ok")}),
+            }
+        )
+    return table
+
+
+def run_offline(config=None, tasks=OFFLINE_TASKS, session=None, runs=1):
     config = config or load()
     owned = session is None
     session = session or Session(config)
     measured = []
     try:
         with serve() as base:
-            for task in tasks:
-                agent = Agent(session=session, config=config, decide=scripted(task.plan))
-                measured.append(measure(agent, task, f"{base}/{task.page}", task.values, task.max_steps))
+            for _attempt in range(runs):
+                for task in tasks:
+                    agent = Agent(session=session, config=config, decide=scripted(task.plan))
+                    measured.append(measure(agent, task, f"{base}/{task.page}", task.values, task.max_steps))
     finally:
         if owned:
             session.close()
     return measured
 
 
-def run_live(config=None, tasks=LIVE_TASKS):
+def measure_search(task, config, decide):
+    from ..search import search as run_search
+
+    session = Session(config)
+    started = time.perf_counter()
+    try:
+        payload = run_search(
+            task.query,
+            task.goal,
+            task.max_pages,
+            config=config,
+            decide=decide,
+            session=session,
+            session_factory=lambda: Session(config),
+        )
+    finally:
+        session.close()
+    row = {
+        "task": task.key,
+        "status": "done" if payload["results"] else "blocked",
+        "reason": "",
+        "elapsed_ms": round((time.perf_counter() - started) * 1000),
+        "steps": len(payload["results"]),
+        "decisions": payload["decisions"],
+        "text_calls": 0,
+        "cost": payload["cost"],
+        "url": payload["engine"],
+        "results": [
+            {"url": item.get("url", ""), "text": (item.get("text") or "")[:VERIFY_TEXT_CHARS]}
+            for item in payload["results"]
+        ],
+    }
+    return verified(row, task.verify)
+
+
+def run_live(config=None, tasks=LIVE_TASKS, runs=1):
     config = config or load()
     if not config.api_key:
         raise RuntimeError("bench --live needs a Jev key. Set OPENROUTER_API_KEY, then run `jev-ra doctor`.")
     client = DecisionClient(config)
     measured = []
     try:
-        for task in tasks:
-            session = Session(config)
-            try:
-                agent = Agent(session=session, config=config, decide=client.decide)
-                measured.append(measure(agent, task, task.url, task.values, task.max_steps))
-            finally:
-                session.close()
+        with serve() as base:
+            for attempt in range(runs):
+                for task in tasks:
+                    logger.info("run %s/%s: %s", attempt + 1, runs, task.key)
+                    if task.kind == "search":
+                        measured.append(measure_search(task, config, client.decide))
+                        continue
+                    session = Session(config)
+                    try:
+                        agent = Agent(session=session, config=config, decide=client.decide)
+                        url = f"{base}/{task.page}" if task.page else task.url
+                        measured.append(measure(agent, task, url, task.values, task.max_steps))
+                    finally:
+                        session.close()
     finally:
         client.close()
     return measured
+
+
+def markdown_table(rows, columns=None):
+    columns = columns or list(rows[0]) if rows else []
+    lines = ["| " + " | ".join(columns) + " |", "|" + "|".join("---" for _ in columns) + "|"]
+    for row in rows:
+        lines.append("| " + " | ".join("" if row.get(key) is None else str(row.get(key)) for key in columns) + " |")
+    return "\n".join(lines)
+
+
+def run_baseline(runs=1, model=FLASH_MODEL, flash=True, directory=None):
+    """Re-run the recorded browser-use script in its own environment, `runs` times."""
+    directory = Path(directory or baseline_dir() or "")
+    script = directory / "bench.py"
+    if not script.exists():
+        raise RuntimeError(f"No browser-use bench script at {script}")
+    completed = []
+    for attempt in range(runs):
+        logger.info("browser-use baseline run %s/%s", attempt + 1, runs)
+        finished = subprocess.run(
+            [sys.executable, "-m", "uv", "run", "--with", "browser-use==0.13.10", "python", str(script),
+             model, "flash" if flash else "default"],
+            capture_output=True,
+            text=True,
+        )
+        completed.append(
+            {
+                "returncode": finished.returncode,
+                "stdout": finished.stdout,
+                "stderr": finished.stderr[-2000:],
+            }
+        )
+        if finished.returncode != 0:
+            break
+    return completed

@@ -350,17 +350,27 @@ def cmd_doctor(args):
     return 0 if ok else 1
 
 
-def bench_line(row):
+SUMMARY_COLUMNS = ("task", "runs", "successes", "success_rate", "median_ms", "p90_ms", "median_steps",
+                   "median_decisions", "median_cost", "text_calls")
+RATIO_COLUMNS = ("task", "jev_ra_ms", "flash_mode_ms", "ratio", "success_rate", "passed")
+
+
+def summary_line(row):
+    verified = f"{row['successes']}/{row['runs']} verified"
+    if not row["median_ms"]:
+        return f"  {row['task']}: {verified}; {', '.join(row['failures']) or 'no successful run'}"
     return (
-        f"  {row['task']}: {row['status']} in {row['elapsed_ms']} ms,"
-        f" {row['steps']} steps, {row['decisions']} decisions, {row['text_calls']} text calls"
+        f"  {row['task']}: {verified}, median {row['median_ms']} ms, p90 {row['p90_ms']} ms,"
+        f" {row['median_decisions']} decisions, {row['text_calls']} text calls"
     )
 
 
 def ratio_line(row):
     reference = f"{row['flash_mode_ms']} ms" if row["flash_mode_ms"] else "no baseline row"
     ratio = f"{row['ratio']}x" if row["ratio"] else "n/a"
-    return f"  {row['task']}: {row['jev_ra_ms']} ms / {reference} = {ratio}  {'PASS' if row['passed'] else 'FAIL'}"
+    ours = f"{row['jev_ra_ms']} ms" if row["jev_ra_ms"] else "never verified"
+    rate = f"{row['success_rate']:.0%} of {row['runs']} runs"
+    return f"  {row['task']}: {ours} / {reference} = {ratio}, {rate}  {'PASS' if row['passed'] else 'FAIL'}"
 
 
 def cmd_search(args):
@@ -390,25 +400,41 @@ def cmd_search(args):
 
 
 def cmd_bench(args):
-    from .bench import ACCEPTANCE_RATIO, flash_baseline, ratio_rows, run_live, run_offline
+    from .bench import (
+        ACCEPTANCE_RATIO,
+        flash_baseline,
+        markdown_table,
+        ratio_rows,
+        run_baseline,
+        run_live,
+        run_offline,
+        summarise,
+    )
 
     config = load()
-    offline = run_offline(config)
-    payload = {"offline": offline, "baseline_flash_ms": flash_baseline()}
-    lines = ["offline (scripted decisions, local fixtures, no network):"]
-    lines += [bench_line(row) for row in offline]
+    runs = args.runs
+    offline = summarise(run_offline(config, runs=runs))
+    payload = {"runs": runs, "offline": offline, "baseline_flash_ms": flash_baseline()}
+    lines = [f"offline (scripted decisions, local fixtures, no network), {runs} run(s) each:"]
+    lines += [summary_line(row) for row in offline]
+    if args.baseline:
+        payload["baseline_runs"] = run_baseline(runs)
+        lines.append(f"browser-use baseline re-run {runs} time(s); rows appended under docs/benchmarks/")
     if not args.live:
-        lines.append("Run `jev-ra bench --live` to measure the three live tasks against the recorded baseline.")
+        lines.append("Run `jev-ra bench --live` to measure the live tasks against the recorded baseline.")
         emit(args, payload, lines)
         return 0
-    live = run_live(config)
+    live = summarise(run_live(config, runs=runs))
     rows = ratio_rows(live)
     payload["live"] = live
     payload["ratios"] = rows
     payload["passed"] = all(row["passed"] for row in rows)
-    lines.append(f"live (jev-ra ms / browser-use flash_mode ms, >= {ACCEPTANCE_RATIO}x to pass):")
-    lines += [bench_line(row) for row in live]
+    payload["markdown"] = markdown_table(rows, RATIO_COLUMNS)
+    lines.append(f"live, {runs} run(s) each, verified on the page:")
+    lines += [summary_line(row) for row in live]
+    lines.append(f"ratio (jev-ra median / browser-use flash_mode, >= {ACCEPTANCE_RATIO}x to pass):")
     lines += [ratio_line(row) for row in rows]
+    lines += ["", markdown_table(live, SUMMARY_COLUMNS), ""]
     lines.append("PASS: every task clears the bar" if payload["passed"] else "FAIL: at least one task is short")
     emit(args, payload, lines)
     return 0 if payload["passed"] else 1
@@ -504,7 +530,9 @@ def build_parser():
     search.set_defaults(handler=cmd_search)
 
     bench = add_json(sub.add_parser("bench", help="time the offline fixtures, and the live tasks with --live"))
-    bench.add_argument("--live", action="store_true", help="also run the three live tasks (needs a key)")
+    bench.add_argument("--live", action="store_true", help="also run the live tasks (needs a key)")
+    bench.add_argument("--runs", type=int, default=5, help="repeat each task N times (default 5)")
+    bench.add_argument("--baseline", action="store_true", help="re-run the recorded browser-use script too")
     bench.set_defaults(handler=cmd_bench)
     return parser
 
