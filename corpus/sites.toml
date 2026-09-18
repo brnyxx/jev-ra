@@ -170,7 +170,7 @@ family = "forms"
 url = "https://duckduckgo.com/settings"
 goal = "Open the appearance settings section."
 expect = "done"
-verify = { text_any = ["Appearance", "Theme", "Font"] }
+verify = { text_any = ["Appearance", "Theme", "Font", "스타일", "글꼴"] }
 
 [[task]]
 name = "file_upload_picker"
