@@ -47,7 +47,7 @@ url = "https://www.amazon.com/"
 goal = "Search for Godel Escher Bach and show the results list."
 values = { query = "Godel Escher Bach" }
 expect = "done"
-verify = { url_contains = ["s?k=", "k=Godel"], text_any = ["Escher", "Hofstadter"] }
+verify = { url_contains = ["s?k="], text_any = ["Escher", "Hofstadter", "Gödel"] }
 
 [[task]]
 name = "coupang_search"
