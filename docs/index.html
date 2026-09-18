@@ -256,11 +256,11 @@
   </div>
 
   <div class="stats">
-    <div class="stat"><b>5.4x</b><span>Wikipedia lookup</span><i>4.3 s vs 23.1 s</i></div>
-    <div class="stat"><b>3.9x</b><span>Google Flights one-way search, verified</span><i>17.2 s vs 66.4 s</i></div>
-    <div class="stat"><b>2.8x</b><span>E-commerce sort</span><i>5.3 s vs 15.1 s</i></div>
+    <div class="stat"><b>8.5x</b><span>Wikipedia lookup</span><i>2.7 s vs 23.1 s · median of 5</i></div>
+    <div class="stat"><b>7.5x</b><span>Google Flights one-way search, verified</span><i>8.9 s vs 66.4 s · median of 5</i></div>
+    <div class="stat"><b>4.0x</b><span>E-commerce sort</span><i>3.8 s vs 15.1 s · median of 5</i></div>
   </div>
-  <p class="note">vs browser-use 0.13 in <code>flash_mode</code> with gemini-3-flash, same Chrome, same OpenRouter key, 2026-09-18. Method and raw rows in <a href="https://github.com/brnyxx/jev-ra/blob/main/docs/BENCHMARKS.md">BENCHMARKS.md</a>.</p>
+  <p class="note">jev-ra median of 5 runs vs browser-use 0.13 <code>flash_mode</code> with gemini-3-flash, same Chrome, same OpenRouter key, 2026-09-18. The headline stays at 3-5x because even our median against browser-use's fastest single run is 5.8x / 5.6x / 4.6x. Method and raw rows in <a href="https://github.com/brnyxx/jev-ra/blob/main/docs/BENCHMARKS.md">BENCHMARKS.md</a>.</p>
 
   <section id="demo">
     <p class="kicker">// 01 · demo</p>
@@ -336,7 +336,7 @@
         <text class="m" x="700" y="72" text-anchor="end">pip · npm · uvx</text>
         <rect class="inner" x="350" y="90" width="352" height="58" rx="12"/>
         <text x="368" y="114">MCP server · CLI</text>
-        <text id="a-mcp1" class="s" x="368" y="134">browser_run · search · extract · act · 9 more</text>
+        <text id="a-mcp1" class="s" x="368" y="134">browser_run · search · extract · act · 10 more</text>
         <rect class="inner" x="350" y="160" width="352" height="130" rx="12"/>
         <text id="a-eng" x="368" y="184">Engine</text>
         <text id="a-eng1" class="s" x="368" y="204">agent loop: observe → decide → act → verify</text>
@@ -418,12 +418,12 @@
     <div class="tablewrap"><table>
       <thead><tr><th>Task</th><th>browser-use flash_mode</th><th>browser-use default</th><th>jev-ra</th><th>ratio</th></tr></thead>
       <tbody>
-        <tr><td>Wikipedia: open the Gödel incompleteness article</td><td>23.1 s · 4 steps</td><td>46.5 s · 5 steps</td><td class="win">4.3 s · 6 steps</td><td class="win">5.4x</td></tr>
-        <tr><td>Google Flights ZRH→LON one-way, 7 checks verified</td><td>66.4 s · 11 steps</td><td>63.6 s · 11 steps</td><td class="win">17.2 s</td><td class="win">3.9x</td></tr>
-        <tr><td>Olive Young category: sort by newest</td><td>15.1 s · 3 steps</td><td>17.5 s · 3 steps</td><td class="win">5.3 s · 2 steps</td><td class="win">2.8x</td></tr>
+        <tr><td>Wikipedia: open the Gödel incompleteness article</td><td>23.1 s · 4 steps</td><td>46.5 s · 5 steps</td><td class="win">2.7 s · 2 steps</td><td class="win">8.5x</td></tr>
+        <tr><td>Google Flights ZRH→LON one-way, 7 checks verified</td><td>66.4 s · 11 steps</td><td>63.6 s · 11 steps</td><td class="win">8.9 s · 11 steps</td><td class="win">7.5x</td></tr>
+        <tr><td>Olive Young category: sort by newest</td><td>15.1 s · 3 steps</td><td>17.5 s · 3 steps</td><td class="win">3.8 s · 2 steps</td><td class="win">4.0x</td></tr>
       </tbody>
     </table></div>
-    <p class="note" style="margin-top:14px">Single runs on 2026-09-18; the repository's BENCHMARKS.md carries medians over 5 runs, success rates, cost per task and a per-step time breakdown.</p>
+    <p class="note" style="margin-top:14px">jev-ra columns are medians of 5 runs (5/5 success each); browser-use columns are the single baseline runs, and its own 5-run medians are slower (24.6 s / 73.8 s / 27.6 s). BENCHMARKS.md carries p90, cost per task and the per-step time breakdown.</p>
   </section>
 
   <section id="install">
