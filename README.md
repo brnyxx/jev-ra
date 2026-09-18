@@ -165,8 +165,9 @@ loop, and that is the point.
 ## When it hands control back
 
 `Result.status` is `done`, `blocked`, `escalate` or `budget`. When a run stops short, `reason` is one
-of `needs_value`, `stuck_loop`, `unverified_done`, `stale`, `invalid_decision`, `too_many_controls` or
-`blocked`. A `budget` status carries the budget that was hit instead of a reason name. An escalation
+of `needs_value`, `stuck_loop`, `unverified_done`, `stale`, `invalid_decision`, `too_many_controls`,
+`blocked` or `budget`. `budget` also names the budget that was hit (steps, decisions, time, or a
+decision the provider would not answer) in `detail`. An escalation
 also carries the top eight operation/target candidates with their probabilities, and up to 3,000
 characters of page text — enough to decide what to do without observing again.
 
