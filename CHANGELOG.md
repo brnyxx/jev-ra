@@ -26,6 +26,23 @@
 - `scripts/record_bench.py` and `scripts/render_side_by_side.py` render timestamped runs into a
   side-by-side GIF and MP4.
 
+### Fixed before the tag
+- A first run on a machine that has never run jev-ra: the cold profile's first navigation gets its own
+  30 s budget, a launched Chrome is used only once a target answers, and `doctor` says why when it
+  cannot reach a browser (a HOME too long for the daemon socket, or no Chrome installed).
+- A headless launch (no display) no longer announces `HeadlessChrome`; DuckDuckGo answered that with a
+  bot challenge. `jev-ra search` accepts `--goal` as well as the positional goal.
+- Enter is sent only to the field that was observed; a field that lost focus is a stale page, not a
+  form submitted by accident. Off-centre pointer points must land on the element itself. Only an
+  observed node id is written into a page expression. Provider error strings are redacted before
+  they reach the caller.
+- A covered viewport is not counted as painted by a link below the fold; an unconfident DONE waits for
+  the page to finish loading; repeated scrolls are reading, not a loop; scroll and wait freshness
+  answer to the document, not to every word on it; a control that blinks in is not the panel a click
+  opened; a supplied value with no field is asked again on a fresh reading.
+
 ### Known gaps
-- Google Flights and the Olive Young sort task return `blocked`. Jev declines to act on them rather
-  than running slowly; both are open.
+- The real-site corpus passes 97 of 120 attempts (81%). The 0.2 bar is 90%. The failures are stuck
+  loops on booking sites, portals that ban the machine after a day of runs, and login walls that read
+  as `blocked` instead of `needs_value` once in a while. `docs/BENCHMARKS.md` lists every row.
+- The npm launcher runs only after 0.1.0 is on PyPI. Windows is untested.
