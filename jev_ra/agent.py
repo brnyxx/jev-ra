@@ -24,7 +24,11 @@ PREV_OK_THRESHOLD = 0.6
 # An unconfident DONE re-asked about the same pixels can only repeat itself. The proof the model
 # is missing is usually just below the fold - a sort bar under a filter list, a confirmation under
 # a form - so look there first, for at most this many viewports, before handing control back.
-LOOKS = 2
+LOOKS = 1
+MAX_LOOKS = 4
+# A look has to earn the next one. Confidence that climbs means the page is giving up its answer
+# a screen at a time; confidence that does not means the answer is not down there.
+LOOK_GAIN = 0.02
 
 
 @dataclass
@@ -91,6 +95,7 @@ class Agent:
         if page is None:
             return run.escalate("stale", BLANK_PAGE, detail={"error": "The page never settled to be read."})
         exclude, stale_retries, looks, reasked = set(), 0, 0, False
+        best = 0.0
         while True:
             over = run.over_budget(limit, budgets, len(run.steps))
             if over:
@@ -137,12 +142,14 @@ class Agent:
             if decision.operation == "DONE":
                 if (decision.goal_achieved or 0.0) >= GOAL_ACHIEVED_THRESHOLD:
                     return run.finish("done", "goal_achieved", page, decision)
-                look = space.controls.get("SCROLL_DOWN") if looks < LOOKS else None
+                score = decision.goal_achieved or 0.0
+                spent = looks >= MAX_LOOKS or (looks >= LOOKS and score <= best + LOOK_GAIN)
+                look = None if spent else space.controls.get("SCROLL_DOWN")
                 if look is None:
                     return run.escalate("unverified_done", page, decision)
+                best = max(best, score)
                 looks += 1
-                logger.info("DONE at %.2f; looking below the fold (%s/%s)", decision.goal_achieved or 0.0,
-                            looks, LOOKS)
+                logger.info("DONE at %.2f; looking below the fold (%s/%s)", score, looks, MAX_LOOKS)
                 try:
                     self.session.act(look, page, timer=timer)
                 except StalePage:
@@ -158,7 +165,7 @@ class Agent:
                 run.record(replace(decision, operation="SCROLL_DOWN", target=look["id"], action=look),
                            before, page, None, timer)
                 continue
-            looks = 0
+            looks, best = 0, 0.0
 
             text, value = None, None
             if decision.operation == "TYPE_TEXT":

@@ -145,13 +145,42 @@ def test_done_without_goal_achieved_escalates_when_there_is_nowhere_left_to_look
     assert agent.session.acted == []
 
 
+def weak(score):
+    return {"operation": answer("DONE"), "goal_achieved": {"noul": score}}
+
+
 def test_a_weak_done_scrolls_to_look_for_the_proof_before_giving_up():
-    weak_done = {"operation": answer("DONE"), "goal_achieved": {"noul": 0.2}}
-    agent = agent_with(decider([weak_done]), session=FakeSession(scrollable()))
+    agent = agent_with(decider([weak(0.2)]), session=FakeSession(scrollable()))
     result = agent.run("find flights")
     assert (result.status, result.reason) == ("escalate", "unverified_done")
-    assert [action for action, _kind, _text in agent.session.acted] == ["scroll_down", "scroll_down"]
-    assert [step["operation"] for step in result.steps] == ["SCROLL_DOWN", "SCROLL_DOWN"]
+    assert [action for action, _kind, _text in agent.session.acted] == ["scroll_down"]
+    assert [step["operation"] for step in result.steps] == ["SCROLL_DOWN"]
+
+
+def test_looking_goes_on_while_it_keeps_finding_more_of_the_answer():
+    rising = [weak(0.2), weak(0.35), weak(0.5), DONE]
+    agent = agent_with(decider(rising), session=FakeSession(scrollable()))
+    result = agent.run("find flights")
+    assert result.status == "done"
+    assert [action for action, _kind, _text in agent.session.acted] == ["scroll_down"] * 3
+
+
+def test_looking_stops_as_soon_as_it_stops_helping():
+    falling = [weak(0.55), weak(0.49), weak(0.27)]
+    agent = agent_with(decider(falling), session=FakeSession(scrollable()))
+    result = agent.run("find flights")
+    assert (result.status, result.reason) == ("escalate", "unverified_done")
+    assert [action for action, _kind, _text in agent.session.acted] == ["scroll_down"]
+
+
+def test_looking_is_bounded_even_when_every_look_helps_a_little():
+    from jev_ra.agent import MAX_LOOKS
+
+    creeping = [weak(0.1 + 0.05 * n) for n in range(4)] + [weak(0.3)] * 8
+    agent = agent_with(decider(creeping), session=FakeSession(scrollable()))
+    result = agent.run("find flights")
+    assert (result.status, result.reason) == ("escalate", "unverified_done")
+    assert len(agent.session.acted) == MAX_LOOKS
 
 
 def test_the_proof_found_by_looking_finishes_the_run():
