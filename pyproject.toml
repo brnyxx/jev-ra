@@ -15,14 +15,21 @@ classifiers = [
     "Programming Language :: Python :: 3.13",
     "Programming Language :: Python :: 3.14",
     "Topic :: Software Development :: Testing",
+    "Topic :: Internet :: WWW/HTTP :: Browsers",
+    "Environment :: Console",
+    "Operating System :: OS Independent",
 ]
 dependencies = ["browser-harness[mcp]>=0.1.13,<0.2", "httpx[http2]>=0.28,<1"]
 
 [project.scripts]
 jev-ra = "jev_ra.cli:main"
+jev-ra-mcp = "jev_ra.mcp_server:main"
 
 [project.urls]
 Homepage = "https://github.com/kim62210/jev-ra"
+Repository = "https://github.com/kim62210/jev-ra"
+Issues = "https://github.com/kim62210/jev-ra/issues"
+Changelog = "https://github.com/kim62210/jev-ra/blob/main/CHANGELOG.md"
 
 [build-system]
 requires = ["hatchling"]

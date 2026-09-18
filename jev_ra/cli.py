@@ -224,9 +224,15 @@ def cmd_close(args):
     return emit(args, {"ok": True}, ["closed"])
 
 
-def install_argv(agent, scope, config):
+def server_command(which=None):
+    """How the agent should start the server: the installed entry point, or uvx on demand."""
+    which = which or shutil.which
+    return ["jev-ra", "mcp"] if which("jev-ra") else ["uvx", "jev-ra", "mcp"]
+
+
+def install_argv(agent, scope, config, which=None):
     """The exact argv to exec. The key travels as a value here and is never printed."""
-    command = ["jev-ra", "mcp"]
+    command = server_command(which)
     if agent == "claude":
         argv = ["claude", "mcp", "add", "jev-ra", "-s", scope]
         flag = "-e"

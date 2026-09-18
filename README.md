@@ -26,10 +26,12 @@ tasks that do **not** pass yet.
 ## Install
 
 ```sh
-uv tool install jev-ra          # or: pip install jev-ra
 export OPENROUTER_API_KEY=sk-or-...
-jev-ra doctor
+uvx jev-ra doctor
 ```
+
+No install step: `uvx` runs it straight from PyPI. For a permanent copy, `uv tool install jev-ra`
+or `pip install jev-ra`.
 
 `doctor` checks the key, the route, the Chrome connection, and makes one live decision with its
 latency. jev-ra talks to a real Chrome over CDP through
@@ -45,9 +47,13 @@ export BU_CDP_URL=http://127.0.0.1:9222
 ## Use it from a coding agent
 
 ```sh
-jev-ra install claude --scope user   # runs: claude mcp add jev-ra -s user -e OPENROUTER_API_KEY=… -- jev-ra mcp
-jev-ra install codex                 # runs: codex mcp add jev-ra --env OPENROUTER_API_KEY=… -- jev-ra mcp
+uvx jev-ra install claude   # runs: claude mcp add jev-ra -s user -e OPENROUTER_API_KEY=… -- uvx jev-ra mcp
+uvx jev-ra install codex    # runs: codex  mcp add jev-ra --env OPENROUTER_API_KEY=… -- uvx jev-ra mcp
 ```
+
+Nothing to install first: `uvx` fetches jev-ra on demand, and the registered command is `uvx
+jev-ra mcp`. If jev-ra is already on `PATH`, the plain `jev-ra mcp` command is registered instead.
+`--scope user|project|local` picks where Claude Code stores it.
 
 The key is forwarded from the variable you already exported and is never printed. If `claude` or
 `codex` is not on `PATH`, the command to run is printed instead.

@@ -26,10 +26,12 @@ OpenRouter 경유 모델, 각 1회 실행이다. browser-use 원본 기록은
 ## 설치
 
 ```sh
-uv tool install jev-ra          # 또는: pip install jev-ra
 export OPENROUTER_API_KEY=sk-or-...
-jev-ra doctor
+uvx jev-ra doctor
 ```
+
+설치 단계가 따로 없다. `uvx`가 PyPI에서 바로 실행한다. 영구 설치를 원하면 `uv tool install jev-ra`
+또는 `pip install jev-ra`.
 
 `doctor`는 키, 경로, Chrome 연결을 확인하고 실제 결정을 한 번 내려 지연 시간을 보여준다. jev-ra는
 [browser-harness](https://github.com/browser-use/browser-harness)를 통해 CDP로 실제 Chrome에 붙는다.
@@ -44,9 +46,13 @@ export BU_CDP_URL=http://127.0.0.1:9222
 ## 코딩 에이전트에 붙이기
 
 ```sh
-jev-ra install claude --scope user   # 실행: claude mcp add jev-ra -s user -e OPENROUTER_API_KEY=… -- jev-ra mcp
-jev-ra install codex                 # 실행: codex mcp add jev-ra --env OPENROUTER_API_KEY=… -- jev-ra mcp
+uvx jev-ra install claude   # 실행: claude mcp add jev-ra -s user -e OPENROUTER_API_KEY=… -- uvx jev-ra mcp
+uvx jev-ra install codex    # 실행: codex  mcp add jev-ra --env OPENROUTER_API_KEY=… -- uvx jev-ra mcp
 ```
+
+먼저 설치할 것은 없다. `uvx`가 필요할 때 jev-ra를 받아오고, 등록되는 명령은 `uvx jev-ra mcp`다.
+jev-ra가 이미 `PATH`에 있으면 그냥 `jev-ra mcp`가 등록된다. `--scope user|project|local`로 Claude
+Code가 어디에 저장할지 고른다.
 
 키는 이미 export해 둔 변수에서 그대로 전달되며 절대 출력되지 않는다. `claude`나 `codex`가 `PATH`에
 없으면 실행 대신 명령어를 출력한다.
