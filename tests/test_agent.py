@@ -395,3 +395,36 @@ def test_blocked_stays_blocked_when_nothing_could_be_typed_into():
     }
     result = agent_with(decider([blocked])).run("draw a red square")
     assert (result.status, result.reason) == ("blocked", "blocked")
+
+
+class FlakySession(FakeSession):
+    """Raises StalePage from observe() the first `stale_reads` times it is called."""
+
+    def __init__(self, stale_reads=0, **kwargs):
+        super().__init__(**kwargs)
+        self.stale_reads = stale_reads
+        self.reads = 0
+
+    def observe(self, timer=None):
+        self.reads += 1
+        if self.reads <= self.stale_reads:
+            raise StalePage("Page did not settle")
+        return super().observe(timer)
+
+    def open(self, url):
+        return self.observe()
+
+
+def test_a_page_that_will_not_settle_at_first_is_read_again():
+    session = FlakySession(stale_reads=2)
+    result = agent_with(decider([CLICK_SUBMIT, DONE]), session=session).run("find flights", url="http://x/")
+    assert result.status == "done"
+    assert session.reads > 2
+
+
+def test_a_page_that_never_settles_escalates_rather_than_raising():
+    session = FlakySession(stale_reads=99)
+    result = agent_with(decider([DONE]), session=session).run("find flights", url="http://x/")
+    assert (result.status, result.reason) == ("escalate", "stale")
+    assert result.detail["error"]
+    assert result.steps == []

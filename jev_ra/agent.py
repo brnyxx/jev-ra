@@ -17,6 +17,7 @@ from .text import NeedsValue, ValueBinder
 logger = logging.getLogger(__name__)
 
 ESCALATION_TEXT_CHARS = 3000
+BLANK_PAGE = {"url": "", "title": "", "text": "", "elements": [], "actions": [], "omitted": 0}
 NO_PROGRESS_STREAK = 3
 STALE_RETRIES = 3
 PREV_OK_THRESHOLD = 0.6
@@ -66,6 +67,15 @@ class Agent:
         """Observe the current page."""
         return self.session.observe()
 
+    def read(self, observe, *args):
+        """One observation, retried while the page keeps moving under it, or None."""
+        for attempt in range(STALE_RETRIES):
+            try:
+                return observe(*args)
+            except StalePage as error:
+                logger.info("Page went stale while reading it (%s/%s): %s", attempt + 1, STALE_RETRIES, error)
+        return None
+
     def space(self, page):
         """The action space of an observed page."""
         return actions.build(page, self.session.max_elements)
@@ -77,7 +87,9 @@ class Agent:
         limit = max_steps or budgets.max_steps
         binder = ValueBinder(values, self.config)
         run = _Run(self, goal, binder, started)
-        page = self.session.open(url) if url else self.session.observe()
+        page = self.read(self.session.open, url) if url else self.read(self.session.observe)
+        if page is None:
+            return run.escalate("stale", BLANK_PAGE, detail={"error": "The page never settled to be read."})
         exclude, stale_retries, looks, reasked = set(), 0, 0, False
         while True:
             over = run.over_budget(limit, budgets, len(run.steps))
@@ -153,7 +165,11 @@ class Agent:
                 # Only now is the value really on the page; a stale retry must not burn it.
                 binder.spend(value)
 
-            before, page = page, self.session.observe(timer)
+            after = self.read(self.session.observe, timer)
+            if after is None:
+                return run.escalate("stale", page, decision,
+                                    detail={"error": "The page never settled after that action."})
+            before, page = page, after
             run.record(decision, before, page, text, timer)
             stuck = run.stuck(space)
             if stuck:
