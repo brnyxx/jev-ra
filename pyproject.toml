@@ -1,0 +1,45 @@
+[project]
+name = "jev-ra"
+version = "0.1.0"
+description = "A fast browser-use layer for CLI coding agents: MCP server, CLI and Python API."
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.12"
+authors = [{ name = "Brian Kim" }]
+keywords = ["browser", "mcp", "agent", "cdp", "automation"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Software Development :: Testing",
+]
+dependencies = ["browser-harness[mcp]>=0.1.13,<0.2", "httpx[http2]>=0.28,<1"]
+
+[project.scripts]
+jev-ra = "jev_ra.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/kim62210/jev-ra"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["jev_ra"]
+
+[dependency-groups]
+dev = ["pytest>=8.4,<9", "ruff>=0.14,<1"]
+
+[tool.ruff]
+line-length = 120
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = ["browser: needs a reachable Chrome over CDP"]
