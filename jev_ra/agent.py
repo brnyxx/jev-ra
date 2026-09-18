@@ -10,7 +10,7 @@ from .config import load
 from .decide.client import DecisionClient
 from .decide.policy import InvalidDecision, build_questions, build_state, read_answers
 from .decide.questions import CANDIDATES, GOAL_ACHIEVED_THRESHOLD
-from .errors import JevBadResponse, StalePage
+from .errors import JevBadResponse, JevError, StalePage
 from .profile import CATEGORIES, StepTimer
 from .text import NeedsValue, ValueBinder
 
@@ -110,6 +110,12 @@ class Agent:
                 logger.warning("Unusable answer set; asking once more: %s", error)
                 reasked = True
                 continue
+            except JevError as error:
+                # A decision the provider would not answer - a rejected request, an exhausted
+                # token budget, a dead connection - is a budget the run cannot spend. It reaches
+                # the caller as an escalation with the provider's own words, never as an escape.
+                run.decisions += 1
+                return run.escalate("budget", page, detail={"error": str(error)})
             run.decisions += 1
             run.cost += reply.cost
             try:

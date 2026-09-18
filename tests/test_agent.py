@@ -1,9 +1,10 @@
+import httpx
 import pytest
 
 from jev_ra import config
 from jev_ra.agent import Agent
 from jev_ra.browser.session import StalePage
-from jev_ra.decide import JevBadResponse, Reply
+from jev_ra.decide import DecisionClient, JevBadResponse, Reply
 
 FORM_ACTIONS = [
     {"id": "e1", "node": 1, "role": "textbox", "kind": "fill", "label": "City", "value": ""},
@@ -313,6 +314,19 @@ def test_a_second_invalid_answer_set_escalates():
     result = agent_with(always_broken).run("find flights")
     assert (result.status, result.reason) == ("escalate", "invalid_decision")
     assert result.decisions == 2
+
+
+def test_a_decision_the_provider_rejects_escalates_instead_of_escaping():
+    def handler(request):
+        return httpx.Response(400, json={"error": {"message": "HTTP 400: max_tokens_exceeded", "code": 400}})
+
+    settings = config.load({"OPENROUTER_API_KEY": "sk-or-v1-test"})
+    client = DecisionClient(settings, transport=httpx.MockTransport(handler))
+    session = FakeSession()
+    result = Agent(session=session, config=settings, client=client).run("find flights")
+    assert (result.status, result.reason) == ("escalate", "budget")
+    assert "HTTP 400" in result.detail["error"]
+    assert session.acted == []
 
 
 def test_escalation_candidates_stop_at_eight():
