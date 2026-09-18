@@ -143,6 +143,7 @@ positional arguments:
     screenshot  save a JPEG of the viewport
     close       close the session kept by `open`
     mcp         run the MCP stdio server
+    skill       print the agent guide, for saving as a skill file
     install     register jev-ra as an MCP server with a coding agent
     doctor      check the key, the endpoint, Chrome and one live decision
     search      search the web and read the best results

@@ -51,6 +51,12 @@ class SessionMissing(JevRaError):
     next_step = "Run `jev-ra open URL` first."
 
 
+class GuideMissing(JevRaError):
+    """The packaged agent guide could not be found."""
+
+    next_step = "Reinstall jev-ra, or read AGENTS.md in the repository."
+
+
 def read_state():
     """The stored session, or None when there is none to reattach to."""
     path = state_path()
@@ -477,6 +483,23 @@ def cmd_bench(args):
     return 0 if payload["passed"] else 1
 
 
+def skill_text():
+    """The agent guide, from the wheel when installed and from the checkout otherwise."""
+    for candidate in (Path(__file__).with_name("AGENTS.md"), Path(__file__).resolve().parents[1] / "AGENTS.md"):
+        if candidate.exists():
+            return candidate.read_text()
+    raise GuideMissing("AGENTS.md is missing from this installation.")
+
+
+def cmd_skill(args):
+    """Print the agent guide, so an agent can save it as its own skill file."""
+    text = skill_text()
+    if getattr(args, "json", False):
+        return emit(args, {"name": "jev-ra", "text": text})
+    sys.stdout.write(text)
+    return 0
+
+
 def cmd_mcp(_args):
     """Run the MCP stdio server."""
     from .mcp_server import main as serve
@@ -554,6 +577,9 @@ def build_parser():
     close.set_defaults(handler=cmd_close)
 
     sub.add_parser("mcp", help="run the MCP stdio server").set_defaults(handler=cmd_mcp)
+
+    skill = add_json(sub.add_parser("skill", help="print the agent guide, for saving as a skill file"))
+    skill.set_defaults(handler=cmd_skill)
 
     install = add_json(sub.add_parser("install", help="register jev-ra as an MCP server with a coding agent"))
     install.add_argument("agent", choices=AGENTS)

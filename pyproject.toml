@@ -38,6 +38,10 @@ build-backend = "hatchling.build"
 [tool.hatch.build.targets.wheel]
 packages = ["jev_ra"]
 
+# `jev-ra skill` prints this, so an installed wheel has to carry it.
+[tool.hatch.build.targets.wheel.force-include]
+"AGENTS.md" = "jev_ra/AGENTS.md"
+
 [dependency-groups]
 # pillow renders the side-by-side benchmark GIFs in scripts/; it is not a runtime dependency.
 dev = ["pytest>=8.4,<9", "pytest-cov>=6,<8", "ruff>=0.14,<1", "ty>=0.0.82,<0.1", "pillow>=11,<14"]
