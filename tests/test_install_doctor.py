@@ -1,10 +1,11 @@
 import json
 import subprocess
 
+import httpx
 import pytest
 
 from jev_ra import cli, config
-from jev_ra.decide import JevUnavailable, Reply
+from jev_ra.decide import DecisionClient, JevUnavailable, Reply
 from tests.test_agent import FakeSession, answer
 
 SECRET = "sk-or-v1-supersecret"
@@ -103,6 +104,21 @@ def test_install_json_never_carries_the_key(clean_env, monkeypatch, recorded, ca
     assert SECRET not in json.dumps(payload)
 
 
+def test_install_redacts_a_key_a_chatty_agent_echoes_back(clean_env, monkeypatch, capsys):
+    monkeypatch.setenv("OPENROUTER_API_KEY", SECRET)
+
+    def echo(argv, **_kwargs):
+        return subprocess.CompletedProcess(argv, 0, stdout=f"config written: OPENROUTER_API_KEY={SECRET}\n", stderr="")
+
+    monkeypatch.setattr(cli.subprocess, "run", echo)
+    monkeypatch.setattr(cli.shutil, "which", lambda name: f"/usr/local/bin/{name}")
+    assert cli.main(["install", "claude", "--json"]) == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert "config written" in payload["output"]
+    assert "[redacted]" in payload["output"]
+    assert SECRET not in json.dumps(payload)
+
+
 def test_doctor_without_a_key_explains_and_exits_one(clean_env, capsys):
     assert cli.main(["doctor"]) == 1
     out = capsys.readouterr().out
@@ -151,6 +167,20 @@ def test_doctor_json_reports_the_measured_latency(clean_env, monkeypatch, capsys
     assert payload["decision"]["ok"] is True
     assert payload["decision"]["latency_ms"] >= 0
     assert payload["key"] is True
+    assert SECRET not in json.dumps(payload)
+
+
+def test_doctor_json_never_carries_the_key_when_the_provider_rejects_it(clean_env, monkeypatch, capsys):
+    monkeypatch.setenv("OPENROUTER_API_KEY", SECRET)
+    monkeypatch.setattr(cli, "Session", lambda *_a, **_k: FakeSession())
+
+    def rejecting(config_, **_kwargs):
+        return DecisionClient(config_, transport=httpx.MockTransport(lambda _request: httpx.Response(401, json={})))
+
+    monkeypatch.setattr(cli, "DecisionClient", rejecting)
+    assert cli.main(["doctor", "--json"]) == 1
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["decision"]["ok"] is False
     assert SECRET not in json.dumps(payload)
 
 

@@ -289,6 +289,13 @@ def install_display(argv, key_variable):
     return shlex.join(shown).replace(f"'{key_variable}=${key_variable}'", f'{key_variable}="${key_variable}"')
 
 
+def redact(text, secret):
+    """Remove a secret from text a subprocess may have echoed back."""
+    if not secret:
+        return text
+    return text.replace(secret, "[redacted]")
+
+
 def cmd_install(args):
     """Register jev-ra as an MCP server with a coding agent."""
     config = load()
@@ -303,7 +310,7 @@ def cmd_install(args):
         lines = [f"{argv[0]} is not on PATH. Run this once it is installed:", f"  {display}", source]
         return emit(args, {"installed": False, "command": display, "key_source": source}, lines) or 1
     finished = subprocess.run(argv, capture_output=True, text=True)
-    output = (finished.stdout + finished.stderr).strip()
+    output = redact((finished.stdout + finished.stderr).strip(), config.api_key)
     lines = [f"  {display}", source, output] if output else [f"  {display}", source]
     report = {
         "installed": finished.returncode == 0,

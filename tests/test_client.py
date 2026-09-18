@@ -5,7 +5,7 @@ import pytest
 
 from jev_ra import config
 from jev_ra.decide import DecisionClient, JevAuthError, JevBadResponse, JevError, JevUnavailable
-from jev_ra.errors import ConfigError
+from jev_ra.errors import ConfigError, render
 
 QUESTIONS = {
     "operation": {
@@ -136,6 +136,31 @@ def test_no_key_means_no_request_at_all():
     with pytest.raises(ConfigError, match="No Jev API key"):
         client.decide({}, QUESTIONS)
     assert calls == []
+
+
+def test_no_decision_failure_reports_the_key():
+    secret = "sk-or-v1-supersecret"
+
+    def timeout(request):
+        raise httpx.ConnectTimeout("too slow", request=request)
+
+    def not_json(_request):
+        return httpx.Response(200, content=b"<html>", headers={"content-type": "application/json"})
+
+    handlers = [
+        responder({"error": "bad key"}, status=401),
+        responder({"error": "bad request"}, status=400),
+        responder({"error": "boom"}, status=500),
+        responder({"nope": 1}),
+        not_json,
+        timeout,
+    ]
+    for handler in handlers:
+        client = client_for(handler, env={"OPENROUTER_API_KEY": secret})
+        with pytest.raises(JevError) as raised:
+            client.decide({}, QUESTIONS)
+        assert secret not in str(raised.value)
+        assert secret not in render(raised.value)
 
 
 def recording_handler(bodies):
