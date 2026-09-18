@@ -30,10 +30,13 @@ jobs:
           mkdir -p site
           cp docs/index.html site/index.html
           cp -R assets site/assets
-          if [ -d docs/assets-site ]; then cp -R docs/assets-site/. site/; fi
+          if [ -d docs/assets-site ]; then cp -R docs/assets-site site/assets-site; fi
           test -f site/assets/hero.png
           test -f site/assets/mark-dark-512.png
           test -f site/assets/demo/flights-side-by-side.mp4
+          test -f site/assets-site/demo.js
+          test -f site/assets-site/i18n.js
+          test -f site/assets-site/demo-run.json
 
       - uses: actions/configure-pages@v5
 

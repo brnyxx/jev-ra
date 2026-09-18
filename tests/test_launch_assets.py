@@ -44,16 +44,22 @@ def test_the_readmes_carry_the_same_measured_numbers(name):
 
 
 def test_the_landing_page_assets_exist():
+    # The page is served from a site root holding assets/ from the repository root and
+    # assets-site/ from docs/, which is how the pages workflow assembles it.
     for reference in local_references(LANDING.read_text()):
         if reference in {"./"}:
             continue
-        assert (ROOT / reference).exists(), f"docs/index.html points at {reference}"
+        found = (ROOT / reference).exists() or (ROOT / "docs" / reference).exists()
+        assert found, f"docs/index.html points at {reference}"
 
 
 def test_the_pages_workflow_carries_the_maintainer_site_files_too():
     text = PAGES.read_text()
     assert "docs/assets-site/**" in text
-    assert "cp -R docs/assets-site/. site/" in text
+    # Path-preserving: the page loads assets-site/demo.js and assets-site/i18n.js by that path.
+    assert "cp -R docs/assets-site site/assets-site" in text
+    for name in ("demo.js", "i18n.js", "demo-run.json"):
+        assert f"test -f site/assets-site/{name}" in text
 
 
 def test_the_pages_workflow_assembles_the_landing_page_with_its_assets():

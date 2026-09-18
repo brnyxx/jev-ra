@@ -44,6 +44,8 @@
   nav .links a:hover{color:var(--amber);background:rgba(255,183,3,.08)}
   nav .links .sep{width:1px;height:20px;background:var(--line2);margin:0 6px}
   nav .links .ic{font-size:16px}
+  .langsel{background:var(--card);color:var(--paper);border:1px solid var(--line2);border-radius:4px;padding:6px 8px;font-family:var(--mono);font-size:13px;cursor:pointer}
+  .langsel:hover{border-color:var(--amber)}
 
   .hero{position:relative;display:grid;grid-template-columns:1.15fr .85fr;gap:48px;align-items:center;padding:64px 0 36px}
   .hud{font-family:var(--mono);font-size:12.5px;color:var(--cyan);letter-spacing:1.5px;text-transform:uppercase;margin:0 0 18px;display:flex;gap:14px;align-items:center}
@@ -88,7 +90,10 @@
   .kicker{font-family:var(--mono);color:var(--cyan);font-size:12.5px;letter-spacing:1.5px;text-transform:uppercase;margin:0 0 10px}
   .lead{color:var(--muted);font-size:18px;margin:0 0 28px;max-width:720px}
   .demo{border-radius:4px;overflow:hidden;border:1px solid var(--line);background:#000;box-shadow:0 0 40px rgba(255,183,3,.08)}
-  .demo video{display:block;width:100%;height:auto}
+  .demo #jev-demo{aspect-ratio:16/9;background:#070A0F}
+  .replay{background:transparent;color:var(--muted);border:1px solid var(--line2);border-radius:4px;padding:6px 12px;font-size:13px;cursor:pointer;font-family:var(--mono)}
+  .replay:hover{color:var(--amber);border-color:var(--amber)}
+  .demo-tools{display:flex;justify-content:flex-end;gap:8px;margin:0 0 12px}
   .demo .cap{position:absolute;left:0;right:0;bottom:0;padding:10px 16px;font-size:12.5px;color:var(--muted);background:linear-gradient(transparent,rgba(0,0,0,.75));font-family:var(--mono)}
 
   .pipe{position:relative;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:14px;margin:8px 0 22px}
@@ -158,7 +163,7 @@
 
   .esc{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
   .esc div{background:var(--card);border:1px solid var(--line2);border-radius:4px;padding:14px 16px;font-size:13.5px;color:var(--muted)}
-  .esc code{display:block;color:var(--amber);margin-bottom:6px;font-size:13px}
+  .esc code:first-child{display:block;color:var(--amber);margin-bottom:6px;font-size:13px}
 
   .tablewrap{overflow-x:auto;border:1px solid var(--line2);border-radius:4px;background:var(--card)}
   table{width:100%;border-collapse:collapse;font-size:15px}
@@ -204,6 +209,7 @@
     h1{letter-spacing:-1.5px}
     nav .links a span{display:none}
     nav .links .sep{display:none}
+    nav .links a[href^="#"]{display:none}
     body::before{background-size:auto,auto,32px 32px,32px 32px}
   }
 </style>
@@ -218,6 +224,8 @@
       <a href="#arch"><span>Architecture</span></a>
       <a href="#bench"><span>Benchmarks</span></a>
       <a href="#install"><span>Install</span></a>
+      <i class="sep"></i>
+      <select class="langsel" aria-label="Language"><option value="en">EN</option><option value="ko">한국어</option><option value="ja">日本語</option><option value="zh-CN">中文</option></select>
       <i class="sep"></i>
       <a href="https://github.com/brnyxx/jev-ra" title="GitHub"><svg class="ic"><use href="#i-github"/></svg><span>GitHub</span></a>
       <a href="https://pypi.org/project/jev-ra/" title="PyPI"><svg class="ic"><use href="#i-pypi"/></svg><span>PyPI</span></a>
@@ -256,14 +264,10 @@
 
   <section id="demo">
     <p class="kicker">// 01 · demo</p>
-    <h2>Watch it, side by side.</h2>
-    <p class="lead">A real run, not an animation: the same task in the same Chrome, recorded in real time. Left: browser-use flash_mode. Right: jev-ra.</p>
-    <div class="demo">
-      <video controls muted playsinline preload="metadata" poster="assets/hero.png">
-        <source src="assets/demo/flights-side-by-side.mp4" type="video/mp4">
-      </video>
-      <div class="cap">Google Flights, Zurich to London, one-way. Clocks run at 1x. Recordings of every benchmark task, with the commands that produced them, are in <a href="https://github.com/brnyxx/jev-ra/tree/main/assets/demo">assets/demo/</a>.</div>
-    </div>
+    <h2>Watch a recorded run, replayed live.</h2>
+    <p class="lead">Not a screen recording and not a video file: the browser draws this from the run log of one real Google Flights task (2026-09-18). Every click, typed value and millisecond comes from that log.</p>
+    <div class="demo"><div id="jev-demo"></div></div>
+    <p class="legend">Source: <a href="https://github.com/brnyxx/jev-ra/tree/main/video">video/</a> (Remotion, played in-page by @remotion/player) fed by <a href="https://github.com/brnyxx/jev-ra/blob/main/docs/benchmarks/2026-09-18-v0.1/demo-run-flights.json">demo-run-flights.json</a>. Raw screen recordings of the benchmark tasks are in <a href="https://github.com/brnyxx/jev-ra/tree/main/assets/demo">assets/demo/</a>.</p>
   </section>
 
   <section id="how">
@@ -321,9 +325,9 @@
       <svg viewBox="0 0 1100 430" role="img" aria-label="architecture: agent to jev-ra over MCP, jev-ra to Chrome over CDP and to Jev over HTTPS">
         <!-- agent -->
         <rect class="box" x="20" y="150" width="220" height="130" rx="16"/>
-        <text class="h" x="40" y="182">Your agent</text>
-        <text class="s" x="40" y="204">plans · supplies values</text>
-        <text class="s" x="40" y="222">reads with browser_extract</text>
+        <text id="a-agent" class="h" x="40" y="182">Your agent</text>
+        <text id="a-agent1" class="s" x="40" y="204">plans · supplies values</text>
+        <text id="a-agent2" class="s" x="40" y="222">reads with browser_extract</text>
         <g transform="translate(40 240) scale(.9)"><use class="logo" href="#i-claude" width="22" height="22"/><use class="logo" href="#i-openai" x="30" width="22" height="22"/><use class="logo" href="#i-cursor" x="60" width="22" height="22"/><use class="logo" href="#i-mcp" x="90" width="22" height="22"/></g>
 
         <!-- jev-ra -->
@@ -332,47 +336,47 @@
         <text class="m" x="700" y="72" text-anchor="end">pip · npm · uvx</text>
         <rect class="inner" x="350" y="90" width="352" height="58" rx="12"/>
         <text x="368" y="114">MCP server · CLI</text>
-        <text class="s" x="368" y="134">browser_run · search · extract · act · 9 more</text>
+        <text id="a-mcp1" class="s" x="368" y="134">browser_run · search · extract · act · 9 more</text>
         <rect class="inner" x="350" y="160" width="352" height="130" rx="12"/>
-        <text x="368" y="184">Engine</text>
-        <text class="s" x="368" y="204">agent loop: observe → decide → act → verify</text>
-        <text class="s" x="368" y="222">action space + policy: offered ops, guards, loop detection</text>
-        <text class="s" x="368" y="240">values binding · escalation contract · budgets</text>
+        <text id="a-eng" x="368" y="184">Engine</text>
+        <text id="a-eng1" class="s" x="368" y="204">agent loop: observe → decide → act → verify</text>
+        <text id="a-eng2" class="s" x="368" y="222">action space + policy: offered ops, guards, loop detection</text>
+        <text id="a-eng3" class="s" x="368" y="240">values binding · escalation contract · budgets</text>
         <text class="m" x="368" y="270">jev_ra/agent.py · decide/policy.py · decide/questions.py</text>
         <rect class="inner" x="350" y="302" width="352" height="70" rx="12"/>
-        <text x="368" y="326">Browser core</text>
-        <text class="s" x="368" y="346">snapshot.js in one Runtime.evaluate · trusted Input events</text>
+        <text id="a-core" x="368" y="326">Browser core</text>
+        <text id="a-core1" class="s" x="368" y="346">snapshot.js in one Runtime.evaluate · trusted Input events</text>
         <text class="m" x="368" y="364">jev_ra/browser/session.py · snapshot.js</text>
 
         <!-- jev -->
         <rect class="box" x="870" y="60" width="210" height="120" rx="16"/>
         <text class="h" x="888" y="92">TypeSafe Jev</text>
-        <text class="s" x="888" y="114">decision model · System One</text>
-        <text class="s" x="888" y="132">via OpenRouter or direct</text>
+        <text id="a-jev1" class="s" x="888" y="114">decision model · System One</text>
+        <text id="a-jev2" class="s" x="888" y="132">via OpenRouter or direct</text>
         <g transform="translate(888 146)"><use class="logo" href="#i-openrouter" width="20" height="20"/><text class="m" x="28" y="15">jev-1.13 · HTTP/2</text></g>
 
         <!-- chrome -->
         <rect class="box" x="870" y="250" width="210" height="120" rx="16"/>
         <text class="h" x="888" y="282">Chrome</text>
-        <text class="s" x="888" y="304">your profile or a managed one</text>
-        <text class="s" x="888" y="322">1280×900 · focus emulation</text>
+        <text id="a-chr1" class="s" x="888" y="304">your profile or a managed one</text>
+        <text id="a-chr2" class="s" x="888" y="322">1280×900 · focus emulation</text>
         <g transform="translate(888 336)"><use class="logo" href="#i-chrome" width="20" height="20"/><text class="m" x="28" y="15">DevTools Protocol</text></g>
 
         <!-- wires -->
         <path class="wire" d="M240 215 H330"/><path class="flow" d="M240 211 H330"/><path class="flow back" d="M240 219 H330"/>
         <text class="lbl" x="285" y="198" text-anchor="middle">MCP · stdio</text>
-        <text class="m" x="285" y="240" text-anchor="middle">goal · values</text>
-        <text class="m" x="285" y="255" text-anchor="middle">result | escalate</text>
+        <text id="a-w1" class="m" x="285" y="240" text-anchor="middle">goal · values</text>
+        <text id="a-w2" class="m" x="285" y="255" text-anchor="middle">result | escalate</text>
 
         <path class="wire" d="M720 120 H870"/><path class="flow" d="M720 116 H870"/><path class="flow back" d="M720 124 H870"/>
-        <text class="lbl" x="795" y="104" text-anchor="middle">state + questions</text>
-        <text class="m" x="795" y="144" text-anchor="middle">answers · ~300 ms</text>
+        <text id="a-w3" class="lbl" x="795" y="104" text-anchor="middle">state + questions</text>
+        <text id="a-w4" class="m" x="795" y="144" text-anchor="middle">answers · ~300 ms</text>
 
         <path class="wire" d="M720 340 H870"/><path class="flow" d="M720 336 H870"/><path class="flow back" d="M720 344 H870"/>
         <text class="lbl" x="795" y="324" text-anchor="middle">CDP · ws://</text>
-        <text class="m" x="795" y="364" text-anchor="middle">snapshot · input</text>
+        <text id="a-w5" class="m" x="795" y="364" text-anchor="middle">snapshot · input</text>
 
-        <text class="m" x="20" y="410">One process per box. No queue, no daemon, no vector store, no second model.</text>
+        <text id="a-foot" class="m" x="20" y="410">One process per box. No queue, no daemon, no vector store, no second model.</text>
       </svg>
     </div>
     <div class="archnotes">
@@ -490,5 +494,7 @@ uvx jev-ra doctor</pre></div>
   document.querySelectorAll(".tab").forEach((t) => t.addEventListener("click", () => selectTab(t.dataset.for)));
   document.querySelectorAll(".works a[data-tab]").forEach((a) => a.addEventListener("click", () => selectTab(a.dataset.tab)));
 </script>
+<script src="assets-site/i18n.js"></script>
+<script src="assets-site/demo.js" defer></script>
 </body>
 </html>
