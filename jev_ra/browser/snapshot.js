@@ -232,20 +232,24 @@
   }
   const text=words.join('\n').slice(0,6000), doc_text=whole.join('\n').slice(0,6000);
   const height=document.documentElement.scrollHeight;
+  // A search palette that only answers to the Enter key has no control to click once its input
+  // holds the query, so the key is offered as an operation. It lands wherever focus is at the
+  // moment it is pressed, which is not necessarily where it was when this was observed: name the
+  // field, so the decision says which one it meant and the act-time guard can check it.
+  const active=document.activeElement;
+  const typed=active?.tagName==='INPUT' && active.value?.trim() &&
+    !['password','file','hidden','checkbox','radio','submit','button','reset','image'].includes(active.type);
+  const submits=typed ? identity(active) : null;
   const page_key=cache.pageKey(), guards={};
   for (const element of elements) if (!(element.node in guards))
     guards[element.node]=cache.guard(cache.nodes.get(element.node));
+  if (submits!==null && !(submits in guards)) guards[submits]=cache.guard(active);
   // Compare meaning and identity. Geometry is always resolved and hit-tested just before input.
   const semantics=elements.map(({rect,...rest})=>rest);
   const marker=[performance.timeOrigin,location.href,scrollX,scrollY,innerWidth,innerHeight,
     document.title,text,semantics,actions,page_key[6]];
-  // A search palette that only answers to the Enter key has no control to click once its input
-  // holds the query. When the focused field is one that Enter submits, offer it as an operation.
-  const active=document.activeElement;
-  const typed=active?.tagName==='INPUT' && active.value?.trim() &&
-    !['password','file','hidden','checkbox','radio','submit','button','reset','image'].includes(active.type);
-  if (typed) actions.push({id:'press_enter',kind:'press',key:'Enter',
-    label:'Press Enter to submit the focused field'});
+  if (submits!==null) actions.push({id:'press_enter',node:submits,kind:'press',key:'Enter',
+    label:'Press Enter to submit '+(name(active)||'the focused field')});
   if (scrollY+innerHeight<height-2) actions.push({id:'scroll_down',kind:'scroll',label:'Scroll down',delta:560});
   if (scrollY>0) actions.push({id:'scroll_up',kind:'scroll',label:'Scroll up',delta:-560});
   actions.push({id:'wait',kind:'wait',label:'Wait for the page to update'});

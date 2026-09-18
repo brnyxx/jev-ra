@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Checkout</title></head>
+<body>
+<h1>Checkout</h1>
+<!-- Two fields that both hold a value and both submit on Enter, to different places. Which one
+     the key reaches is decided by whatever holds focus at the moment it is pressed. -->
+<form id="coupon-form" onsubmit="event.preventDefault(); out.textContent = 'coupon ' + coupon.value;">
+  <input id="coupon" aria-label="Coupon code" value="SAVE10">
+</form>
+<form id="search-form" onsubmit="event.preventDefault(); out.textContent = 'search ' + q.value;">
+  <input id="q" aria-label="Search products" value="hoodie">
+</form>
+<p id="out">nothing submitted</p>
+<script>document.getElementById('coupon').focus();</script>
+</body>
+</html>

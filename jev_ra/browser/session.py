@@ -118,7 +118,7 @@ BLOCKED_URLS = (
 # An action with a target is guarded by that target: its identity, its state and the text of the
 # block it sits in, plus the page key. The whole-page marker carries every word on the page, so a
 # departures board or a price ticker would refuse every action on a page that is working fine.
-TARGETED = {"click", "select", "fill"}
+TARGETED = {"click", "select", "fill", "press"}
 # The daemon reports a document that moved under a call as a protocol error. It means the same
 # thing as any other stale reading - observe again - rather than a browser that has gone away.
 MOVED = ("navigated or closed", "context was destroyed", "cannot find context", "no frame for given id")
@@ -390,7 +390,7 @@ class Session:
         if kind == "wait":
             time.sleep(WAIT_SLEEP_S)
         elif kind == "press":
-            self.press(action.get("key", "Enter"))
+            self.submit(action)
         elif kind == "scroll":
             viewport = self.config.viewport
             self.call(
@@ -498,6 +498,19 @@ class Session:
             commands=["selectAll"],
         )
         self.call("Input.dispatchKeyEvent", type="keyUp", key="a", code="KeyA", modifiers=modifiers)
+
+    def submit(self, action):
+        """Send the key to the field that was observed, or to nothing at all.
+
+        A key lands on whatever holds focus when it is pressed. Between the reading that offered
+        this and the press, a page can move focus to another field that also holds a value, and
+        the guard sees no difference: same controls, same text, same values. Ask the one question
+        that separates them right before the key goes out.
+        """
+        node = action.get("node")
+        if node is not None and not self.focused(node):
+            raise StalePage("The field lost focus before it could be submitted. Observe again.")
+        self.press(action.get("key", "Enter"))
 
     def press(self, key):
         """Press one of the supported keys."""
