@@ -20,6 +20,21 @@ TAXONOMY = (
     errors.Escalated,
 )
 
+EVERY_ERROR = (errors.JevRaError, *TAXONOMY)
+
+
+class RaisingSession:
+    """A session that refuses every open with one error, for surface mapping."""
+
+    def __init__(self, error):
+        self.error = error
+
+    def open(self, _url):
+        raise self.error
+
+    def close(self):
+        pass
+
 
 @pytest.mark.parametrize("kind", TAXONOMY)
 def test_every_error_is_a_jev_ra_error_with_a_next_step(kind):
@@ -111,3 +126,26 @@ def test_a_closed_session_says_the_same_thing_on_both_surfaces(capsys, monkeypat
     server = build_server(Browser(config=config.load({}), session_factory=FakeSession, decide=None))
     from_mcp = failing_tool_call(server, "browser_observe")
     assert from_mcp == "No browser session is open. Call browser_open first."
+
+
+@pytest.mark.parametrize("kind", EVERY_ERROR)
+def test_the_cli_exits_1_with_the_rendered_error(kind, capsys, monkeypatch, tmp_path):
+    monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path))
+    error = kind("something went wrong")
+    monkeypatch.setattr(cli, "Session", lambda *_a, **_k: RaisingSession(error))
+    assert cli.main(["open", "http://127.0.0.1/form.html"]) == 1
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert captured.err.strip() == error.render()
+
+
+@pytest.mark.parametrize("kind", EVERY_ERROR)
+def test_the_mcp_error_payload_carries_the_rendered_error(kind, tmp_path):
+    error = kind("something went wrong")
+    browser = Browser(
+        config=config.load({}, path=tmp_path / "config.json"),
+        session_factory=lambda: RaisingSession(error),
+        decide=None,
+    )
+    server = build_server(browser)
+    assert failing_tool_call(server, "browser_open", url="http://127.0.0.1/form.html") == error.render()
