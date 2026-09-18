@@ -447,6 +447,8 @@ def cmd_bench(args):
         ACCEPTANCE_RATIO,
         flash_baseline,
         markdown_table,
+        profile_rows,
+        profile_table,
         ratio_rows,
         run_baseline,
         run_live,
@@ -456,10 +458,14 @@ def cmd_bench(args):
 
     config = load()
     runs = args.runs
-    offline = summarise(run_offline(config, runs=runs))
+    offline_runs = run_offline(config, runs=runs)
+    offline = summarise(offline_runs)
     payload = {"runs": runs, "offline": offline, "baseline_flash_ms": flash_baseline()}
     lines = [f"offline (scripted decisions, local fixtures, no network), {runs} run(s) each:"]
     lines += [summary_line(row) for row in offline]
+    if args.profile and not args.live:
+        payload["profile"] = profile_rows(offline_runs)
+        lines += ["", "where the time goes (offline):", profile_table(offline_runs)]
     if args.baseline:
         payload["baseline_runs"] = run_baseline(runs)
         lines.append(f"browser-use baseline re-run {runs} time(s); rows appended under docs/benchmarks/")
@@ -467,7 +473,8 @@ def cmd_bench(args):
         lines.append("Run `jev-ra bench --live` to measure the live tasks against the recorded baseline.")
         emit(args, payload, lines)
         return 0
-    live = summarise(run_live(config, runs=runs))
+    live_runs = run_live(config, runs=runs)
+    live = summarise(live_runs)
     rows = ratio_rows(live)
     payload["live"] = live
     payload["ratios"] = rows
@@ -478,6 +485,9 @@ def cmd_bench(args):
     lines.append(f"ratio (jev-ra median / browser-use flash_mode, >= {ACCEPTANCE_RATIO}x to pass):")
     lines += [ratio_line(row) for row in rows]
     lines += ["", markdown_table(live, SUMMARY_COLUMNS), ""]
+    if args.profile:
+        payload["profile"] = profile_rows(live_runs)
+        lines += ["where the time goes:", profile_table(live_runs), ""]
     lines.append("PASS: every task clears the bar" if payload["passed"] else "FAIL: at least one task is short")
     emit(args, payload, lines)
     return 0 if payload["passed"] else 1
@@ -599,6 +609,7 @@ def build_parser():
     bench.add_argument("--live", action="store_true", help="also run the live tasks (needs a key)")
     bench.add_argument("--runs", type=int, default=5, help="repeat each task N times (default 5)")
     bench.add_argument("--baseline", action="store_true", help="re-run the recorded browser-use script too")
+    bench.add_argument("--profile", action="store_true", help="print where each step's time went")
     bench.set_defaults(handler=cmd_bench)
     return parser
 

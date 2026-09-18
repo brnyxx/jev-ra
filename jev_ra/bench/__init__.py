@@ -19,6 +19,7 @@ from ..agent import Agent
 from ..browser.session import Session
 from ..config import load
 from ..decide.client import DecisionClient
+from ..profile import shares
 from . import verify as predicates
 from .scripted import scripted
 
@@ -241,6 +242,7 @@ def measure(agent, task, url, values, max_steps):
         "url": result.url,
         "text": (result.final_page.get("text") or "")[:VERIFY_TEXT_CHARS],
         "elements": result.final_page.get("elements") or [],
+        "profile": result.steps,
     }
     return verified(row, getattr(task, "verify", None))
 
@@ -373,6 +375,22 @@ def run_live(config=None, tasks=LIVE_TASKS, runs=1):
     finally:
         client.close()
     return measured
+
+
+def profile_rows(measured):
+    """Where the time went across every step of every run, and what share of wall time that is."""
+    steps = [step for row in measured for step in row.get("profile") or []]
+    wall = sum(row.get("elapsed_ms") or 0 for row in measured)
+    return shares(steps, wall)
+
+
+def profile_table(measured):
+    """The same thing as a markdown table, with the share rendered as a percentage."""
+    rows = [
+        {"category": row["category"], "ms": row["ms"], "share": f"{row['share']:.1%}" if row["share"] else "-"}
+        for row in profile_rows(measured)
+    ]
+    return markdown_table(rows, ("category", "ms", "share"))
 
 
 def markdown_table(rows, columns=None):

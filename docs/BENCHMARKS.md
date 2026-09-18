@@ -75,6 +75,42 @@ every ratio. The gpt-5-mini Flights row hit the step budget and its final URL is
 one-way search. The `flash_mode` column is the one the ratios use, because it is browser-use's own
 fast mode and therefore the fairest comparison.
 
+## Where the time goes
+
+`jev-ra bench --live --profile` times every step by category. Two runs of all five tasks,
+2026-09-18, 52 s of wall clock in total:
+
+| category | ms | share | what it is |
+|---|---|---|---|
+| wait | 15,917 | 30.6 % | the post-action settle: two frames, up to 200 ms for a combobox, then up to 600 ms waiting for two page markers to agree |
+| decide | 11,428 | 22.0 % | the HTTP round trip to Jev |
+| act | 2,839 | 5.5 % | CDP input: resolve, hit-test, dispatch |
+| snapshot | 1,644 | 3.2 % | the one `Runtime.evaluate` that reads the page |
+| actions | 0 | 0.0 % | Python building the action space and the question set |
+| overhead | 11 | 0.0 % | everything else in Python, per step |
+| outside steps | 20,116 | 38.7 % | the first navigation, the terminal decision that produces no step, and the search task, whose work is not step-shaped |
+
+Every `Result.steps[i]` carries the same six fields, and they sum to that step's `total_ms`.
+
+### The decision rule for a rewrite
+
+**Rewrite a hot path in another language only if `overhead_ms + actions_ms` exceeds 10 % of wall time
+on the corpus.** Measured here it is **0.02 %**: eleven milliseconds of Python across two full runs
+of five tasks. A faster language would be optimising something that does not exist.
+
+The levers that do exist, in the order they are worth pulling:
+
+1. **Decision count.** Each decision is ~300-500 ms of `decide`, and every avoided round trip also
+   avoids a `wait` and a `snapshot`. This is why the operation, the target and the value are settled
+   in one request rather than three.
+2. **Network.** The direct TypeSafe endpoint is roughly 140 ms per decision faster than OpenRouter by
+   the upstream measurements; HTTP/2 keep-alive is already on, and the state sent is the element
+   table and the visible text rather than the HTML.
+3. **Wait caps.** `wait` is the largest measured category. The 600 ms quiescence budget is a ceiling,
+   not a cost: it returns as soon as two markers agree. Lowering it trades reliability on
+   single-page apps for latency, which is the trade that made Google Flights answer `BLOCKED`
+   before.
+
 ## Cost and latency per call
 
 | measurement | value |

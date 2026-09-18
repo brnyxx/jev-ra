@@ -49,10 +49,10 @@ class FakeSession:
     def open(self, url):
         return self.observe()
 
-    def observe(self):
+    def observe(self, timer=None):
         return self.pages[min(self.index, len(self.pages) - 1)]
 
-    def act(self, action, page, text=None):
+    def act(self, action, page, text=None, timer=None):
         if self.stale > 0:
             self.stale -= 1
             raise StalePage("Page changed since this decision. Observe again.")

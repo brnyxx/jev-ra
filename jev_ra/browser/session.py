@@ -11,6 +11,7 @@ from browser_harness.helpers import cdp
 
 from ..config import load
 from ..errors import StalePage
+from ..profile import NullTimer
 from . import MAX_ELEMENTS, guard_expression, marker_expression, snapshot_expression
 from .chrome import ensure as ensure_chrome
 
@@ -194,15 +195,18 @@ class Session:
                 return
             previous = current
 
-    def observe(self):
+    def observe(self, timer=None):
         """One atomic reading of the page: text, elements, actions, guards and marker."""
-        self.settle()
-        for attempt in range(SETTLE_ATTEMPTS):
-            page = self.evaluate(snapshot_expression(self.max_elements))
-            if page is not None:
-                return page
-            if attempt < SETTLE_ATTEMPTS - 1:
-                time.sleep(0.02)
+        timer = timer or NullTimer()
+        with timer.measure("wait"):
+            self.settle()
+        with timer.measure("snapshot"):
+            for attempt in range(SETTLE_ATTEMPTS):
+                page = self.evaluate(snapshot_expression(self.max_elements))
+                if page is not None:
+                    return page
+                if attempt < SETTLE_ATTEMPTS - 1:
+                    time.sleep(0.02)
         raise StalePage("Page did not settle")
 
     def fresh(self, page, action=None):
@@ -213,8 +217,13 @@ class Session:
             return current == [page["page_key"], page["guards"].get(str(node))]
         return self.evaluate(marker_expression(self.max_elements)) == page["marker"]
 
-    def act(self, action, page, text=None):
+    def act(self, action, page, text=None, timer=None):
         """Execute one observed action, re-checking freshness immediately before input."""
+        with (timer or NullTimer()).measure("act"):
+            return self.execute(action, page, text)
+
+    def execute(self, action, page, text=None):
+        """The action itself: guard, then trusted input."""
         if not self.fresh(page, action):
             raise StalePage("Page changed since this decision. Observe again.")
         kind = action["kind"]

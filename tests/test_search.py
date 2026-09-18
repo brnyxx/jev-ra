@@ -59,7 +59,7 @@ class RecordingSession:
     def open(self, url):
         return {"url": url, "title": "", "text": "", "elements": [], "actions": [], "omitted": 0}
 
-    def observe(self):
+    def observe(self, timer=None):
         return self.open("about:blank")
 
     def evaluate(self, _expression):

@@ -11,6 +11,7 @@ from .decide.client import DecisionClient
 from .decide.policy import InvalidDecision, build_questions, build_state, read_answers
 from .decide.questions import CANDIDATES, GOAL_ACHIEVED_THRESHOLD
 from .errors import JevBadResponse, StalePage
+from .profile import CATEGORIES, StepTimer
 from .text import NeedsValue, ValueBinder
 
 logger = logging.getLogger(__name__)
@@ -78,11 +79,14 @@ class Agent:
             over = run.over_budget(limit, budgets, len(run.steps))
             if over:
                 return run.finish("budget", over, page)
-            space = self.space(page)
-            questions = build_questions(space, goal, run.history, binder.available(), exclude)
-            state = build_state(page, space, goal, run.history, binder.available())
+            timer = StepTimer()
+            with timer.measure("actions"):
+                space = self.space(page)
+                questions = build_questions(space, goal, run.history, binder.available(), exclude)
+                state = build_state(page, space, goal, run.history, binder.available())
             try:
-                reply = self.decide(state, questions)
+                with timer.measure("decide"):
+                    reply = self.decide(state, questions)
             except JevBadResponse as error:
                 run.decisions += 1
                 if reasked:
@@ -122,7 +126,7 @@ class Agent:
                     return run.escalate("needs_value", page, decision, detail=error.detail)
                 text = value.text
             try:
-                self.session.act(decision.action, page, text=text)
+                self.session.act(decision.action, page, text=text, timer=timer)
             except StalePage as error:
                 stale_retries += 1
                 if stale_retries > STALE_RETRIES:
@@ -135,8 +139,8 @@ class Agent:
                 # Only now is the value really on the page; a stale retry must not burn it.
                 binder.spend(value)
 
-            before, page = page, self.session.observe()
-            run.record(decision, before, page, text)
+            before, page = page, self.session.observe(timer)
+            run.record(decision, before, page, text, timer)
             stuck = run.stuck(space)
             if stuck:
                 return run.escalate(stuck, page, decision)
@@ -230,11 +234,13 @@ class _Run:
             return f"timeout_s ({budgets.timeout_s}) reached"
         return None
 
-    def record(self, decision, before, after, text):
+    def record(self, decision, before, after, text, timer=None):
         """Record one executed step and what the page did about it."""
         changed = after.get("marker") != before.get("marker")
+        profile = timer.result() if timer is not None else dict.fromkeys((*CATEGORIES, "total_ms"), 0)
         self.steps.append(
             {
+                **profile,
                 "n": len(self.steps) + 1,
                 "operation": decision.operation,
                 "target": decision.target,

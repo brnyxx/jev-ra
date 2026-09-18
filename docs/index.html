@@ -7,100 +7,245 @@
 <meta name="description" content="jev-ra is an MCP server and CLI that lets Claude Code, Codex and any MCP client drive a real browser 3-5x faster than browser-use. Jev decides every step in ~300 ms; your agent plans and reads.">
 <meta property="og:title" content="jev-ra - browser use for coding agents">
 <meta property="og:description" content="3-5x faster than browser-use. Jev decides every step in ~300 ms. Your agent plans, reads the page, and takes over when it matters.">
-<meta property="og:image" content="assets/hero.png">
+<meta property="og:image" content="https://brnyxx.github.io/jev-ra/assets/hero.png">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="icon" href="assets/favicon-64.png">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=JetBrains+Mono:wght@400;700&display=swap">
 <style>
   :root{
-    --ink:#0B0F14; --slate:#151B24; --paper:#F6F4EF; --amber:#FFB703; --muted:#B8BCC4; --dim:#6B7280;
-    --line:rgba(246,244,239,.12); --card:rgba(246,244,239,.06);
-    --sans:ui-sans-serif,-apple-system,"Inter","Helvetica Neue",Arial,sans-serif;
-    --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    --ink:#070A0F; --slate:#0E141D; --paper:#F6F4EF; --amber:#FFB703; --cyan:#3DE8FF; --muted:#AEB6C2; --dim:#6B7482;
+    --line:rgba(255,183,3,.22); --line2:rgba(246,244,239,.10); --card:rgba(14,20,29,.72); --well:rgba(4,7,11,.75);
+    --glow:0 0 24px rgba(255,183,3,.25), 0 0 2px rgba(255,183,3,.6);
+    --sans:"Space Grotesk",ui-sans-serif,-apple-system,"Inter","Helvetica Neue",Arial,sans-serif;
+    --mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
   }
   *{box-sizing:border-box}
-  html{color-scheme:dark}
-  body{margin:0;background:linear-gradient(135deg,var(--ink),var(--slate));color:var(--paper);font-family:var(--sans);line-height:1.5;-webkit-font-smoothing:antialiased}
+  html,body{overflow-x:hidden;max-width:100%}
+  img,svg,video{max-width:100%}
+  html{color-scheme:dark;scroll-behavior:smooth}
+  body{margin:0;background:var(--ink);color:var(--paper);font-family:var(--sans);line-height:1.5;-webkit-font-smoothing:antialiased;position:relative}
+  body::before{content:"";position:fixed;inset:0;z-index:-2;background:
+    radial-gradient(900px 500px at 78% 12%,rgba(255,183,3,.14),transparent 60%),
+    radial-gradient(700px 400px at 10% 90%,rgba(61,232,255,.07),transparent 60%),
+    linear-gradient(rgba(246,244,239,.045) 1px,transparent 1px),linear-gradient(90deg,rgba(246,244,239,.045) 1px,transparent 1px);
+    background-size:auto,auto,48px 48px,48px 48px}
+  body::after{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;background:repeating-linear-gradient(0deg,rgba(0,0,0,.18) 0 1px,transparent 1px 3px);mix-blend-mode:multiply;opacity:.6}
   a{color:inherit}
+  code{font-family:var(--mono);font-size:.9em}
   .wrap{max-width:1120px;margin:0 auto;padding:0 24px}
-  nav{display:flex;align-items:center;justify-content:space-between;padding:22px 0}
-  nav .brand{display:flex;align-items:center;gap:12px;text-decoration:none;font-weight:800;font-size:22px;letter-spacing:-1px}
-  nav .brand img{height:40px}
-  nav .links{display:flex;gap:22px;font-size:14px;color:var(--muted)}
-  nav .links a{text-decoration:none}
-  nav .links a:hover{color:var(--paper)}
-  .hero{display:grid;grid-template-columns:1.15fr .85fr;gap:48px;align-items:center;padding:56px 0 40px}
-  h1{font-size:clamp(40px,6vw,72px);line-height:1.02;letter-spacing:-2.5px;margin:0 0 18px;font-weight:800}
-  h1 .accent{color:var(--amber)}
-  .sub{font-size:20px;color:var(--muted);margin:0 0 30px;max-width:560px}
-  .pill{display:inline-flex;align-items:center;gap:14px;background:var(--amber);color:var(--ink);border-radius:999px;padding:14px 22px;font-family:var(--mono);font-weight:700;font-size:16px;border:0;cursor:pointer}
-  .pill small{font-family:var(--sans);font-weight:600;opacity:.75}
+  .ic{width:1em;height:1em;fill:currentColor;vertical-align:-.15em;flex:none}
+
+  nav{position:sticky;top:0;z-index:10;display:flex;align-items:center;justify-content:space-between;padding:16px 0;margin:0 -24px;padding-left:24px;padding-right:24px;background:rgba(7,10,15,.72);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-bottom:1px solid var(--line2)}
+  nav .brand{display:flex;align-items:center;gap:12px;text-decoration:none;font-weight:700;font-size:22px;letter-spacing:-1px}
+  nav .brand img{height:36px;filter:drop-shadow(0 0 10px rgba(255,183,3,.35))}
+  nav .links{display:flex;gap:4px;font-size:13.5px;color:var(--muted);align-items:center;font-family:var(--mono)}
+  nav .links a{text-decoration:none;padding:7px 11px;border-radius:6px;display:inline-flex;align-items:center;gap:7px}
+  nav .links a:hover{color:var(--amber);background:rgba(255,183,3,.08)}
+  nav .links .sep{width:1px;height:20px;background:var(--line2);margin:0 6px}
+  nav .links .ic{font-size:16px}
+
+  .hero{position:relative;display:grid;grid-template-columns:1.15fr .85fr;gap:48px;align-items:center;padding:64px 0 36px}
+  .hud{font-family:var(--mono);font-size:12.5px;color:var(--cyan);letter-spacing:1.5px;text-transform:uppercase;margin:0 0 18px;display:flex;gap:14px;align-items:center}
+  .hud i{width:8px;height:8px;border-radius:50%;background:var(--cyan);box-shadow:0 0 10px var(--cyan);animation:blink 1.6s infinite}
+  @keyframes blink{50%{opacity:.25}}
+  h1{font-size:clamp(40px,6vw,74px);line-height:1;letter-spacing:-2.5px;margin:0 0 18px;font-weight:700}
+  h1 .accent{color:var(--amber);text-shadow:0 0 30px rgba(255,183,3,.45)}
+  .sub{font-size:19px;color:var(--muted);margin:0 0 30px;max-width:560px}
+  .cta{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+  .pill{display:inline-flex;align-items:center;gap:14px;background:var(--amber);color:var(--ink);border-radius:6px;padding:14px 22px;font-family:var(--mono);font-weight:700;font-size:15.5px;border:0;cursor:pointer;box-shadow:var(--glow);position:relative}
+  .pill::after{content:"";display:inline-block;width:8px;height:18px;background:var(--ink);margin-left:-8px;animation:blink 1s steps(1) infinite}
+  .pill small{font-family:var(--sans);font-weight:600;opacity:.7}
   .pill:active{transform:translateY(1px)}
-  .hero img{width:100%;height:auto}
-  .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin:40px 0 8px}
-  .stat{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:20px 22px}
-  .stat b{display:block;font-size:44px;line-height:1;letter-spacing:-1.5px}
+  .ghost{display:inline-flex;align-items:center;gap:9px;border:1px solid var(--line);border-radius:6px;padding:13px 20px;text-decoration:none;font-weight:600;font-size:15px;color:var(--paper);background:var(--card)}
+  .ghost:hover{border-color:var(--amber);box-shadow:var(--glow)}
+  .hero .fig{position:relative}
+  .hero .fig::before{content:"";position:absolute;inset:-10% -6%;background:radial-gradient(closest-side,rgba(255,183,3,.22),transparent 70%);animation:breathe 5s ease-in-out infinite;z-index:-1}
+  @keyframes breathe{50%{transform:scale(1.08);opacity:.7}}
+  .hero img{width:100%;height:auto;filter:drop-shadow(0 0 28px rgba(255,183,3,.25))}
+
+  .works{display:flex;align-items:center;gap:10px 22px;flex-wrap:wrap;padding:8px 0 18px;color:var(--dim);font-size:12.5px;font-family:var(--mono)}
+  .works span{text-transform:uppercase;letter-spacing:1.5px}
+  .works a{display:inline-flex;align-items:center;gap:8px;color:var(--muted);text-decoration:none;font-size:14.5px;font-weight:600;font-family:var(--sans)}
+  .works a:hover{color:var(--amber)}
+  .works .ic{font-size:22px}
+
+  /* HUD corner brackets */
+  .stat,.node .dot,.panel,.arch,.archnotes div,.esc div,.code,.demo,.limits>div{position:relative}
+  .stat::before,.panel::before,.arch::before,.esc div::before,.code::before,.demo::before,.archnotes div::before{content:"";position:absolute;inset:-1px;pointer-events:none;border-radius:inherit;
+    background:linear-gradient(var(--amber),var(--amber)) top left/14px 1px no-repeat,linear-gradient(var(--amber),var(--amber)) top left/1px 14px no-repeat,
+               linear-gradient(var(--amber),var(--amber)) bottom right/14px 1px no-repeat,linear-gradient(var(--amber),var(--amber)) bottom right/1px 14px no-repeat;opacity:.9}
+  .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin:12px 0 8px}
+  .stat{background:var(--card);border:1px solid var(--line2);border-radius:4px;padding:20px 22px}
+  .stat b{display:block;font-size:46px;line-height:1;letter-spacing:-1.5px;font-family:var(--mono);color:var(--amber);text-shadow:0 0 18px rgba(255,183,3,.35)}
   .stat span{color:var(--muted);font-size:15px}
   .stat i{display:block;font-style:normal;color:var(--dim);font-size:12px;margin-top:8px;font-family:var(--mono)}
-  .note{color:var(--dim);font-size:13px;margin:0 0 56px}
-  section{padding:56px 0;border-top:1px solid var(--line)}
-  h2{font-size:34px;letter-spacing:-1.2px;margin:0 0 10px;font-weight:800}
-  .lead{color:var(--muted);font-size:18px;margin:0 0 28px;max-width:700px}
-  .demo{position:relative;border-radius:18px;overflow:hidden;border:1px solid var(--line);background:#000}
+  .note{color:var(--dim);font-size:13px;margin:0 0 48px}
+
+  section{padding:64px 0;border-top:1px solid var(--line2);position:relative}
+  section::before{content:"";position:absolute;top:-1px;left:0;width:160px;height:1px;background:linear-gradient(90deg,var(--amber),transparent)}
+  h2{font-size:36px;letter-spacing:-1.2px;margin:0 0 10px;font-weight:700}
+  .kicker{font-family:var(--mono);color:var(--cyan);font-size:12.5px;letter-spacing:1.5px;text-transform:uppercase;margin:0 0 10px}
+  .lead{color:var(--muted);font-size:18px;margin:0 0 28px;max-width:720px}
+  .demo{border-radius:4px;overflow:hidden;border:1px solid var(--line);background:#000;box-shadow:0 0 40px rgba(255,183,3,.08)}
   .demo video{display:block;width:100%;height:auto}
-  .demo .cap{position:absolute;left:0;right:0;bottom:0;padding:10px 16px;font-size:13px;color:var(--muted);background:linear-gradient(transparent,rgba(0,0,0,.7))}
-  .steps{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
-  .step{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:22px}
-  .step .n{font-family:var(--mono);color:var(--amber);font-size:13px}
-  .step h3{margin:8px 0 8px;font-size:20px;letter-spacing:-.4px}
-  .step p{margin:0;color:var(--muted);font-size:15px}
-  pre.flow{margin:28px 0 0;padding:20px;background:rgba(0,0,0,.35);border:1px solid var(--line);border-radius:14px;font-family:var(--mono);font-size:13.5px;color:var(--muted);overflow-x:auto}
-  pre.flow b{color:var(--amber);font-weight:700}
+  .demo .cap{position:absolute;left:0;right:0;bottom:0;padding:10px 16px;font-size:12.5px;color:var(--muted);background:linear-gradient(transparent,rgba(0,0,0,.75));font-family:var(--mono)}
+
+  .pipe{position:relative;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:14px;margin:8px 0 22px}
+  .pipe::before{content:"";position:absolute;left:8%;right:8%;top:34px;height:1px;background:linear-gradient(90deg,transparent,var(--line),var(--line),transparent)}
+  .pipe .pulse{position:absolute;top:29px;left:8%;width:12px;height:12px;border-radius:50%;background:var(--amber);box-shadow:0 0 0 6px rgba(255,183,3,.18),0 0 28px rgba(255,183,3,.8),-40px 0 30px -10px rgba(255,183,3,.5);animation:travel 6s linear infinite}
+  @keyframes travel{0%{left:8%;opacity:0}3%{opacity:1}92%{left:calc(92% - 12px);opacity:1}100%{left:calc(92% - 12px);opacity:0}}
+  .node{text-align:center;min-width:0}
+  .node .dot{width:70px;height:70px;border-radius:4px;margin:0 auto 12px;background:var(--well);border:1px solid var(--line2);display:grid;place-items:center;font-size:26px;animation:light 6s linear infinite}
+  .node:nth-child(2) .dot{animation-delay:0s}.node:nth-child(3) .dot{animation-delay:1.3s}.node:nth-child(4) .dot{animation-delay:2.6s}.node:nth-child(5) .dot{animation-delay:3.9s}.node:nth-child(6) .dot{animation-delay:5.1s}
+  @keyframes light{0%,4%{border-color:var(--line2);box-shadow:none;transform:scale(1)}7%,18%{border-color:var(--amber);box-shadow:var(--glow);transform:scale(1.06)}26%,100%{border-color:var(--line2);box-shadow:none;transform:scale(1)}}
+  .node .pi{width:30px;height:30px;color:var(--amber);filter:drop-shadow(0 0 6px rgba(255,183,3,.6))}
+  .node h3{margin:0 0 4px;font-size:17px;letter-spacing:-.3px}
+  .node p{margin:0;color:var(--muted);font-size:13.5px}
+  .node .ms{display:block;font-family:var(--mono);color:var(--amber);font-size:12px;margin-top:6px}
+
+  .bars{display:grid;gap:14px;margin-top:26px}
+  .bar{display:grid;grid-template-columns:150px 1fr 90px;align-items:center;gap:14px;font-size:14px}
+  .bar .lbl{color:var(--muted);font-weight:600}
+  .bar .lbl small{display:block;color:var(--dim);font-weight:400;font-size:12px}
+  .bar .track{height:22px;background:var(--well);border:1px solid var(--line2);border-radius:3px;overflow:hidden;background-image:repeating-linear-gradient(90deg,transparent 0 9%,rgba(246,244,239,.06) 9% 10%)}
+  .bar .fill{height:100%;width:0;animation:grow 6s cubic-bezier(.2,.7,.2,1) infinite}
+  .bar.bu .fill{background:#3a4250;--w:100%}
+  .bar.jr .fill{background:linear-gradient(90deg,#c98d00,var(--amber));box-shadow:0 0 18px rgba(255,183,3,.6);--w:12%}
+  @keyframes grow{0%{width:0}80%{width:var(--w)}92%{width:var(--w);opacity:1}100%{width:var(--w);opacity:0}}
+  .bar .val{font-family:var(--mono);text-align:right;color:var(--paper)}
+  .bar.jr .val{color:var(--amber);font-weight:700}
+  .legend{color:var(--dim);font-size:12.5px;margin-top:10px}
+
+  .anat{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,.9fr);gap:18px}
+  .panel{background:var(--well);border:1px solid var(--line2);border-radius:4px;padding:16px 18px;font-family:var(--mono);font-size:12.5px;color:var(--muted);min-height:330px;min-width:0;overflow-wrap:anywhere}
+  .panel .t{color:var(--dim);font-size:11.5px;text-transform:uppercase;letter-spacing:1.2px;margin:0 0 10px;display:flex;justify-content:space-between}
+  .panel .k{color:var(--paper)}
+  .panel .a{color:var(--amber)}
+  .panel .c{color:var(--cyan)}
+  .panel .q{padding:6px 8px;border-radius:3px;margin:2px 0;border:1px solid transparent;animation:ask 9s infinite}
+  .panel .ans{padding:6px 8px;border-radius:3px;margin:2px 0;opacity:0;animation:answer 9s infinite}
+  .q:nth-child(2),.ans:nth-child(2){animation-delay:.6s}.q:nth-child(3),.ans:nth-child(3){animation-delay:1.2s}.q:nth-child(4),.ans:nth-child(4){animation-delay:1.8s}.q:nth-child(5),.ans:nth-child(5){animation-delay:2.4s}.q:nth-child(6),.ans:nth-child(6){animation-delay:3.0s}
+  @keyframes ask{0%,6%{border-color:transparent;background:transparent}10%,45%{border-color:rgba(255,183,3,.55);background:rgba(255,183,3,.07);box-shadow:0 0 14px rgba(255,183,3,.15)}55%,100%{border-color:transparent;background:transparent}}
+  @keyframes answer{0%,40%{opacity:0;transform:translateX(6px)}46%,88%{opacity:1;transform:none}96%,100%{opacity:0}}
+  .panel .act{margin-top:12px;padding:8px 10px;border-radius:3px;background:rgba(61,232,255,.08);border:1px solid rgba(61,232,255,.45);color:var(--paper);opacity:0;animation:answer 9s infinite;animation-delay:3.8s}
+  .rt{display:inline-block;padding:2px 8px;border-radius:3px;background:rgba(255,183,3,.1);border:1px solid var(--line);font-size:11px;color:var(--amber);text-transform:none;letter-spacing:0}
+
+  .arch{background:var(--well);border:1px solid var(--line2);border-radius:4px;padding:12px;overflow-x:auto}
+  .arch svg{display:block;width:100%;min-width:760px;height:auto;font-family:var(--sans)}
+  .arch .box{fill:rgba(14,20,29,.9);stroke:rgba(246,244,239,.18);stroke-width:1.2}
+  .arch .core{fill:rgba(255,183,3,.04);stroke:rgba(255,183,3,.55);filter:drop-shadow(0 0 12px rgba(255,183,3,.25))}
+  .arch .inner{fill:rgba(4,7,11,.7);stroke:rgba(246,244,239,.14)}
+  .arch text{fill:var(--paper);font-size:14px}
+  .arch .h{font-weight:700;font-size:16px}
+  .arch .s{fill:var(--muted);font-size:12px}
+  .arch .m{fill:var(--dim);font-size:11.5px;font-family:var(--mono)}
+  .arch .lbl{fill:var(--amber);font-size:11.5px;font-family:var(--mono)}
+  .arch .wire{fill:none;stroke:rgba(246,244,239,.22);stroke-width:1.6}
+  .arch .flow{fill:none;stroke:var(--amber);stroke-width:2;stroke-dasharray:6 10;animation:dash 1.6s linear infinite;filter:drop-shadow(0 0 4px rgba(255,183,3,.8))}
+  .arch .flow.back{animation-direction:reverse;stroke:var(--cyan);filter:drop-shadow(0 0 4px rgba(61,232,255,.8))}
+  @keyframes dash{to{stroke-dashoffset:-32}}
+  .arch .logo{fill:var(--paper)}
+  .archnotes{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-top:16px}
+  .archnotes div{background:var(--card);border:1px solid var(--line2);border-radius:4px;padding:14px 16px;font-size:13.5px;color:var(--muted)}
+  .archnotes b{display:block;color:var(--paper);margin-bottom:4px;font-size:14px}
+
+  .stack{display:flex;flex-wrap:wrap;gap:10px;margin-top:18px}
+  .chip{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line2);background:var(--card);border-radius:4px;padding:7px 14px 7px 10px;font-size:13.5px;color:var(--paper);text-decoration:none;font-family:var(--mono)}
+  .chip:hover{border-color:var(--amber);box-shadow:var(--glow)}
+  .chip .ic{font-size:18px}
+  .chip small{color:var(--dim)}
+
+  .esc{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+  .esc div{background:var(--card);border:1px solid var(--line2);border-radius:4px;padding:14px 16px;font-size:13.5px;color:var(--muted)}
+  .esc code{display:block;color:var(--amber);margin-bottom:6px;font-size:13px}
+
+  .tablewrap{overflow-x:auto;border:1px solid var(--line2);border-radius:4px;background:var(--card)}
   table{width:100%;border-collapse:collapse;font-size:15px}
-  th,td{text-align:left;padding:12px 10px;border-bottom:1px solid var(--line)}
-  th{color:var(--dim);font-weight:600;font-size:13px;text-transform:uppercase;letter-spacing:.6px}
-  td.win{color:var(--amber);font-weight:700}
+  th,td{text-align:left;padding:12px 14px;border-bottom:1px solid var(--line2)}
+  tr:last-child td{border-bottom:0}
+  th{color:var(--dim);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:1px;font-family:var(--mono)}
+  td.win{color:var(--amber);font-weight:700;font-family:var(--mono)}
+
   .tabs{display:flex;gap:8px;margin:0 0 14px;flex-wrap:wrap}
-  .tab{background:transparent;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:8px 16px;font-size:14px;cursor:pointer;font-family:var(--sans)}
-  .tab[aria-selected="true"]{background:var(--paper);color:var(--ink);border-color:var(--paper);font-weight:700}
-  .code{position:relative;background:rgba(0,0,0,.35);border:1px solid var(--line);border-radius:14px;padding:18px 20px;font-family:var(--mono);font-size:14.5px;overflow-x:auto}
-  .code .copy{position:absolute;top:10px;right:10px;background:var(--card);border:1px solid var(--line);color:var(--muted);border-radius:8px;padding:5px 10px;font-size:12px;cursor:pointer;font-family:var(--sans)}
+  .tab{display:inline-flex;align-items:center;gap:8px;background:transparent;color:var(--muted);border:1px solid var(--line2);border-radius:4px;padding:8px 16px 8px 12px;font-size:14px;cursor:pointer;font-family:var(--sans)}
+  .tab .ic{font-size:17px}
+  .tab[aria-selected="true"]{background:var(--amber);color:var(--ink);border-color:var(--amber);font-weight:700;box-shadow:var(--glow)}
+  .code{background:var(--well);border:1px solid var(--line2);border-radius:4px;padding:18px 20px;font-family:var(--mono);font-size:14px;overflow-x:auto}
+  .code pre{margin:0}
+  .code .copy{position:absolute;top:10px;right:10px;background:var(--card);border:1px solid var(--line2);color:var(--muted);border-radius:4px;padding:5px 10px;font-size:12px;cursor:pointer;font-family:var(--mono)}
   .code[hidden]{display:none}
   .limits{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+  .limits>div{background:var(--card);border:1px solid var(--line2);border-radius:4px;padding:18px 20px}
   .limits ul{margin:0;padding-left:18px;color:var(--muted)}
-  .limits h3{margin:0 0 10px;font-size:18px}
-  footer{padding:40px 0 60px;color:var(--dim);font-size:13px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px;border-top:1px solid var(--line)}
+  .limits h3{margin:0 0 10px;font-size:17px;font-family:var(--mono);color:var(--amber);font-weight:600}
+
+  footer{padding:40px 0 60px;color:var(--dim);font-size:13px;border-top:1px solid var(--line2)}
+  footer .row{display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px;align-items:center}
   footer a{text-decoration:none}
+  footer .soc{display:flex;gap:14px;font-size:20px;color:var(--muted)}
+  footer .soc a:hover{color:var(--amber)}
+  footer p{margin:14px 0 0}
+
+  @media (prefers-reduced-motion:reduce){
+    .pipe .pulse,.node .dot,.bar .fill,.panel .q,.panel .ans,.panel .act,.arch .flow,.hud i,.pill::after,.hero .fig::before{animation:none}
+    .bar .fill{width:var(--w)}.panel .ans,.panel .act{opacity:1}
+  }
   @media (max-width:880px){
     .hero{grid-template-columns:1fr;padding-top:24px}
-    .hero img{max-width:420px;order:-1}
-    .stats,.steps,.limits{grid-template-columns:1fr}
-    nav .links{display:none}
+    .hero .fig{max-width:340px;order:-1;margin:0 auto}
+    .stats,.anat,.limits,.archnotes{grid-template-columns:1fr}
+    .esc{grid-template-columns:1fr 1fr}
+    .pipe{gap:6px}
+    .pipe .node .dot{width:48px;height:48px;font-size:20px}
+    .pipe::before{top:23px}.pipe .pulse{top:18px}
+    .node p{display:none}
+    .bar{grid-template-columns:100px 1fr 76px;font-size:13px}
+    h1{letter-spacing:-1.5px}
+    nav .links a span{display:none}
+    nav .links .sep{display:none}
+    body::before{background-size:auto,auto,32px 32px,32px 32px}
   }
 </style>
 </head>
 <body>
+<svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true"><symbol id="i-github" viewBox="0 0 24 24"><title>GitHub</title><path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></symbol><symbol id="i-pypi" viewBox="0 0 24 24"><title>PyPI</title><path d="M23.922 13.58v3.912L20.55 18.72l-.078.055.052.037 3.45-1.256.026-.036v-3.997l-.053-.036-.025.092z M23.621 5.618l-3.04 1.107v3.912l3.339-1.215V5.509zM23.92 13.457V9.544l-3.336 1.215v3.913zM20.47 14.71V10.8L17.17 12v3.913zM17.034 19.996v-3.912l-3.313 1.206v3.912zM17.17 16.057v3.868l3.314-1.206V14.85l-3.314 1.206zm2.093 1.882c-.367.134-.663-.074-.663-.463s.296-.814.663-.947c.365-.133.662.075.662.464s-.297.814-.662.946z M13.225 9.315l.365-.132-3.285-1.197-3.323 1.21.102.037 3.184 1.16zM20.507 10.664V6.751L17.17 7.965v3.913zM17.058 11.918V8.005l-3.302 1.202v3.912zM13.643 9.246l-3.336 1.215v3.913l3.336-1.215zM6.907 13.165l3.322 1.209v-3.913L6.907 9.252z M10.34 7.873l3.281 1.193V5.198l-3.28-1.193zM20.507 2.715L17.19 3.922v3.913l3.317-1.207zM16.95 3.903L13.724 2.73l-3.269 1.19 3.225 1.174zM15.365 4.606l-1.624.592v3.868l3.317-1.207V3.991l-1.693.615zm-.391 2.778c-.367.134-.662-.074-.662-.464s.295-.813.662-.946c.366-.133.663.074.663.464s-.297.813-.663.946z M10.229 18.41v-3.914l-3.322-1.209V17.2zM13.678 17.182v-3.913l-3.371 1.227v3.913z M13.756 17.154l3.3-1.2V12.04l-3.3 1.2zM13.678 21.217l-3.371 1.227v-3.912h-.078v3.912l-3.322-1.209v-3.913l-.053-.058-.025-.06-3.336-1.21v-3.948l.034.013 3.287 1.196.015-.078-3.261-1.187 3.26-1.187v-.109L3.876 9.62l-.307-.112 3.26-1.188v.877l.079-.055V6.769l3.257 1.185.058-.061L7.084 6.75l-.102-.037 3.24-1.179v-.083L6.854 6.677v.018l-.025.018v1.523L3.44 9.47v.02l-.025.017v4.007l-3.39 1.233v.019L0 14.784v3.995l.025.037 3.4 1.237.008-.006.007.01 3.4 1.238.008-.006.006.01 3.4 1.237.014-.009.012.01 3.45-1.256.026-.037-.078-.027zM3.493 9.563l3.257 1.185-3.257 1.187V9.562zM3.4 19.96L.078 18.752v-3.913l2.361.86.96.349v3.913zm.015-3.99L.335 14.85l-.182-.066 3.262-1.187v2.374zm3.399 5.231l-3.321-1.209v-3.912l3.321 1.209v3.912zM23.791 5.434l-3.21-1.17v2.338zM20.387 2.643l-3.24-1.18-3.27 1.19 3.247 1.182z"/></symbol><symbol id="i-npm" viewBox="0 0 24 24"><title>npm</title><path d="M1.763 0C.786 0 0 .786 0 1.763v20.474C0 23.214.786 24 1.763 24h20.474c.977 0 1.763-.786 1.763-1.763V1.763C24 .786 23.214 0 22.237 0zM5.13 5.323l13.837.019-.009 13.836h-3.464l.01-10.382h-3.456L12.04 19.17H5.113z"/></symbol><symbol id="i-python" viewBox="0 0 24 24"><title>Python</title><path d="M14.25.18l.9.2.73.26.59.3.45.32.34.34.25.34.16.33.1.3.04.26.02.2-.01.13V8.5l-.05.63-.13.55-.21.46-.26.38-.3.31-.33.25-.35.19-.35.14-.33.1-.3.07-.26.04-.21.02H8.77l-.69.05-.59.14-.5.22-.41.27-.33.32-.27.35-.2.36-.15.37-.1.35-.07.32-.04.27-.02.21v3.06H3.17l-.21-.03-.28-.07-.32-.12-.35-.18-.36-.26-.36-.36-.35-.46-.32-.59-.28-.73-.21-.88-.14-1.05-.05-1.23.06-1.22.16-1.04.24-.87.32-.71.36-.57.4-.44.42-.33.42-.24.4-.16.36-.1.32-.05.24-.01h.16l.06.01h8.16v-.83H6.18l-.01-2.75-.02-.37.05-.34.11-.31.17-.28.25-.26.31-.23.38-.2.44-.18.51-.15.58-.12.64-.1.71-.06.77-.04.84-.02 1.27.05zm-6.3 1.98l-.23.33-.08.41.08.41.23.34.33.22.41.09.41-.09.33-.22.23-.34.08-.41-.08-.41-.23-.33-.33-.22-.41-.09-.41.09zm13.09 3.95l.28.06.32.12.35.18.36.27.36.35.35.47.32.59.28.73.21.88.14 1.04.05 1.23-.06 1.23-.16 1.04-.24.86-.32.71-.36.57-.4.45-.42.33-.42.24-.4.16-.36.09-.32.05-.24.02-.16-.01h-8.22v.82h5.84l.01 2.76.02.36-.05.34-.11.31-.17.29-.25.25-.31.24-.38.2-.44.17-.51.15-.58.13-.64.09-.71.07-.77.04-.84.01-1.27-.04-1.07-.14-.9-.2-.73-.25-.59-.3-.45-.33-.34-.34-.25-.34-.16-.33-.1-.3-.04-.25-.02-.2.01-.13v-5.34l.05-.64.13-.54.21-.46.26-.38.3-.32.33-.24.35-.2.35-.14.33-.1.3-.06.26-.04.21-.02.13-.01h5.84l.69-.05.59-.14.5-.21.41-.28.33-.32.27-.35.2-.36.15-.36.1-.35.07-.32.04-.28.02-.21V6.07h2.09l.14.01zm-6.47 14.25l-.23.33-.08.41.08.41.23.33.33.23.41.08.41-.08.33-.23.23-.33.08-.41-.08-.41-.23-.33-.33-.23-.41-.08-.41.08z"/></symbol><symbol id="i-chrome" viewBox="0 0 24 24"><title>Google Chrome</title><path d="M12 0C8.21 0 4.831 1.757 2.632 4.501l3.953 6.848A5.454 5.454 0 0 1 12 6.545h10.691A12 12 0 0 0 12 0zM1.931 5.47A11.943 11.943 0 0 0 0 12c0 6.012 4.42 10.991 10.189 11.864l3.953-6.847a5.45 5.45 0 0 1-6.865-2.29zm13.342 2.166a5.446 5.446 0 0 1 1.45 7.09l.002.001h-.002l-5.344 9.257c.206.01.413.016.621.016 6.627 0 12-5.373 12-12 0-1.54-.29-3.011-.818-4.364zM12 16.364a4.364 4.364 0 1 1 0-8.728 4.364 4.364 0 0 1 0 8.728Z"/></symbol><symbol id="i-openai" viewBox="0 0 24 24"><title>OpenAI</title><path d="M22.2819 9.8211a5.9847 5.9847 0 0 0-.5157-4.9108 6.0462 6.0462 0 0 0-6.5098-2.9A6.0651 6.0651 0 0 0 4.9807 4.1818a5.9847 5.9847 0 0 0-3.9977 2.9 6.0462 6.0462 0 0 0 .7427 7.0966 5.98 5.98 0 0 0 .511 4.9107 6.051 6.051 0 0 0 6.5146 2.9001A5.9847 5.9847 0 0 0 13.2599 24a6.0557 6.0557 0 0 0 5.7718-4.2058 5.9894 5.9894 0 0 0 3.9977-2.9001 6.0557 6.0557 0 0 0-.7475-7.0729zm-9.022 12.6081a4.4755 4.4755 0 0 1-2.8764-1.0408l.1419-.0804 4.7783-2.7582a.7948.7948 0 0 0 .3927-.6813v-6.7369l2.02 1.1686a.071.071 0 0 1 .038.052v5.5826a4.504 4.504 0 0 1-4.4945 4.4944zm-9.6607-4.1254a4.4708 4.4708 0 0 1-.5346-3.0137l.142.0852 4.783 2.7582a.7712.7712 0 0 0 .7806 0l5.8428-3.3685v2.3324a.0804.0804 0 0 1-.0332.0615L9.74 19.9502a4.4992 4.4992 0 0 1-6.1408-1.6464zM2.3408 7.8956a4.485 4.485 0 0 1 2.3655-1.9728V11.6a.7664.7664 0 0 0 .3879.6765l5.8144 3.3543-2.0201 1.1685a.0757.0757 0 0 1-.071 0l-4.8303-2.7865A4.504 4.504 0 0 1 2.3408 7.872zm16.5963 3.8558L13.1038 8.364 15.1192 7.2a.0757.0757 0 0 1 .071 0l4.8303 2.7913a4.4944 4.4944 0 0 1-.6765 8.1042v-5.6772a.79.79 0 0 0-.407-.667zm2.0107-3.0231l-.142-.0852-4.7735-2.7818a.7759.7759 0 0 0-.7854 0L9.409 9.2297V6.8974a.0662.0662 0 0 1 .0284-.0615l4.8303-2.7866a4.4992 4.4992 0 0 1 6.6802 4.66zM8.3065 12.863l-2.02-1.1638a.0804.0804 0 0 1-.038-.0567V6.0742a4.4992 4.4992 0 0 1 7.3757-3.4537l-.142.0805L8.704 5.459a.7948.7948 0 0 0-.3927.6813zm1.0976-2.3654l2.602-1.4998 2.6069 1.4998v2.9994l-2.5974 1.4997-2.6067-1.4997Z"/></symbol><symbol id="i-claude" viewBox="0 0 24 24"><title>Claude</title><path d="m4.7144 15.9555 4.7174-2.6471.079-.2307-.079-.1275h-.2307l-.7893-.0486-2.6956-.0729-2.3375-.0971-2.2646-.1214-.5707-.1215-.5343-.7042.0546-.3522.4797-.3218.686.0608 1.5179.1032 2.2767.1578 1.6514.0972 2.4468.255h.3886l.0546-.1579-.1336-.0971-.1032-.0972L6.973 9.8356l-2.55-1.6879-1.3356-.9714-.7225-.4918-.3643-.4614-.1578-1.0078.6557-.7225.8803.0607.2246.0607.8925.686 1.9064 1.4754 2.4893 1.8336.3643.3035.1457-.1032.0182-.0728-.164-.2733-1.3539-2.4467-1.445-2.4893-.6435-1.032-.17-.6194c-.0607-.255-.1032-.4674-.1032-.7285L6.287.1335 6.6997 0l.9957.1336.419.3642.6192 1.4147 1.0018 2.2282 1.5543 3.0296.4553.8985.2429.8318.091.255h.1579v-.1457l.1275-1.706.2368-2.0947.2307-2.6957.0789-.7589.3764-.9107.7468-.4918.5828.2793.4797.686-.0668.4433-.2853 1.8517-.5586 2.9021-.3643 1.9429h.2125l.2429-.2429.9835-1.3053 1.6514-2.0643.7286-.8196.85-.9046.5464-.4311h1.0321l.759 1.1293-.34 1.1657-1.0625 1.3478-.8804 1.1414-1.2628 1.7-.7893 1.36.0729.1093.1882-.0183 2.8535-.607 1.5421-.2794 1.8396-.3157.8318.3886.091.3946-.3278.8075-1.967.4857-2.3072.4614-3.4364.8136-.0425.0304.0486.0607 1.5482.1457.6618.0364h1.621l3.0175.2247.7892.522.4736.6376-.079.4857-1.2142.6193-1.6393-.3886-3.825-.9107-1.3113-.3279h-.1822v.1093l1.0929 1.0686 2.0035 1.8092 2.5075 2.3314.1275.5768-.3218.4554-.34-.0486-2.2039-1.6575-.85-.7468-1.9246-1.621h-.1275v.17l.4432.6496 2.3436 3.5214.1214 1.0807-.17.3521-.6071.2125-.6679-.1214-1.3721-1.9246L14.38 17.959l-1.1414-1.9428-.1397.079-.674 7.2552-.3156.3703-.7286.2793-.6071-.4614-.3218-.7468.3218-1.4753.3886-1.9246.3157-1.53.2853-1.9004.17-.6314-.0121-.0425-.1397.0182-1.4328 1.9672-2.1796 2.9446-1.7243 1.8456-.4128.164-.7164-.3704.0667-.6618.4008-.5889 2.386-3.0357 1.4389-1.882.929-1.0868-.0062-.1579h-.0546l-6.3385 4.1164-1.1293.1457-.4857-.4554.0608-.7467.2307-.2429 1.9064-1.3114Z"/></symbol><symbol id="i-mcp" viewBox="0 0 24 24"><title>Model Context Protocol</title><path d="M13.85 0a4.16 4.16 0 0 0-2.95 1.217L1.456 10.66a.835.835 0 0 0 0 1.18.835.835 0 0 0 1.18 0l9.442-9.442a2.49 2.49 0 0 1 3.541 0 2.49 2.49 0 0 1 0 3.541L8.59 12.97l-.1.1a.835.835 0 0 0 0 1.18.835.835 0 0 0 1.18 0l.1-.098 7.03-7.034a2.49 2.49 0 0 1 3.542 0l.049.05a2.49 2.49 0 0 1 0 3.54l-8.54 8.54a1.96 1.96 0 0 0 0 2.755l1.753 1.753a.835.835 0 0 0 1.18 0 .835.835 0 0 0 0-1.18l-1.753-1.753a.266.266 0 0 1 0-.394l8.54-8.54a4.185 4.185 0 0 0 0-5.9l-.05-.05a4.16 4.16 0 0 0-2.95-1.218c-.2 0-.401.02-.6.048a4.17 4.17 0 0 0-1.17-3.552A4.16 4.16 0 0 0 13.85 0m0 3.333a.84.84 0 0 0-.59.245L6.275 10.56a4.186 4.186 0 0 0 0 5.902 4.186 4.186 0 0 0 5.902 0L19.16 9.48a.835.835 0 0 0 0-1.18.835.835 0 0 0-1.18 0l-6.985 6.984a2.49 2.49 0 0 1-3.54 0 2.49 2.49 0 0 1 0-3.54l6.983-6.985a.835.835 0 0 0 0-1.18.84.84 0 0 0-.59-.245"/></symbol><symbol id="i-openrouter" viewBox="0 0 24 24"><title>OpenRouter</title><path d="M16.778 1.844v1.919q-.569-.026-1.138-.032-.708-.008-1.415.037c-1.93.126-4.023.728-6.149 2.237-2.911 2.066-2.731 1.95-4.14 2.75-.396.223-1.342.574-2.185.798-.841.225-1.753.333-1.751.333v4.229s.768.108 1.61.333c.842.224 1.789.575 2.185.799 1.41.798 1.228.683 4.14 2.75 2.126 1.509 4.22 2.11 6.148 2.236.88.058 1.716.041 2.555.005v1.918l7.222-4.168-7.222-4.17v2.176c-.86.038-1.611.065-2.278.021-1.364-.09-2.417-.357-3.979-1.465-2.244-1.593-2.866-2.027-3.68-2.508.889-.518 1.449-.906 3.822-2.59 1.56-1.109 2.614-1.377 3.978-1.466.667-.044 1.418-.017 2.278.02v2.176L24 6.014Z"/></symbol><symbol id="i-cursor" viewBox="0 0 24 24"><title>Cursor</title><path d="M11.503.131 1.891 5.678a.84.84 0 0 0-.42.726v11.188c0 .3.162.575.42.724l9.609 5.55a1 1 0 0 0 .998 0l9.61-5.55a.84.84 0 0 0 .42-.724V6.404a.84.84 0 0 0-.42-.726L12.497.131a1.01 1.01 0 0 0-.996 0M2.657 6.338h18.55c.263 0 .43.287.297.515L12.23 22.918c-.062.107-.229.064-.229-.06V12.335a.59.59 0 0 0-.295-.51l-9.11-5.257c-.109-.063-.064-.23.061-.23"/></symbol><symbol id="i-node" viewBox="0 0 24 24"><title>Node.js</title><path d="M11.998,24c-0.321,0-0.641-0.084-0.922-0.247l-2.936-1.737c-0.438-0.245-0.224-0.332-0.08-0.383 c0.585-0.203,0.703-0.25,1.328-0.604c0.065-0.037,0.151-0.023,0.218,0.017l2.256,1.339c0.082,0.045,0.197,0.045,0.272,0l8.795-5.076 c0.082-0.047,0.134-0.141,0.134-0.238V6.921c0-0.099-0.053-0.192-0.137-0.242l-8.791-5.072c-0.081-0.047-0.189-0.047-0.271,0 L3.075,6.68C2.99,6.729,2.936,6.825,2.936,6.921v10.15c0,0.097,0.054,0.189,0.139,0.235l2.409,1.392 c1.307,0.654,2.108-0.116,2.108-0.89V7.787c0-0.142,0.114-0.253,0.256-0.253h1.115c0.139,0,0.255,0.112,0.255,0.253v10.021 c0,1.745-0.95,2.745-2.604,2.745c-0.508,0-0.909,0-2.026-0.551L2.28,18.675c-0.57-0.329-0.922-0.945-0.922-1.604V6.921 c0-0.659,0.353-1.275,0.922-1.603l8.795-5.082c0.557-0.315,1.296-0.315,1.848,0l8.794,5.082c0.57,0.329,0.924,0.944,0.924,1.603 v10.15c0,0.659-0.354,1.273-0.924,1.604l-8.794,5.078C12.643,23.916,12.324,24,11.998,24z M19.099,13.993 c0-1.9-1.284-2.406-3.987-2.763c-2.731-0.361-3.009-0.548-3.009-1.187c0-0.528,0.235-1.233,2.258-1.233 c1.807,0,2.473,0.389,2.747,1.607c0.024,0.115,0.129,0.199,0.247,0.199h1.141c0.071,0,0.138-0.031,0.186-0.081 c0.048-0.054,0.074-0.123,0.067-0.196c-0.177-2.098-1.571-3.076-4.388-3.076c-2.508,0-4.004,1.058-4.004,2.833 c0,1.925,1.488,2.457,3.895,2.695c2.88,0.282,3.103,0.703,3.103,1.269c0,0.983-0.789,1.402-2.642,1.402 c-2.327,0-2.839-0.584-3.011-1.742c-0.02-0.124-0.126-0.215-0.253-0.215h-1.137c-0.141,0-0.254,0.112-0.254,0.253 c0,1.482,0.806,3.248,4.655,3.248C17.501,17.007,19.099,15.91,19.099,13.993z"/></symbol><symbol id="i-uv" viewBox="0 0 24 24"><title>uv</title><path d="m0 .1058.0504 11.9496.0403 9.5597c.0055 1.3199 1.08 2.3854 2.4 2.3798l9.5596-.0403 5.9749-.0252.6075-.0026c1.316-.0056 2.3799-1.0963 2.3799-2.4123h1.0946v2.3894L24 23.9042 23.8992.005 12.9056.0513l.0463 9.5245v5.9637h-1.9583L11.04 9.584 10.9936.0594Z"/></symbol></svg>
 <div class="wrap">
   <nav>
     <a class="brand" href="./"><img src="assets/mark-tile-512.png" alt="" width="40" height="40"><span>jev<span style="color:var(--amber)">-</span>ra</span></a>
     <div class="links">
-      <a href="#how">How it works</a>
-      <a href="#bench">Benchmarks</a>
-      <a href="#install">Install</a>
-      <a href="#limits">Limits</a>
-      <a href="https://github.com/brnyxx/jev-ra">GitHub</a>
-      <a href="https://pypi.org/project/jev-ra/">PyPI</a>
-      <a href="https://www.npmjs.com/package/jev-ra">npm</a>
+      <a href="#how"><span>How it works</span></a>
+      <a href="#arch"><span>Architecture</span></a>
+      <a href="#bench"><span>Benchmarks</span></a>
+      <a href="#install"><span>Install</span></a>
+      <i class="sep"></i>
+      <a href="https://github.com/brnyxx/jev-ra" title="GitHub"><svg class="ic"><use href="#i-github"/></svg><span>GitHub</span></a>
+      <a href="https://pypi.org/project/jev-ra/" title="PyPI"><svg class="ic"><use href="#i-pypi"/></svg><span>PyPI</span></a>
+      <a href="https://www.npmjs.com/package/jev-ra" title="npm"><svg class="ic"><use href="#i-npm"/></svg><span>npm</span></a>
     </div>
   </nav>
 
   <header class="hero">
     <div>
+      <p class="hud"><i></i>System One · decision layer online · ~300 ms/step</p>
       <h1>Browser use for coding agents.<br><span class="accent">3-5x faster than browser-use.</span></h1>
       <p class="sub">Jev decides every step in ~300 ms. Your agent plans, reads the page, and takes over when it matters. No second LLM in the loop.</p>
-      <button class="pill" data-copy="uvx jev-ra install claude">$ uvx jev-ra install claude <small>copy</small></button>
+      <div class="cta">
+        <button class="pill" data-copy="uvx jev-ra install claude">$ uvx jev-ra install claude <small>copy</small></button>
+        <a class="ghost" href="https://github.com/brnyxx/jev-ra"><svg class="ic"><use href="#i-github"/></svg> Star on GitHub</a>
+      </div>
     </div>
-    <img src="assets/mark-dark-512.png" alt="jev-ra: a zebra stepping out of a browser window" width="512" height="512">
+    <div class="fig"><img src="assets/mark-dark-512.png" alt="jev-ra: a zebra stepping out of a browser window" width="512" height="512"></div>
   </header>
+
+  <div class="works">
+    <span>Works with</span>
+    <a href="#install" data-tab="claude"><svg class="ic"><use href="#i-claude"/></svg>Claude Code</a>
+    <a href="#install" data-tab="codex"><svg class="ic"><use href="#i-openai"/></svg>Codex</a>
+    <a href="#install" data-tab="mcp"><svg class="ic"><use href="#i-cursor"/></svg>Cursor</a>
+    <a href="#install" data-tab="mcp"><svg class="ic"><use href="#i-mcp"/></svg>Any MCP client</a>
+    <a href="#install" data-tab="cli"><svg class="ic"><use href="#i-python"/></svg>Python CLI</a>
+  </div>
 
   <div class="stats">
     <div class="stat"><b>5.4x</b><span>Wikipedia lookup</span><i>4.3 s vs 23.1 s</i></div>
@@ -110,6 +255,7 @@
   <p class="note">vs browser-use 0.13 in <code>flash_mode</code> with gemini-3-flash, same Chrome, same OpenRouter key, 2026-09-18. Method and raw rows in <a href="https://github.com/brnyxx/jev-ra/blob/main/docs/BENCHMARKS.md">BENCHMARKS.md</a>.</p>
 
   <section id="demo">
+    <p class="kicker">// 01 · demo</p>
     <h2>Watch it, side by side.</h2>
     <p class="lead">Same task, same browser, real time. Left: browser-use flash_mode. Right: jev-ra.</p>
     <div class="demo">
@@ -121,51 +267,179 @@
   </section>
 
   <section id="how">
-    <h2>How it works</h2>
-    <p class="lead">One typed decision per step instead of one LLM call per step.</p>
-    <div class="steps">
-      <div class="step"><div class="n">01</div><h3>Snapshot</h3><p>One CDP call reads the visible text and every interactive control into an indexed table, with identity guards so a stale page can never be clicked.</p></div>
-      <div class="step"><div class="n">02</div><h3>Decide</h3><p>Jev answers, in one ~300 ms request: which operation, which element, which of your values goes in that field, did the last step work, is the goal done.</p></div>
-      <div class="step"><div class="n">03</div><h3>Act or escalate</h3><p>Trusted input through the DevTools protocol. If it is stuck, needs a value, or cannot verify done, it hands your agent the page and the top candidates.</p></div>
+    <p class="kicker">// 02 · one step</p>
+    <h2>How a step works</h2>
+    <p class="lead">Every step is the same five moves. The only network call is one typed decision; there is no prompt, no generated text, and nothing the model says ever becomes a selector or a script.</p>
+    <div class="pipe" aria-hidden="true">
+      <i class="pulse"></i>
+      <div class="node"><div class="dot"><svg class="pi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></div><h3>Observe</h3><p>one <code>Runtime.evaluate</code> runs <code>snapshot.js</code>: visible text, every control as <code>[e12] button "Search"</code>, identity guards</p><span class="ms">1 CDP call</span></div>
+      <div class="node"><div class="dot"><svg class="pi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2 4 14h7l-1 8 9-12h-7l1-8z"/></svg></div><h3>Decide</h3><p>one Jev request with five typed questions: operation, target, which value, did the last step work, is the goal done</p><span class="ms">~300 ms</span></div>
+      <div class="node"><div class="dot"><svg class="pi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 3l14 8-6 1.5L9.5 19 5 3z"/></svg></div><h3>Act</h3><p>guard re-checked, geometry re-resolved, hit-tested, then a trusted <code>Input.dispatchMouseEvent</code> / <code>insertText</code></p><span class="ms">trusted input</span></div>
+      <div class="node"><div class="dot"><svg class="pi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12.5 9.5 18 20 6.5"/></svg></div><h3>Verify</h3><p>url, title, text and field values diffed before vs after; loop detection on three unchanged pages</p><span class="ms">deterministic</span></div>
+      <div class="node"><div class="dot"><svg class="pi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6v5a4 4 0 0 1-4 4H5"/><path d="m9 11-4 4 4 4"/></svg></div><h3>Done or hand back</h3><p><code>DONE</code> needs <code>goal_achieved ≥ 0.6</code> in the same answer; otherwise escalate with a reason and the top candidates</p><span class="ms">8 reasons</span></div>
     </div>
-<pre class="flow">your agent  ──goal, values──▶  <b>jev-ra</b>
-                                  │ observe (1 CDP call)
-                                  │ decide  (1 Jev call, ~300 ms)
-                                  │ act     (trusted input)
-                                  │ verify  (deterministic diff)
-                                  ▼
-your agent  ◀──result | escalate(reason, candidates, page text)──</pre>
+
+    <div class="bars" aria-label="wall time per step">
+      <div class="bar bu"><div class="lbl">browser-use<small>flash_mode, gemini-3-flash</small></div><div class="track"><div class="fill"></div></div><div class="val">5.8 s/step</div></div>
+      <div class="bar jr"><div class="lbl">jev-ra<small>Jev via OpenRouter</small></div><div class="track"><div class="fill"></div></div><div class="val">0.7 s/step</div></div>
+    </div>
+    <p class="legend">Wall time divided by steps on the Wikipedia task (23.1 s / 4 vs 4.3 s / 6, 2026-09-18). A jev-ra step is one ~300 ms decision plus the page's own load and settle time; there is no prompt to build and no tokens to stream.</p>
+  </section>
+
+  <section id="decision">
+    <p class="kicker">// 03 · anatomy of a decision</p>
+    <h2>Five questions, one request, no text.</h2>
+    <p class="lead">Jev is a decision model, not a chat model. jev-ra sends the page as state and asks typed questions; it gets back a choice with a probability distribution and yes/no answers with confidence. That is why a step costs about $0.00025 and never has to parse prose.</p>
+    <div class="anat">
+      <div class="panel">
+        <p class="t"><span>request · state + questions</span><span class="rt">POST /decisions</span></p>
+        <div class="q"><span class="k">operation</span> <span class="c">choice</span>  CLICK · TYPE_TEXT · SELECT · SCROLL_DOWN · SCROLL_UP · WAIT · DONE · BLOCKED</div>
+        <div class="q"><span class="k">click_target</span> <span class="c">choice</span>  [e3] link "신상품순" · [e4] link "판매순" · [e9] button "장바구니" · …</div>
+        <div class="q"><span class="k">value_for_field</span> <span class="c">choice</span>  origin: "Zurich" · destination: "London" · none</div>
+        <div class="q"><span class="k">prev_ok</span> <span class="c">noul</span>  Did the previous action have its intended effect on this page?</div>
+        <div class="q"><span class="k">goal_achieved</span> <span class="c">noul</span>  Is every requirement of the goal visibly satisfied on this page?</div>
+        <div style="margin-top:12px;color:var(--dim)">state: { page: {url, title, text ≤ 6000 chars}, elements[≤ 250], recent_actions[≤ 10], goal, values_available }</div>
+      </div>
+      <div class="panel">
+        <p class="t"><span>answers · 312 ms</span><span class="rt">typesafe/jev-1.13</span></p>
+        <div class="ans"><span class="k">operation</span> → <span class="a">CLICK</span>  p=0.91</div>
+        <div class="ans"><span class="k">click_target</span> → <span class="a">[e3] link "신상품순"</span>  p=0.87</div>
+        <div class="ans"><span class="k">value_for_field</span> → <span class="a">none</span></div>
+        <div class="ans"><span class="k">prev_ok</span> → <span class="a">true</span>  0.94</div>
+        <div class="ans"><span class="k">goal_achieved</span> → <span class="a">false</span>  0.12</div>
+        <div class="act">→ act: click e3 (guard ok, hit-test ok) · verify: text changed, page_changed=true · next step</div>
+      </div>
+    </div>
+    <p class="legend">Question ids and instruction texts are the ones in <code>jev_ra/decide/questions.py</code>; the model answers are illustrative. Values your agent passes are only ever chosen by name; jev-ra never invents a string to type.</p>
+  </section>
+
+  <section id="arch">
+    <p class="kicker">// 04 · architecture</p>
+    <h2>Three processes, two wires, one decision model.</h2>
+    <p class="lead">Your agent talks MCP over stdio. jev-ra owns a real Chrome through the DevTools Protocol and asks Jev for every step. Nothing else runs.</p>
+    <div class="arch">
+      <svg viewBox="0 0 1100 430" role="img" aria-label="architecture: agent to jev-ra over MCP, jev-ra to Chrome over CDP and to Jev over HTTPS">
+        <!-- agent -->
+        <rect class="box" x="20" y="150" width="220" height="130" rx="16"/>
+        <text class="h" x="40" y="182">Your agent</text>
+        <text class="s" x="40" y="204">plans · supplies values</text>
+        <text class="s" x="40" y="222">reads with browser_extract</text>
+        <g transform="translate(40 240) scale(.9)"><use class="logo" href="#i-claude" width="22" height="22"/><use class="logo" href="#i-openai" x="30" width="22" height="22"/><use class="logo" href="#i-cursor" x="60" width="22" height="22"/><use class="logo" href="#i-mcp" x="90" width="22" height="22"/></g>
+
+        <!-- jev-ra -->
+        <rect class="box core" x="330" y="40" width="390" height="350" rx="20"/>
+        <text class="h" x="352" y="72">jev-ra</text>
+        <text class="m" x="700" y="72" text-anchor="end">pip · npm · uvx</text>
+        <rect class="inner" x="350" y="90" width="352" height="58" rx="12"/>
+        <text x="368" y="114">MCP server · CLI</text>
+        <text class="s" x="368" y="134">browser_run · search · extract · act · 9 more</text>
+        <rect class="inner" x="350" y="160" width="352" height="130" rx="12"/>
+        <text x="368" y="184">Engine</text>
+        <text class="s" x="368" y="204">agent loop: observe → decide → act → verify</text>
+        <text class="s" x="368" y="222">action space + policy: offered ops, guards, loop detection</text>
+        <text class="s" x="368" y="240">values binding · escalation contract · budgets</text>
+        <text class="m" x="368" y="270">jev_ra/agent.py · decide/policy.py · decide/questions.py</text>
+        <rect class="inner" x="350" y="302" width="352" height="70" rx="12"/>
+        <text x="368" y="326">Browser core</text>
+        <text class="s" x="368" y="346">snapshot.js in one Runtime.evaluate · trusted Input events</text>
+        <text class="m" x="368" y="364">jev_ra/browser/session.py · snapshot.js</text>
+
+        <!-- jev -->
+        <rect class="box" x="870" y="60" width="210" height="120" rx="16"/>
+        <text class="h" x="888" y="92">TypeSafe Jev</text>
+        <text class="s" x="888" y="114">decision model · System One</text>
+        <text class="s" x="888" y="132">via OpenRouter or direct</text>
+        <g transform="translate(888 146)"><use class="logo" href="#i-openrouter" width="20" height="20"/><text class="m" x="28" y="15">jev-1.13 · HTTP/2</text></g>
+
+        <!-- chrome -->
+        <rect class="box" x="870" y="250" width="210" height="120" rx="16"/>
+        <text class="h" x="888" y="282">Chrome</text>
+        <text class="s" x="888" y="304">your profile or a managed one</text>
+        <text class="s" x="888" y="322">1280×900 · focus emulation</text>
+        <g transform="translate(888 336)"><use class="logo" href="#i-chrome" width="20" height="20"/><text class="m" x="28" y="15">DevTools Protocol</text></g>
+
+        <!-- wires -->
+        <path class="wire" d="M240 215 H330"/><path class="flow" d="M240 211 H330"/><path class="flow back" d="M240 219 H330"/>
+        <text class="lbl" x="285" y="198" text-anchor="middle">MCP · stdio</text>
+        <text class="m" x="285" y="240" text-anchor="middle">goal · values</text>
+        <text class="m" x="285" y="255" text-anchor="middle">result | escalate</text>
+
+        <path class="wire" d="M720 120 H870"/><path class="flow" d="M720 116 H870"/><path class="flow back" d="M720 124 H870"/>
+        <text class="lbl" x="795" y="104" text-anchor="middle">state + questions</text>
+        <text class="m" x="795" y="144" text-anchor="middle">answers · ~300 ms</text>
+
+        <path class="wire" d="M720 340 H870"/><path class="flow" d="M720 336 H870"/><path class="flow back" d="M720 344 H870"/>
+        <text class="lbl" x="795" y="324" text-anchor="middle">CDP · ws://</text>
+        <text class="m" x="795" y="364" text-anchor="middle">snapshot · input</text>
+
+        <text class="m" x="20" y="410">One process per box. No queue, no daemon, no vector store, no second model.</text>
+      </svg>
+    </div>
+    <div class="archnotes">
+      <div><b>Why no screenshots</b>The snapshot is text and an element table, so a step sends a few KB and Jev answers in ~300 ms. Screenshots are available as a tool for the rare case text is not enough.</div>
+      <div><b>Why the model never touches the DOM</b>Every target is an observed node id. Before input, jev-ra re-checks the element's identity guard and hit-tests its geometry; a covered or changed control raises <code>stale</code> instead of clicking the wrong thing.</div>
+      <div><b>Why your agent stays in charge</b>jev-ra does not plan, does not invent text, and does not summarise. It executes a concrete goal fast and hands the page back with candidates the moment it cannot.</div>
+    </div>
+    <div class="stack">
+      <a class="chip" href="https://www.python.org/"><svg class="ic"><use href="#i-python"/></svg>Python 3.12+</a>
+      <a class="chip" href="https://docs.astral.sh/uv/"><svg class="ic"><use href="#i-uv"/></svg>uv <small>· uvx jev-ra</small></a>
+      <a class="chip" href="https://www.npmjs.com/package/jev-ra"><svg class="ic"><use href="#i-node"/></svg>Node launcher <small>· npx jev-ra</small></a>
+      <a class="chip" href="https://modelcontextprotocol.io/"><svg class="ic"><use href="#i-mcp"/></svg>MCP <small>· stdio</small></a>
+      <a class="chip" href="https://chromedevtools.github.io/devtools-protocol/"><svg class="ic"><use href="#i-chrome"/></svg>Chrome DevTools Protocol</a>
+      <a class="chip" href="https://typesafe.ai/">TypeSafe Jev <small>· jev-1.13</small></a>
+      <a class="chip" href="https://openrouter.ai/typesafe/jev-1.13"><svg class="ic"><use href="#i-openrouter"/></svg>OpenRouter</a>
+    </div>
+  </section>
+
+  <section id="escalate">
+    <p class="kicker">// 05 · escalation contract</p>
+    <h2>When it cannot, it says why.</h2>
+    <p class="lead">Eight reasons, each with a prescribed move for the agent. The reply always carries the top candidates and the page text, so the agent can act without another observe.</p>
+    <div class="esc">
+      <div><code>needs_value</code>a field needs a string you did not supply. Add it to <code>values</code>, call again.</div>
+      <div><code>stuck_loop</code>three steps, no page change. Read the text, click one candidate, continue.</div>
+      <div><code>unverified_done</code>Jev says done, no visible proof. Check with <code>browser_extract</code>.</div>
+      <div><code>stale</code>the page kept changing under it. <code>browser_wait()</code>, retry once.</div>
+      <div><code>budget</code>steps or time ran out. Narrow or split the goal.</div>
+      <div><code>too_many_controls</code>over 250 controls in view. Scroll or open the section first.</div>
+      <div><code>blocked</code>login, captcha, empty results. Tell the user; do not retry blindly.</div>
+      <div><code>invalid_decision</code>an answer not on the page, twice. Re-observe and drive one step yourself.</div>
+    </div>
   </section>
 
   <section id="bench">
-    <h2>Benchmarks</h2>
-    <p class="lead">Measured, not claimed. Every number below is reproducible with <code>jev-ra bench --live</code>.</p>
-    <table>
+    <p class="kicker">// 06 · benchmarks</p>
+    <h2>Measured, not claimed.</h2>
+    <p class="lead">Every number below is reproducible with <code>jev-ra bench --live</code> against browser-use in the same Chrome with the same key.</p>
+    <div class="tablewrap"><table>
       <thead><tr><th>Task</th><th>browser-use flash_mode</th><th>browser-use default</th><th>jev-ra</th><th>ratio</th></tr></thead>
       <tbody>
         <tr><td>Wikipedia: open the Gödel incompleteness article</td><td>23.1 s · 4 steps</td><td>46.5 s · 5 steps</td><td class="win">4.3 s · 6 steps</td><td class="win">5.4x</td></tr>
         <tr><td>Google Flights ZRH→LON one-way, 7 checks verified</td><td>66.4 s · 11 steps</td><td>63.6 s · 11 steps</td><td class="win">17.2 s</td><td class="win">3.9x</td></tr>
         <tr><td>Olive Young category: sort by newest</td><td>15.1 s · 3 steps</td><td>17.5 s · 3 steps</td><td class="win">5.3 s · 2 steps</td><td class="win">2.8x</td></tr>
       </tbody>
-    </table>
-    <p class="note" style="margin-top:14px">Single runs on 2026-09-18; the repository's BENCHMARKS.md carries medians over 5 runs, success rates and cost per task.</p>
+    </table></div>
+    <p class="note" style="margin-top:14px">Single runs on 2026-09-18; the repository's BENCHMARKS.md carries medians over 5 runs, success rates, cost per task and a per-step time breakdown.</p>
   </section>
 
   <section id="install">
-    <h2>Install</h2>
-    <p class="lead">One line. Works with the OpenRouter key you already have; no TypeSafe account required.</p>
+    <p class="kicker">// 07 · install</p>
+    <h2>One line.</h2>
+    <p class="lead">Works with the OpenRouter key you already have; no TypeSafe account required. <code>jev-ra doctor</code> proves the whole path with one live decision.</p>
     <div class="tabs" role="tablist">
-      <button class="tab" role="tab" aria-selected="true" data-for="claude">Claude Code</button>
-      <button class="tab" role="tab" aria-selected="false" data-for="codex">Codex</button>
-      <button class="tab" role="tab" aria-selected="false" data-for="npm">npm</button>
-      <button class="tab" role="tab" aria-selected="false" data-for="mcp">Any MCP client</button>
-      <button class="tab" role="tab" aria-selected="false" data-for="cli">CLI</button>
+      <button class="tab" role="tab" aria-selected="true" data-for="claude"><svg class="ic"><use href="#i-claude"/></svg>Claude Code</button>
+      <button class="tab" role="tab" aria-selected="false" data-for="codex"><svg class="ic"><use href="#i-openai"/></svg>Codex</button>
+      <button class="tab" role="tab" aria-selected="false" data-for="npm"><svg class="ic"><use href="#i-npm"/></svg>npm</button>
+      <button class="tab" role="tab" aria-selected="false" data-for="mcp"><svg class="ic"><use href="#i-mcp"/></svg>Any MCP client</button>
+      <button class="tab" role="tab" aria-selected="false" data-for="cli"><svg class="ic"><use href="#i-python"/></svg>CLI</button>
     </div>
     <div class="code" id="tab-claude"><button class="copy">copy</button><pre>export OPENROUTER_API_KEY=sk-or-...
 uvx jev-ra install claude
+uvx jev-ra doctor
 # then in Claude Code: "search the web for X and summarise"</pre></div>
     <div class="code" id="tab-codex" hidden><button class="copy">copy</button><pre>export OPENROUTER_API_KEY=sk-or-...
 uvx jev-ra install codex
+uvx jev-ra doctor
 # Codex asks you to trust the new MCP server once</pre></div>
     <div class="code" id="tab-npm" hidden><button class="copy">copy</button><pre>export OPENROUTER_API_KEY=sk-or-...
 npx -y jev-ra install claude   # or: install codex</pre></div>
@@ -178,9 +452,11 @@ npx -y jev-ra install claude   # or: install codex</pre></div>
   "Find and open the article about Gödel's incompleteness theorems" --json
 uvx jev-ra search "python 3.12 release date" --goal "the exact release date, with source"
 uvx jev-ra doctor</pre></div>
+    <p class="legend">Writing an agent that should install this for someone? Point it at <a href="https://github.com/brnyxx/jev-ra/blob/main/AGENTS.md">AGENTS.md</a>; it covers install, the tool table, the escalation moves and cost.</p>
   </section>
 
   <section id="limits">
+    <p class="kicker">// 08 · limits</p>
     <h2>What it will not do (yet)</h2>
     <p class="lead">These escalate to your agent with a reason instead of guessing.</p>
     <div class="limits">
@@ -190,20 +466,29 @@ uvx jev-ra doctor</pre></div>
   </section>
 
   <footer>
-    <div>MIT · built on <a href="https://github.com/browser-use/browser-harness">browser-harness</a> and the <a href="https://github.com/browser-use/jev-ultrafast">jev-ultrafast</a> snapshot idea · decisions by <a href="https://typesafe.ai">TypeSafe Jev</a></div>
-    <div><a href="https://github.com/brnyxx/jev-ra">github.com/brnyxx/jev-ra</a></div>
+    <div class="row">
+      <div>MIT · built on <a href="https://github.com/browser-use/browser-harness">browser-harness</a> and the <a href="https://github.com/browser-use/jev-ultrafast">jev-ultrafast</a> snapshot idea · decisions by <a href="https://typesafe.ai">TypeSafe Jev</a></div>
+      <div class="soc">
+        <a href="https://github.com/brnyxx/jev-ra" title="GitHub"><svg class="ic"><use href="#i-github"/></svg></a>
+        <a href="https://pypi.org/project/jev-ra/" title="PyPI"><svg class="ic"><use href="#i-pypi"/></svg></a>
+        <a href="https://www.npmjs.com/package/jev-ra" title="npm"><svg class="ic"><use href="#i-npm"/></svg></a>
+      </div>
+    </div>
+    <p>Brand icons from <a href="https://simpleicons.org/">Simple Icons</a> (CC0). Product names and logos belong to their owners; their use here means "works with", not endorsement.</p>
   </footer>
 </div>
 <script>
   const copyText = (text, el) => navigator.clipboard.writeText(text).then(() => {
     const prev = el.textContent; el.textContent = "copied"; setTimeout(() => { el.textContent = prev; }, 1200);
   }).catch(() => {});
+  const selectTab = (name) => {
+    document.querySelectorAll(".tab").forEach((x) => x.setAttribute("aria-selected", x.dataset.for === name));
+    document.querySelectorAll(".code[id^=tab-]").forEach((c) => { c.hidden = c.id !== "tab-" + name; });
+  };
   document.querySelector(".pill").addEventListener("click", (e) => copyText(e.currentTarget.dataset.copy, e.currentTarget.querySelector("small")));
   document.querySelectorAll(".code .copy").forEach((b) => b.addEventListener("click", () => copyText(b.parentElement.querySelector("pre").textContent, b)));
-  document.querySelectorAll(".tab").forEach((t) => t.addEventListener("click", () => {
-    document.querySelectorAll(".tab").forEach((x) => x.setAttribute("aria-selected", x === t));
-    document.querySelectorAll(".code[id^=tab-]").forEach((c) => { c.hidden = c.id !== "tab-" + t.dataset.for; });
-  }));
+  document.querySelectorAll(".tab").forEach((t) => t.addEventListener("click", () => selectTab(t.dataset.for)));
+  document.querySelectorAll(".works a[data-tab]").forEach((a) => a.addEventListener("click", () => selectTab(a.dataset.tab)));
 </script>
 </body>
 </html>
