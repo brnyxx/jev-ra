@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Docs</title>
+<style>
+  body { font: 14px/1.5 system-ui; margin: 0; padding: 16px; }
+</style>
+</head>
+<body>
+<!-- A single-page app the way react.dev routes: the click changes the address immediately and
+     the new route renders a few frames later. Read too early and the address says one page
+     while every word on screen still belongs to the previous one. -->
+<h1 id="view">React</h1>
+<p id="body">The library for web and native user interfaces.</p>
+<button id="go">Reference</button>
+<script>
+  document.getElementById('go').addEventListener('click', () => {
+    history.pushState({}, '', location.pathname + '?p=reference');
+    setTimeout(() => {
+      document.getElementById('view').textContent = 'useEffect';
+      document.getElementById('body').textContent = 'Call useEffect at the top level of your component.';
+    }, 500);
+  });
+</script>
+</body>
+</html>

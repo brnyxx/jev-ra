@@ -152,6 +152,7 @@ class Session:
         self.max_elements = max_elements
         self.after_input = None
         self.before_input = None
+        self.moved_from = None
         self.cache = {}
         viewport = self.config.viewport
         self.cdp_url, self.chrome_source = ensure_chrome(viewport=(viewport.width, viewport.height))
@@ -246,6 +247,7 @@ class Session:
     def settle(self):
         """Wait out the effect of the last input before observing again."""
         action, self.after_input = self.after_input, None
+        was, self.moved_from = self.moved_from, None
         if action is None:
             return
         # Read-only, and only after the action was already recorded: navigation may cut it short.
@@ -258,6 +260,7 @@ class Session:
             )
         except RuntimeError:
             logger.debug("Post-input settle was interrupted")
+        self.rendered(was)
         self.quiesce()
         self.paint(action)
 
@@ -288,6 +291,28 @@ class Session:
                 return
             else:
                 changed = True
+            time.sleep(WAIT_SLEEP_S)
+
+    def rendered(self, was):
+        """Wait for a route the app changed the address for to actually put itself on screen.
+
+        A single-page app answers a click by pushing the new address and rendering a few frames
+        later. The marker has already moved - the url is in it - so two readings agree at once
+        and the page read back is the previous route wearing the new address. Wait, briefly, for
+        the part of the marker that is the page itself to move too.
+        """
+        if not was:
+            return
+        deadline = time.monotonic() + PAINT_BUDGET_S
+        expression = marker_expression(self.max_elements)
+        while time.monotonic() < deadline:
+            try:
+                marker = self.evaluate(expression)
+            except StalePage:
+                return
+            if not marker or marker[0] != was[0] or marker[1] == was[1] or marker[6:] != was[6:]:
+                return
+            logger.debug("The address moved to %s before the route rendered; waiting", marker[1])
             time.sleep(WAIT_SLEEP_S)
 
     def quiesce(self):
@@ -361,6 +386,7 @@ class Session:
         else:
             self.input(action, text)
         self.after_input = action if kind != "wait" else None
+        self.moved_from = page.get("marker") if kind != "wait" else None
         self.invalidate()
         return {"executed": action["id"], "kind": kind, "text": text}
 
