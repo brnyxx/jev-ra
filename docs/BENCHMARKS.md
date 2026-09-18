@@ -111,6 +111,39 @@ The levers that do exist, in the order they are worth pulling:
    single-page apps for latency, which is the trade that made Google Flights answer `BLOCKED`
    before.
 
+## The real-site corpus, 3 runs per task
+
+`corpus/sites.toml` holds 40 tasks across eight families (e-commerce, search and reading, booking,
+forms, news, documentation SPAs, government portals, login walls), each with an `expect` and a
+`verify` spec. `uv run jev-ra corpus run --runs 3` runs all of them against the live web.
+
+Measured 2026-09-18 on main `03973c6` (raw rows: `docs/benchmarks/2026-09-18-v0.1/corpus-3runs.jsonl`):
+
+| family | pass / 15 |
+|---|---|
+| auth | 15 |
+| forms | 13 |
+| portal | 13 |
+| search_read | 12 |
+| booking | 12 |
+| ecommerce | 11 |
+| news | 11 |
+| docs_spa | 10 |
+| **all** | **97 / 120 = 81 %** |
+
+What the 23 failing attempts were: `blocked` on a page the run could not progress on (11: an
+Olive Young category menu that opens on hover only, a Google Flights control that does not exist
+before a search, gov.kr and GitHub on 2 of 3 runs each, Vercel docs once); verify specs stricter
+than the page (10: an MDN url compared case-sensitively, `What's New` typeset with a curly
+apostrophe, a BBC article whose visible text was measured only inside the viewport); one Amazon
+search url check; one unverified done on Yonhap. The ten spec cases are fixed by commits after
+`03973c6` (`e12e260`, `8081f5d`, `aea70e3`, `437027e`); the two impossible tasks were replaced in
+`8f0c388` by tasks the same pages can answer. Neither is counted above: the table is the run as it
+happened.
+
+The 0.1.0 bar is this measurement, published. The 0.2 bar is 90 % on the corpus as it stands
+today, re-measured on a tagged commit.
+
 ## Cost and latency per call
 
 | measurement | value |
