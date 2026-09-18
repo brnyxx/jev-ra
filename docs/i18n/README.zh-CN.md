@@ -111,14 +111,28 @@ uvx jev-ra run https://en.wikipedia.org/wiki/Main_Page "Open the Godel incomplet
 
 ## 命令行
 
-```sh
-jev-ra run URL "goal" [--value name=text ...] [--max-steps N] [--json]
-jev-ra search "query" ["what the page must answer"] [--max-pages 3]
-jev-ra open URL | observe | extract [--mode text|elements|links|tables|main]
-jev-ra act "instruction" | click REF | type REF TEXT | select REF OPTION
-jev-ra scroll down|up | press Enter|Escape|Tab | wait | screenshot [PATH] | close
-jev-ra mcp | install claude|codex [--scope user|project|local] | doctor | bench [--live]
-```
+| 命令 | 作用 |
+|---|---|
+| `run URL "goal" [--value name=text ...] [--max-steps N]` | 从 URL 开始完成目标，直到完成或升级 |
+| `search "query" ["what the page must answer"] [--max-pages 3]` | 搜索网络并读取最佳结果 |
+| `open URL` | 打开 URL 并为后续命令保留会话 |
+| `observe` | 列出打开页面的控件和文本 |
+| `extract [--mode text\|elements\|links\|tables\|main]` | 从打开的页面中提取结构化数据 |
+| `act "instruction" [--value name=text ...]` | 在打开的页面上执行一步决策 |
+| `click REF` | 点击一个观测到的元素 |
+| `type REF TEXT` | 向一个观测到的字段输入文本 |
+| `select REF OPTION` | 选择一个观测到的下拉项 |
+| `scroll down\|up` | 滚动打开的页面 |
+| `press Enter\|Escape\|Tab` | 按下 Enter、Escape 或 Tab |
+| `wait` | 稍等片刻后重新观测 |
+| `screenshot [PATH]` | 将视口保存为 JPEG |
+| `close` | 关闭 `open` 保留的会话 |
+| `mcp` | 运行 MCP stdio 服务器 |
+| `skill` | 打印智能体指南，可保存为技能文件 |
+| `install claude\|codex [--scope user\|project\|local]` | 将 jev-ra 注册为编码智能体的 MCP 服务器 |
+| `doctor` | 检查密钥、端点、Chrome 和一次实时决策 |
+| `bench [--live]` | 为离线测试页计时，加 `--live` 也为实时任务计时 |
+| `corpus run` | 运行真实网站语料 |
 
 `open` … `close` 通过 `$XDG_STATE_HOME/jev-ra/session.json` 里的 target id 在多次调用之间共享同一个
 浏览器。任何命令加上 `--json` 都会输出原始负载。

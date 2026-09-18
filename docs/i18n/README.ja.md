@@ -114,14 +114,28 @@ Python を用意したくない場合は `npx -y jev-ra install claude` でも�
 
 ## CLI
 
-```sh
-jev-ra run URL "goal" [--value name=text ...] [--max-steps N] [--json]
-jev-ra search "query" ["what the page must answer"] [--max-pages 3]
-jev-ra open URL | observe | extract [--mode text|elements|links|tables|main]
-jev-ra act "instruction" | click REF | type REF TEXT | select REF OPTION
-jev-ra scroll down|up | press Enter|Escape|Tab | wait | screenshot [PATH] | close
-jev-ra mcp | install claude|codex [--scope user|project|local] | doctor | bench [--live]
-```
+| コマンド | 何をするか |
+|---|---|
+| `run URL "goal" [--value name=text ...] [--max-steps N]` | URL からゴールを遂行し、完了かエスカレーションで止まる |
+| `search "query" ["what the page must answer"] [--max-pages 3]` | Web を検索し、最良の結果を読む |
+| `open URL` | URL を開き、以降のコマンドのためにセッションを保持する |
+| `observe` | 開いているページのコントロールとテキストを列挙する |
+| `extract [--mode text\|elements\|links\|tables\|main]` | 開いているページから構造化データを取り出す |
+| `act "instruction" [--value name=text ...]` | 開いているページで判断済みの 1 ステップを実行する |
+| `click REF` | 観測済みの要素を 1 つクリックする |
+| `type REF TEXT` | 観測済みのフィールドに 1 つ入力する |
+| `select REF OPTION` | 観測済みのドロップダウン選択肢を選ぶ |
+| `scroll down\|up` | 開いているページをスクロールする |
+| `press Enter\|Escape\|Tab` | Enter、Escape、Tab を押す |
+| `wait` | 少し待ってからもう一度観測する |
+| `screenshot [PATH]` | ビューポートを JPEG で保存する |
+| `close` | `open` が保持しているセッションを閉じる |
+| `mcp` | MCP stdio サーバーを実行する |
+| `skill` | エージェントガイドを出力する。スキルファイルとして保存できる |
+| `install claude\|codex [--scope user\|project\|local]` | jev-ra をコーディングエージェントの MCP サーバーとして登録する |
+| `doctor` | 鍵、エンドポイント、Chrome、ライブ判断 1 回を確認する |
+| `bench [--live]` | オフラインのフィクスチャを計時し、`--live` ならライブタスクも計時する |
+| `corpus run` | 実サイトのコーパスを実行する |
 
 `open` … `close` は `$XDG_STATE_HOME/jev-ra/session.json` の target id を通じて 1 つのブラウザを
 複数の呼び出しで共有する。どのコマンドでも `--json` を付ければ生のペイロードが得られる。

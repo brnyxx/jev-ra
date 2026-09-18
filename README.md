@@ -113,14 +113,28 @@ Every response carries `elapsed_ms`, and `decisions` plus `cost` whenever Jev wa
 
 ## CLI
 
-```sh
-jev-ra run URL "goal" [--value name=text ...] [--max-steps N] [--json]
-jev-ra search "query" ["what the page must answer"] [--max-pages 3]
-jev-ra open URL | observe | extract [--mode text|elements|links|tables|main]
-jev-ra act "instruction" | click REF | type REF TEXT | select REF OPTION
-jev-ra scroll down|up | press Enter|Escape|Tab | wait | screenshot [PATH] | close
-jev-ra mcp | install claude|codex [--scope user|project|local] | doctor | bench [--live]
-```
+| command | what it does |
+|---|---|
+| `run URL "goal" [--value name=text ...] [--max-steps N]` | pursue a goal from a URL until it is done or escalates |
+| `search "query" ["what the page must answer"] [--max-pages 3]` | search the web and read the best results |
+| `open URL` | open a URL and keep the session for later commands |
+| `observe` | list the controls and text of the open page |
+| `extract [--mode text\|elements\|links\|tables\|main]` | pull structured data out of the open page |
+| `act "instruction" [--value name=text ...]` | take one decided step on the open page |
+| `click REF` | click one observed element |
+| `type REF TEXT` | type into one observed field |
+| `select REF OPTION` | select an observed dropdown option |
+| `scroll down\|up` | scroll the open page |
+| `press Enter\|Escape\|Tab` | press Enter, Escape or Tab |
+| `wait` | wait a moment and observe again |
+| `screenshot [PATH]` | save a JPEG of the viewport |
+| `close` | close the session kept by `open` |
+| `mcp` | run the MCP stdio server |
+| `skill` | print the agent guide, for saving as a skill file |
+| `install claude\|codex [--scope user\|project\|local]` | register jev-ra as an MCP server with a coding agent |
+| `doctor` | check the key, the endpoint, Chrome and one live decision |
+| `bench [--live]` | time the offline fixtures, and the live tasks with --live |
+| `corpus run` | run the real-site corpus |
 
 `open` … `close` share one browser across invocations through a target id in
 `$XDG_STATE_HOME/jev-ra/session.json`. Add `--json` to any command for the raw payload.

@@ -113,14 +113,28 @@ Python을 따로 갖추기 싫다면 `npx -y jev-ra install claude`도 같은 �
 
 ## CLI
 
-```sh
-jev-ra run URL "goal" [--value name=text ...] [--max-steps N] [--json]
-jev-ra search "query" ["what the page must answer"] [--max-pages 3]
-jev-ra open URL | observe | extract [--mode text|elements|links|tables|main]
-jev-ra act "instruction" | click REF | type REF TEXT | select REF OPTION
-jev-ra scroll down|up | press Enter|Escape|Tab | wait | screenshot [PATH] | close
-jev-ra mcp | install claude|codex [--scope user|project|local] | doctor | bench [--live]
-```
+| 명령 | 하는 일 |
+|---|---|
+| `run URL "goal" [--value name=text ...] [--max-steps N]` | URL에서 목표를 추구하고 완료되거나 에스컬레이션되면 멈춘다 |
+| `search "query" ["what the page must answer"] [--max-pages 3]` | 웹을 검색하고 가장 좋은 결과를 읽는다 |
+| `open URL` | URL을 열고 이후 명령을 위해 세션을 유지한다 |
+| `observe` | 열린 페이지의 컨트롤과 텍스트를 나열한다 |
+| `extract [--mode text\|elements\|links\|tables\|main]` | 열린 페이지에서 구조화된 데이터를 뽑는다 |
+| `act "instruction" [--value name=text ...]` | 열린 페이지에서 결정된 한 단계를 실행한다 |
+| `click REF` | 관측된 요소 하나를 클릭한다 |
+| `type REF TEXT` | 관측된 필드 하나에 입력한다 |
+| `select REF OPTION` | 관측된 드롭다운 옵션을 고른다 |
+| `scroll down\|up` | 열린 페이지를 스크롤한다 |
+| `press Enter\|Escape\|Tab` | Enter, Escape, Tab을 누른다 |
+| `wait` | 잠시 기다린 뒤 다시 관측한다 |
+| `screenshot [PATH]` | 뷰포트를 JPEG로 저장한다 |
+| `close` | `open`이 남긴 세션을 닫는다 |
+| `mcp` | MCP stdio 서버를 실행한다 |
+| `skill` | 에이전트 가이드를 출력한다. 스킬 파일로 저장할 수 있다 |
+| `install claude\|codex [--scope user\|project\|local]` | jev-ra를 코딩 에이전트의 MCP 서버로 등록한다 |
+| `doctor` | 키, 엔드포인트, Chrome, 라이브 결정 하나를 점검한다 |
+| `bench [--live]` | 오프라인 픽스처를 재고, `--live`면 라이브 과제도 잰다 |
+| `corpus run` | 실제 사이트 코퍼스를 실행한다 |
 
 `open` … `close`는 `$XDG_STATE_HOME/jev-ra/session.json`의 target id를 통해 하나의 브라우저를
 여러 호출에 걸쳐 공유한다. 어느 명령에든 `--json`을 붙이면 원본 페이로드가 나온다.
