@@ -188,8 +188,12 @@ class Agent:
                     )
                 before, page = page, after
                 run.record(
-                    replace(decision, operation="SCROLL_DOWN" if look is not None else "WAIT",
-                            target=chosen["id"], action=chosen),
+                    replace(
+                        decision,
+                        operation="SCROLL_DOWN" if look is not None else "WAIT",
+                        target=chosen["id"],
+                        action=chosen,
+                    ),
                     before,
                     page,
                     None,

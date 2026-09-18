@@ -103,8 +103,19 @@ SETTLE_BACKOFF = 1.5
 # in and out - Back to top, a scroll helper - is the page catching up, not the click's answer,
 # and accepting it would end the wait before the panel mounts.
 PANEL_ROLES = frozenset(
-    {"textbox", "searchbox", "combobox", "listbox", "option", "menuitem", "menuitemradio",
-     "menu", "dialog", "spinbutton", "tabpanel"}
+    {
+        "textbox",
+        "searchbox",
+        "combobox",
+        "listbox",
+        "option",
+        "menuitem",
+        "menuitemradio",
+        "menu",
+        "dialog",
+        "spinbutton",
+        "tabpanel",
+    }
 )
 OPEN_MIN_CONTROLS = 4
 # The marker, as snapshot.js builds it: origin, address, scroll, size, then the page itself.
