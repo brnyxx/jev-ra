@@ -1,3 +1,18 @@
+<p align="center">
+  <img src="assets/logo.svg" alt="jev-ra" width="360">
+</p>
+
+<p align="center">
+  <a href="https://github.com/brnyxx/jev-ra/actions/workflows/ci.yml"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/brnyxx/jev-ra/ci.yml?branch=main&label=ci"></a>
+  <a href="https://pypi.org/project/jev-ra/"><img alt="PyPI" src="https://img.shields.io/pypi/v/jev-ra"></a>
+  <img alt="Python" src="https://img.shields.io/badge/python-3.12%20%7C%203.13%20%7C%203.14-blue">
+  <img alt="MCP" src="https://img.shields.io/badge/MCP-stdio-111">
+  <img alt="Chrome" src="https://img.shields.io/badge/Chrome-CDP-111">
+  <a href="LICENSE"><img alt="License" src="https://img.shields.io/badge/license-MIT-green"></a>
+</p>
+
+[![jev-ra: 코딩 에이전트를 위한 브라우저 조작, browser-use보다 3-5배 빠르다](assets/hero.png)](docs/BENCHMARKS.md)
+
 # jev-ra
 
 **CLI 코딩 에이전트를 위한 빠른 브라우저 조작 계층.** Claude Code, Codex, 또는 MCP 클라이언트가
@@ -136,6 +151,31 @@ Jev가 *당신이 준* 값 중 어느 것이 그 필드에 들어갈지 고른�
 검증은 결정론적이다. 매 행동 뒤 url, title, text, 필드 상태를 비교하고, `page_changed`는 모델의
 의견이 아니라 페이지의 의미 기반 marker에서 나온다.
 
+## 벤치마크
+
+다섯 과제, 각 5회 실행, 모든 실행을 남긴 페이지 기준으로 검증했다:
+
+| 과제 | 중앙값 | p90 | 성공 | 결정 | 비용 | 비율 |
+|---|---|---|---|---|---|---|
+| Wikipedia 문서 | 2,714 ms | 3,179 ms | 5/5 | 3 | $0.00075 | 8.50배 |
+| Google Flights 검색 | 8,888 ms | 10,573 ms | 5/5 | 14 | $0.00317 | 7.47배 |
+| 올리브영 정렬 | 3,806 ms | 4,858 ms | 5/5 | 4 | $0.00204 | 3.96배 |
+| 인용까지 포함한 검색 | 2,416 ms | 2,571 ms | 5/5 | 4 | $0.00035 | 기준선 없음 |
+| 로컬 결제 폼 | 2,191 ms | 2,338 ms | 5/5 | 5 | $0.00049 | 기준선 없음 |
+
+비율은 같은 머신, 같은 Chrome에서 돌린 browser-use 0.13.10 + gemini-3-flash `flash_mode`
+기준이다(각각 23,058 ms, 66,414 ms, 15,071 ms). 25회 전체에서 텍스트 모델 호출은 0.
+`jev-ra bench --live --runs 5`로 이 표를 재현할 수 있고, 기준선이 있는 모든 과제에 대해 3배
+이상이라는 v0.1 기준의 PASS/FAIL을 찍는다.
+[측정 방법, browser-use 원본 기록, 재현 방법](docs/BENCHMARKS.md).
+
+왼쪽이 jev-ra, 오른쪽이 browser-use `flash_mode`. 같은 과제, 같은 Chrome, 실시간:
+
+![browser-use가 아직 티켓 유형 메뉴를 여는 동안 jev-ra는 항공편 검색을 끝낸다](assets/demo/flights-side-by-side.gif)
+
+이 README의 어떤 수치도 추정값이 아니며, 과제를 해내지 못하고 끝난 실행은 시간이 아니라 실패로
+센다.
+
 ## 하지 않는 것
 
 Canvas, 파일 업로드, 팝업 창, 다중 탭 워크플로, 인증 플로, CAPTCHA, stealth. 보이는 컨트롤이
@@ -186,4 +226,5 @@ Canvas, 파일 업로드, 팝업 창, 다중 탭 워크플로, 인증 플로, CA
 [browser-harness](https://github.com/browser-use/browser-harness)(MIT)를 쓴다.
 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)를 보라.
 
-MIT 라이선스. [기여 안내](CONTRIBUTING.md) · [보안](SECURITY.md) · [English](README.md)
+MIT 라이선스. [기여 안내](CONTRIBUTING.md) · [보안](SECURITY.md) · [에이전트 가이드](AGENTS.md) ·
+[사용 레퍼런스](docs/USAGE.md) · [English](README.md)

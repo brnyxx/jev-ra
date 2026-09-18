@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>jev-ra - browser use for coding agents</title>
+<meta name="description" content="jev-ra is an MCP server and CLI that lets Claude Code, Codex and any MCP client drive a real browser 3-5x faster than browser-use. Jev decides every step in ~300 ms; your agent plans and reads.">
+<meta property="og:title" content="jev-ra - browser use for coding agents">
+<meta property="og:description" content="3-5x faster than browser-use. Jev decides every step in ~300 ms. Your agent plans, reads the page, and takes over when it matters.">
+<meta property="og:image" content="assets/hero.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="assets/favicon-64.png">
+<style>
+  :root{
+    --ink:#0B0F14; --slate:#151B24; --paper:#F6F4EF; --amber:#FFB703; --muted:#B8BCC4; --dim:#6B7280;
+    --line:rgba(246,244,239,.12); --card:rgba(246,244,239,.06);
+    --sans:ui-sans-serif,-apple-system,"Inter","Helvetica Neue",Arial,sans-serif;
+    --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  html{color-scheme:dark}
+  body{margin:0;background:linear-gradient(135deg,var(--ink),var(--slate));color:var(--paper);font-family:var(--sans);line-height:1.5;-webkit-font-smoothing:antialiased}
+  a{color:inherit}
+  .wrap{max-width:1120px;margin:0 auto;padding:0 24px}
+  nav{display:flex;align-items:center;justify-content:space-between;padding:22px 0}
+  nav .brand{display:flex;align-items:center;gap:12px;text-decoration:none;font-weight:800;font-size:22px;letter-spacing:-1px}
+  nav .brand img{height:40px}
+  nav .links{display:flex;gap:22px;font-size:14px;color:var(--muted)}
+  nav .links a{text-decoration:none}
+  nav .links a:hover{color:var(--paper)}
+  .hero{display:grid;grid-template-columns:1.15fr .85fr;gap:48px;align-items:center;padding:56px 0 40px}
+  h1{font-size:clamp(40px,6vw,72px);line-height:1.02;letter-spacing:-2.5px;margin:0 0 18px;font-weight:800}
+  h1 .accent{color:var(--amber)}
+  .sub{font-size:20px;color:var(--muted);margin:0 0 30px;max-width:560px}
+  .pill{display:inline-flex;align-items:center;gap:14px;background:var(--amber);color:var(--ink);border-radius:999px;padding:14px 22px;font-family:var(--mono);font-weight:700;font-size:16px;border:0;cursor:pointer}
+  .pill small{font-family:var(--sans);font-weight:600;opacity:.75}
+  .pill:active{transform:translateY(1px)}
+  .hero img{width:100%;height:auto}
+  .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin:40px 0 8px}
+  .stat{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:20px 22px}
+  .stat b{display:block;font-size:44px;line-height:1;letter-spacing:-1.5px}
+  .stat span{color:var(--muted);font-size:15px}
+  .stat i{display:block;font-style:normal;color:var(--dim);font-size:12px;margin-top:8px;font-family:var(--mono)}
+  .note{color:var(--dim);font-size:13px;margin:0 0 56px}
+  section{padding:56px 0;border-top:1px solid var(--line)}
+  h2{font-size:34px;letter-spacing:-1.2px;margin:0 0 10px;font-weight:800}
+  .lead{color:var(--muted);font-size:18px;margin:0 0 28px;max-width:700px}
+  .demo{position:relative;border-radius:18px;overflow:hidden;border:1px solid var(--line);background:#000}
+  .demo video{display:block;width:100%;height:auto}
+  .demo .cap{position:absolute;left:0;right:0;bottom:0;padding:10px 16px;font-size:13px;color:var(--muted);background:linear-gradient(transparent,rgba(0,0,0,.7))}
+  .steps{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+  .step{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:22px}
+  .step .n{font-family:var(--mono);color:var(--amber);font-size:13px}
+  .step h3{margin:8px 0 8px;font-size:20px;letter-spacing:-.4px}
+  .step p{margin:0;color:var(--muted);font-size:15px}
+  pre.flow{margin:28px 0 0;padding:20px;background:rgba(0,0,0,.35);border:1px solid var(--line);border-radius:14px;font-family:var(--mono);font-size:13.5px;color:var(--muted);overflow-x:auto}
+  pre.flow b{color:var(--amber);font-weight:700}
+  table{width:100%;border-collapse:collapse;font-size:15px}
+  th,td{text-align:left;padding:12px 10px;border-bottom:1px solid var(--line)}
+  th{color:var(--dim);font-weight:600;font-size:13px;text-transform:uppercase;letter-spacing:.6px}
+  td.win{color:var(--amber);font-weight:700}
+  .tabs{display:flex;gap:8px;margin:0 0 14px;flex-wrap:wrap}
+  .tab{background:transparent;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:8px 16px;font-size:14px;cursor:pointer;font-family:var(--sans)}
+  .tab[aria-selected="true"]{background:var(--paper);color:var(--ink);border-color:var(--paper);font-weight:700}
+  .code{position:relative;background:rgba(0,0,0,.35);border:1px solid var(--line);border-radius:14px;padding:18px 20px;font-family:var(--mono);font-size:14.5px;overflow-x:auto}
+  .code .copy{position:absolute;top:10px;right:10px;background:var(--card);border:1px solid var(--line);color:var(--muted);border-radius:8px;padding:5px 10px;font-size:12px;cursor:pointer;font-family:var(--sans)}
+  .code[hidden]{display:none}
+  .limits{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+  .limits ul{margin:0;padding-left:18px;color:var(--muted)}
+  .limits h3{margin:0 0 10px;font-size:18px}
+  footer{padding:40px 0 60px;color:var(--dim);font-size:13px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px;border-top:1px solid var(--line)}
+  footer a{text-decoration:none}
+  @media (max-width:880px){
+    .hero{grid-template-columns:1fr;padding-top:24px}
+    .hero img{max-width:420px;order:-1}
+    .stats,.steps,.limits{grid-template-columns:1fr}
+    nav .links{display:none}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <nav>
+    <a class="brand" href="./"><img src="assets/mark-tile-512.png" alt="" width="40" height="40"><span>jev<span style="color:var(--amber)">-</span>ra</span></a>
+    <div class="links">
+      <a href="#how">How it works</a>
+      <a href="#bench">Benchmarks</a>
+      <a href="#install">Install</a>
+      <a href="#limits">Limits</a>
+      <a href="https://github.com/brnyxx/jev-ra">GitHub</a>
+      <a href="https://pypi.org/project/jev-ra/">PyPI</a>
+      <a href="https://www.npmjs.com/package/jev-ra">npm</a>
+    </div>
+  </nav>
+
+  <header class="hero">
+    <div>
+      <h1>Browser use for coding agents.<br><span class="accent">3-5x faster than browser-use.</span></h1>
+      <p class="sub">Jev decides every step in ~300 ms. Your agent plans, reads the page, and takes over when it matters. No second LLM in the loop.</p>
+      <button class="pill" data-copy="uvx jev-ra install claude">$ uvx jev-ra install claude <small>copy</small></button>
+    </div>
+    <img src="assets/mark-dark-512.png" alt="jev-ra: a zebra stepping out of a browser window" width="512" height="512">
+  </header>
+
+  <div class="stats">
+    <div class="stat"><b>5.4x</b><span>Wikipedia lookup</span><i>4.3 s vs 23.1 s</i></div>
+    <div class="stat"><b>3.9x</b><span>Google Flights one-way search, verified</span><i>17.2 s vs 66.4 s</i></div>
+    <div class="stat"><b>2.8x</b><span>E-commerce sort</span><i>5.3 s vs 15.1 s</i></div>
+  </div>
+  <p class="note">vs browser-use 0.13 in <code>flash_mode</code> with gemini-3-flash, same Chrome, same OpenRouter key, 2026-09-18. Method and raw rows in <a href="https://github.com/brnyxx/jev-ra/blob/main/docs/BENCHMARKS.md">BENCHMARKS.md</a>.</p>
+
+  <section id="demo">
+    <h2>Watch it, side by side.</h2>
+    <p class="lead">Same task, same browser, real time. Left: browser-use flash_mode. Right: jev-ra.</p>
+    <div class="demo">
+      <video controls muted playsinline preload="metadata" poster="assets/hero.png">
+        <source src="assets/demo/flights-side-by-side.mp4" type="video/mp4">
+      </video>
+      <div class="cap">Google Flights, Zurich to London, one-way. Clocks run at 1x.</div>
+    </div>
+  </section>
+
+  <section id="how">
+    <h2>How it works</h2>
+    <p class="lead">One typed decision per step instead of one LLM call per step.</p>
+    <div class="steps">
+      <div class="step"><div class="n">01</div><h3>Snapshot</h3><p>One CDP call reads the visible text and every interactive control into an indexed table, with identity guards so a stale page can never be clicked.</p></div>
+      <div class="step"><div class="n">02</div><h3>Decide</h3><p>Jev answers, in one ~300 ms request: which operation, which element, which of your values goes in that field, did the last step work, is the goal done.</p></div>
+      <div class="step"><div class="n">03</div><h3>Act or escalate</h3><p>Trusted input through the DevTools protocol. If it is stuck, needs a value, or cannot verify done, it hands your agent the page and the top candidates.</p></div>
+    </div>
+<pre class="flow">your agent  ──goal, values──▶  <b>jev-ra</b>
+                                  │ observe (1 CDP call)
+                                  │ decide  (1 Jev call, ~300 ms)
+                                  │ act     (trusted input)
+                                  │ verify  (deterministic diff)
+                                  ▼
+your agent  ◀──result | escalate(reason, candidates, page text)──</pre>
+  </section>
+
+  <section id="bench">
+    <h2>Benchmarks</h2>
+    <p class="lead">Measured, not claimed. Every number below is reproducible with <code>jev-ra bench --live</code>.</p>
+    <table>
+      <thead><tr><th>Task</th><th>browser-use flash_mode</th><th>browser-use default</th><th>jev-ra</th><th>ratio</th></tr></thead>
+      <tbody>
+        <tr><td>Wikipedia: open the Gödel incompleteness article</td><td>23.1 s · 4 steps</td><td>46.5 s · 5 steps</td><td class="win">4.3 s · 6 steps</td><td class="win">5.4x</td></tr>
+        <tr><td>Google Flights ZRH→LON one-way, 7 checks verified</td><td>66.4 s · 11 steps</td><td>63.6 s · 11 steps</td><td class="win">17.2 s</td><td class="win">3.9x</td></tr>
+        <tr><td>Olive Young category: sort by newest</td><td>15.1 s · 3 steps</td><td>17.5 s · 3 steps</td><td class="win">5.3 s · 2 steps</td><td class="win">2.8x</td></tr>
+      </tbody>
+    </table>
+    <p class="note" style="margin-top:14px">Single runs on 2026-09-18; the repository's BENCHMARKS.md carries medians over 5 runs, success rates and cost per task.</p>
+  </section>
+
+  <section id="install">
+    <h2>Install</h2>
+    <p class="lead">One line. Works with the OpenRouter key you already have; no TypeSafe account required.</p>
+    <div class="tabs" role="tablist">
+      <button class="tab" role="tab" aria-selected="true" data-for="claude">Claude Code</button>
+      <button class="tab" role="tab" aria-selected="false" data-for="codex">Codex</button>
+      <button class="tab" role="tab" aria-selected="false" data-for="npm">npm</button>
+      <button class="tab" role="tab" aria-selected="false" data-for="mcp">Any MCP client</button>
+      <button class="tab" role="tab" aria-selected="false" data-for="cli">CLI</button>
+    </div>
+    <div class="code" id="tab-claude"><button class="copy">copy</button><pre>export OPENROUTER_API_KEY=sk-or-...
+uvx jev-ra install claude
+# then in Claude Code: "search the web for X and summarise"</pre></div>
+    <div class="code" id="tab-codex" hidden><button class="copy">copy</button><pre>export OPENROUTER_API_KEY=sk-or-...
+uvx jev-ra install codex
+# Codex asks you to trust the new MCP server once</pre></div>
+    <div class="code" id="tab-npm" hidden><button class="copy">copy</button><pre>export OPENROUTER_API_KEY=sk-or-...
+npx -y jev-ra install claude   # or: install codex</pre></div>
+    <div class="code" id="tab-mcp" hidden><button class="copy">copy</button><pre>{
+  "mcpServers": {
+    "jev-ra": { "command": "uvx", "args": ["jev-ra", "mcp"], "env": { "OPENROUTER_API_KEY": "sk-or-..." } }
+  }
+}</pre></div>
+    <div class="code" id="tab-cli" hidden><button class="copy">copy</button><pre>uvx jev-ra run https://en.wikipedia.org/wiki/Main_Page \
+  "Find and open the article about Gödel's incompleteness theorems" --json
+uvx jev-ra search "python 3.12 release date" --goal "the exact release date, with source"
+uvx jev-ra doctor</pre></div>
+  </section>
+
+  <section id="limits">
+    <h2>What it will not do (yet)</h2>
+    <p class="lead">These escalate to your agent with a reason instead of guessing.</p>
+    <div class="limits">
+      <div><h3>Out of scope in v0.1</h3><ul><li>Cross-origin iframes (same-origin and open shadow roots work)</li><li>Canvas-drawn UIs</li><li>File uploads</li><li>Captchas, bot walls</li><li>Multi-tab workflows</li></ul></div>
+      <div><h3>By design</h3><ul><li>Never types a value your agent did not supply (no guessed personal data)</li><li>Never turns model output into selectors or JavaScript</li><li>Never reports done without a visible check</li><li>Sends visible page text to Jev; never file bodies or screenshots</li></ul></div>
+    </div>
+  </section>
+
+  <footer>
+    <div>MIT · built on <a href="https://github.com/browser-use/browser-harness">browser-harness</a> and the <a href="https://github.com/browser-use/jev-ultrafast">jev-ultrafast</a> snapshot idea · decisions by <a href="https://typesafe.ai">TypeSafe Jev</a></div>
+    <div><a href="https://github.com/brnyxx/jev-ra">github.com/brnyxx/jev-ra</a></div>
+  </footer>
+</div>
+<script>
+  const copyText = (text, el) => navigator.clipboard.writeText(text).then(() => {
+    const prev = el.textContent; el.textContent = "copied"; setTimeout(() => { el.textContent = prev; }, 1200);
+  }).catch(() => {});
+  document.querySelector(".pill").addEventListener("click", (e) => copyText(e.currentTarget.dataset.copy, e.currentTarget.querySelector("small")));
+  document.querySelectorAll(".code .copy").forEach((b) => b.addEventListener("click", () => copyText(b.parentElement.querySelector("pre").textContent, b)));
+  document.querySelectorAll(".tab").forEach((t) => t.addEventListener("click", () => {
+    document.querySelectorAll(".tab").forEach((x) => x.setAttribute("aria-selected", x === t));
+    document.querySelectorAll(".code[id^=tab-]").forEach((c) => { c.hidden = c.id !== "tab-" + t.dataset.for; });
+  }));
+</script>
+</body>
+</html>

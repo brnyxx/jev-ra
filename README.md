@@ -1,3 +1,18 @@
+<p align="center">
+  <img src="assets/logo.svg" alt="jev-ra" width="360">
+</p>
+
+<p align="center">
+  <a href="https://github.com/brnyxx/jev-ra/actions/workflows/ci.yml"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/brnyxx/jev-ra/ci.yml?branch=main&label=ci"></a>
+  <a href="https://pypi.org/project/jev-ra/"><img alt="PyPI" src="https://img.shields.io/pypi/v/jev-ra"></a>
+  <img alt="Python" src="https://img.shields.io/badge/python-3.12%20%7C%203.13%20%7C%203.14-blue">
+  <img alt="MCP" src="https://img.shields.io/badge/MCP-stdio-111">
+  <img alt="Chrome" src="https://img.shields.io/badge/Chrome-CDP-111">
+  <a href="LICENSE"><img alt="License" src="https://img.shields.io/badge/license-MIT-green"></a>
+</p>
+
+[![jev-ra: browser use for coding agents, 3-5x faster than browser-use](assets/hero.png)](docs/BENCHMARKS.md)
+
 # jev-ra
 
 **A fast browser-use layer for CLI coding agents.** Claude Code, Codex, or any MCP client hands
@@ -138,6 +153,31 @@ page text — enough to decide what to do without observing again.
 Verification is deterministic: after every action jev-ra compares url, title, text and field state,
 and `page_changed` comes from a semantic page marker, not from the model's opinion.
 
+## Benchmarks
+
+Five tasks, five runs each, every run verified against the page it left behind:
+
+| task | median | p90 | success | decisions | cost | ratio |
+|---|---|---|---|---|---|---|
+| Wikipedia article | 2,714 ms | 3,179 ms | 5/5 | 3 | $0.00075 | 8.50× |
+| Google Flights search | 8,888 ms | 10,573 ms | 5/5 | 14 | $0.00317 | 7.47× |
+| Olive Young sort | 3,806 ms | 4,858 ms | 5/5 | 4 | $0.00204 | 3.96× |
+| Search with a citation | 2,416 ms | 2,571 ms | 5/5 | 4 | $0.00035 | no baseline |
+| Local checkout form | 2,191 ms | 2,338 ms | 5/5 | 5 | $0.00049 | no baseline |
+
+Ratios are against browser-use 0.13.10 + gemini-3-flash `flash_mode` on the same machine and the
+same Chrome: 23,058 ms, 66,414 ms and 15,071 ms respectively. Text-model calls across all 25 runs: 0.
+`jev-ra bench --live --runs 5` reproduces this table and prints PASS/FAIL against the v0.1 bar of
+≥ 3× on every task with a baseline. [Method, the browser-use rows, and how to reproduce
+them](docs/BENCHMARKS.md).
+
+jev-ra on the left, browser-use `flash_mode` on the right, same task, same Chrome, real time:
+
+![jev-ra finishes the Google Flights search while browser-use is still opening the trip-type menu](assets/demo/flights-side-by-side.gif)
+
+No number in this README is estimated, and a run that finishes without doing the task counts as a
+failure rather than as a time.
+
 ## What it will not do
 
 Canvas, file upload, pop-up windows, multi-tab workflows, auth flows, CAPTCHA, stealth. Pages with
@@ -188,4 +228,5 @@ measured. Chrome is driven through
 [browser-harness](https://github.com/browser-use/browser-harness) (MIT).
 See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
-MIT licensed. [Contributing](CONTRIBUTING.md) · [Security](SECURITY.md) · [한국어](README.ko.md)
+MIT licensed. [Contributing](CONTRIBUTING.md) · [Security](SECURITY.md) · [Agent guide](AGENTS.md) ·
+[Usage reference](docs/USAGE.md) · [한국어](README.ko.md)

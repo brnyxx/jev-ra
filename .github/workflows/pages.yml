@@ -1,0 +1,50 @@
+name: pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "docs/index.html"
+      - "assets/**"
+      - ".github/workflows/pages.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Assemble the site
+        run: |
+          mkdir -p site
+          cp docs/index.html site/index.html
+          cp -R assets site/assets
+          test -f site/assets/hero.png
+          test -f site/assets/mark-dark-512.png
+          test -f site/assets/demo/flights-side-by-side.mp4
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
