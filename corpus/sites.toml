@@ -315,9 +315,9 @@ verify = { text_any = ["Back pain", "conditions beginning with B", "B "] }
 name = "seoul_go_kr_notice"
 family = "portal"
 url = "https://www.seoul.go.kr/main/index.jsp"
-goal = "Open the 공지사항 list."
+goal = "Open the 공고 list from the 서울소식 section."
 expect = "done"
-verify = { text_any = ["공지", "알림"] }
+verify = { url_contains = ["realmnews"], text_any = ["공고"] }
 
 # ---------------------------------------------------------------- auth walls, which must escalate
 
