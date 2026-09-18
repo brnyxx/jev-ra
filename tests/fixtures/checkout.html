@@ -1,0 +1,28 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Checkout</title>
+<style>body{margin:24px;font:14px system-ui} label{display:block;margin:8px 0} #summary{margin-top:16px}</style>
+<h1>Checkout</h1>
+<form id="order">
+  <label>Full name <input id="name" name="name"></label>
+  <label>Email <input id="email" name="email" type="email"></label>
+  <label>Shipping
+    <select id="shipping" aria-label="Shipping">
+      <option value="standard">Standard</option>
+      <option value="express">Express</option>
+    </select>
+  </label>
+  <button id="place" type="submit">Place order</button>
+</form>
+<div id="summary"></div>
+<script>
+  document.getElementById("order").addEventListener("submit", (event) => {
+    event.preventDefault();
+    const value = (id) => document.getElementById(id).value;
+    const shipping = document.getElementById("shipping");
+    document.getElementById("summary").innerHTML =
+      "<h2>Order confirmed</h2><p>Name: " + value("name") + "</p><p>Email: " + value("email") +
+      "</p><p>Shipping: " + shipping.selectedOptions[0].label + "</p>";
+    document.getElementById("order").hidden = true;
+  });
+</script>
