@@ -1,0 +1,41 @@
+name: Bug report
+description: Something jev-ra did that it should not have
+labels: ["bug"]
+body:
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you asked for, and what jev-ra did instead.
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: How to reproduce
+      description: The exact command, and the URL if it is public.
+      placeholder: jev-ra run https://example.com "…" --value name=…
+      render: shell
+    validations:
+      required: true
+  - type: textarea
+    id: doctor
+    attributes:
+      label: jev-ra doctor
+      description: The output of `jev-ra doctor`. It never prints your key.
+      render: shell
+    validations:
+      required: true
+  - type: textarea
+    id: result
+    attributes:
+      label: Result JSON
+      description: Add `--json` to the command and paste the result. Redact anything private.
+      render: json
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      placeholder: jev-ra 0.1.0, Python 3.13, macOS 15
+    validations:
+      required: true

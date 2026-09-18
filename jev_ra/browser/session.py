@@ -18,9 +18,11 @@ logger = logging.getLogger(__name__)
 LOAD_TIMEOUT_S = 15.0
 WAIT_SLEEP_S = 0.1
 SETTLE_ATTEMPTS = 10
-# Pictures, fonts and media cost seconds and answer nothing; the text is what gets read.
+# Fonts and media cost bytes and answer nothing. Images are deliberately NOT here: blocking
+# them on en.wikipedia.org drops the observed controls from 62 to 34, because real layouts
+# size themselves around their images and half the page then falls outside the viewport.
+# jev-ra search blocks the heavier list in its reading tabs, where only extracted text is used.
 BLOCKED_URLS = (
-    "*.png", "*.jpg", "*.jpeg", "*.gif", "*.webp", "*.avif", "*.svg", "*.ico",
     "*.woff", "*.woff2", "*.ttf", "*.otf", "*.eot",
     "*.mp4", "*.webm", "*.mp3", "*.m4a", "*.avi", "*.mov",
 )

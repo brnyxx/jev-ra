@@ -2,68 +2,79 @@
 
 **A fast browser-use layer for CLI coding agents.** Claude Code, Codex, or any MCP client hands
 jev-ra a goal. TypeSafe Jev, a System One decision model, picks the operation *and* the target
-element for every step in one round trip. Your agent plans, supplies the text values, reads what
-the page says, and takes over when jev-ra escalates. No second LLM runs inside the loop.
+element for every step in one round trip. Your agent plans, supplies the text values, reads what the
+page says, and takes over when jev-ra escalates. No second LLM runs inside the loop.
 
-One package, three faces on one browser core: an MCP server (`jev-ra mcp`), a CLI
-(`jev-ra run|open|observe|extract|…`), and a Python API (`jev_ra.Agent`).
+![jev-ra opening the Gödel incompleteness article in 2.2 seconds](assets/demo/wikipedia.gif)
 
-## Why
+| task | browser-use 0.13.10 + gemini-3-flash `flash_mode` | jev-ra | |
+|---|---|---|---|
+| Wikipedia: open the Gödel incompleteness article | 23,058 ms · 4 steps | **2,205 ms · 2 steps** | **10.5×** |
 
-Browser agents that put a full LLM in every step pay 1-3 s per click. jev-ra pays one typed
-decision, measured at 274-508 ms through OpenRouter.
+2026-09-18, same machine, same dedicated Chrome, both through OpenRouter, one run each.
+[Method and raw rows](docs/BENCHMARKS.md) — including the two tasks that do **not** pass yet.
 
-| | browser-use 0.13.10 + gemini-3-flash `flash_mode` | jev-ra |
-|---|---|---|
-| Wikipedia: open the Gödel incompleteness article | 23,058 ms · 4 steps | **2,798 ms · 2 steps** (8.2×) |
+## Quick start
 
-Both rows: 2026-09-18, same machine, same dedicated Chrome (`BU_CDP_URL=http://127.0.0.1:9222`,
-1280×900), models through OpenRouter, one run each. The browser-use rows are in
-[`docs/benchmarks/2026-09-18-browser-use-baseline/`](docs/benchmarks/2026-09-18-browser-use-baseline/);
-reproduce the jev-ra row with `jev-ra bench --live`. See [Benchmarks](#benchmarks) for the two
-tasks that do **not** pass yet.
+**Claude Code**
 
-## Install
+```sh
+export OPENROUTER_API_KEY=sk-or-...
+uvx jev-ra install claude
+# then, in Claude Code: "open wikipedia.org and find the Gödel incompleteness article"
+```
+
+**Codex**
+
+```sh
+export OPENROUTER_API_KEY=sk-or-...
+uvx jev-ra install codex
+# then, in Codex: "use jev-ra to open wikipedia.org and find the Gödel incompleteness article"
+```
+
+**Shell**
 
 ```sh
 export OPENROUTER_API_KEY=sk-or-...
 uvx jev-ra doctor
+uvx jev-ra run https://en.wikipedia.org/wiki/Main_Page "Open the Godel incompleteness article." \
+  --value "search_query=Godel incompleteness theorems"
 ```
 
-No install step: `uvx` runs it straight from PyPI. For a permanent copy, `uv tool install jev-ra`
-or `pip install jev-ra`.
+There is no install step: `uvx` runs jev-ra straight from PyPI and registers `uvx jev-ra mcp` as the
+server command. For a permanent copy, `uv tool install jev-ra`. The key is forwarded from the
+variable you already exported and is never printed.
 
-`doctor` checks the key, the route, the Chrome connection, and makes one live decision with its
-latency. jev-ra talks to a real Chrome over CDP through
-[browser-harness](https://github.com/browser-use/browser-harness). Point it at a dedicated
-automation profile so it never drives your own browser:
+## How it works
 
-```sh
-/Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome \
-  --remote-debugging-port=9222 --user-data-dir="$HOME/.jev-ra-chrome" &
-export BU_CDP_URL=http://127.0.0.1:9222
+```
+  your agent                      jev-ra                              Chrome
+ ────────────                ───────────────                      ─────────────
+  goal + values  ──────────▶  observe ─────────────────────────▶  snapshot.js
+                              │   elements, guards, page marker  ◀──── one eval
+                              ▼
+                              one request: operation? target?
+                              value? prev_ok? goal_achieved?  ──▶  Jev  (~300 ms)
+                              │
+                              ▼
+                              freshness guard ──▶ act ──────────▶  trusted CDP input
+                              │                                    (no JS clicks)
+                              ▼
+                              verify url/title/text/fields
+                              │
+       Result  ◀──────────────┴── done · blocked · escalate · budget
 ```
 
-## Use it from a coding agent
+One decision per step, one round trip, no model in the act path. The only text that reaches the page
+is text you supplied.
 
-```sh
-uvx jev-ra install claude   # runs: claude mcp add jev-ra -s user -e OPENROUTER_API_KEY=… -- uvx jev-ra mcp
-uvx jev-ra install codex    # runs: codex  mcp add jev-ra --env OPENROUTER_API_KEY=… -- uvx jev-ra mcp
-```
-
-Nothing to install first: `uvx` fetches jev-ra on demand, and the registered command is `uvx
-jev-ra mcp`. If jev-ra is already on `PATH`, the plain `jev-ra mcp` command is registered instead.
-`--scope user|project|local` picks where Claude Code stores it.
-
-The key is forwarded from the variable you already exported and is never printed. If `claude` or
-`codex` is not on `PATH`, the command to run is printed instead.
-
-### MCP tools
+## MCP tools
 
 | tool | arguments | what it does |
 |---|---|---|
 | `browser_open` | url | Open a URL in the shared session and summarise the page. |
 | `browser_run` | goal, values?, max_steps? | Pursue a whole goal. Supply values for anything that must be typed. |
+| `browser_search` | query, goal?, max_pages? | Search, read the best results in parallel tabs, rank them against the goal. |
 | `browser_act` | instruction, values? | Take one decided step towards an instruction. |
 | `browser_observe` | max_elements? | List the observed controls and the visible text. |
 | `browser_extract` | mode? | Structured page data: `text`, `elements`, `links`, `tables`, `main`. |
@@ -78,35 +89,21 @@ The key is forwarded from the variable you already exported and is never printed
 
 Every response carries `elapsed_ms`, and `decisions` plus `cost` whenever Jev was called.
 
-## Use it from the shell
+## CLI
 
 ```sh
-jev-ra run https://en.wikipedia.org/wiki/Main_Page \
-  "Find and open the Wikipedia article about Godel incompleteness theorems." \
-  --value "search_query=Godel incompleteness theorems"
+jev-ra run URL "goal" [--value name=text ...] [--max-steps N] [--json]
+jev-ra search "query" ["what the page must answer"] [--max-pages 3]
+jev-ra open URL | observe | extract [--mode text|elements|links|tables|main]
+jev-ra act "instruction" | click REF | type REF TEXT | select REF OPTION
+jev-ra scroll down|up | press Enter|Escape|Tab | wait | screenshot [PATH] | close
+jev-ra mcp | install claude|codex [--scope user|project|local] | doctor | bench [--live]
 ```
 
-```
-done: goal_achieved
-https://en.wikipedia.org/wiki/G%C3%B6del%27s_incompleteness_theorems
-  1. TYPE_TEXT Search Wikipedia 'Godel incompleteness theorems' (p=0.88, 326 ms, changed)
-  2. CLICK Gödel's incompleteness theorems … (p=0.75, 274 ms, changed)
-2 steps, 5 decisions, 0 text calls, 2959 ms, $0.001195
-```
+`open` … `close` share one browser across invocations through a target id in
+`$XDG_STATE_HOME/jev-ra/session.json`. Add `--json` to any command for the raw payload.
 
-`open` … `close` share one browser across invocations, so you can drive it step by step:
-
-```sh
-jev-ra open https://example.com
-jev-ra observe
-jev-ra click e3
-jev-ra extract --mode links
-jev-ra close
-```
-
-Add `--json` to any command for the raw payload. `jev-ra --help` lists everything.
-
-## Use it from Python
+## Python
 
 ```python
 from jev_ra import Agent
@@ -122,78 +119,65 @@ print(result.status, result.elapsed_ms, [step["target_label"] for step in result
 
 ## Values, not guesses
 
-TYPE_TEXT needs a string, and jev-ra will not invent one. Jev picks which of *your* values belongs
-in the field it is about to fill, in the same round trip that picks the field. If nothing fits and
-no text helper is configured, the run stops with `needs_value` and tells you the field's label,
-role and current value. You supply the value and call again. That is the whole point: the default
-install has no text model in the loop.
+TYPE_TEXT needs a string, and jev-ra will not invent one. Jev picks which of *your* values belongs in
+the field it is about to fill, in the same round trip that picks the field. If nothing fits and no
+text helper is configured, the run stops with `needs_value` and reports the field's label, role and
+current value. You supply the value and call again. The default install has no text model in the
+loop, and that is the point.
 
 ## When it hands control back
 
 `Result.status` is `done`, `blocked`, `escalate` or `budget`. An escalation carries `reason`
 (`needs_value`, `stuck_loop`, `unverified_done`, `stale`, `invalid_decision`, `too_many_controls`),
 the top eight operation/target candidates with their probabilities, and up to 3,000 characters of
-page text — enough for your agent to decide what to do without observing again.
+page text — enough to decide what to do without observing again.
 
 Verification is deterministic: after every action jev-ra compares url, title, text and field state,
-and `page_changed` comes from a semantic page marker, not from the model's opinion. Three actions
-that change nothing, or the same choice three times running, end the run.
+and `page_changed` comes from a semantic page marker, not from the model's opinion.
 
-## Safety properties
+## What it will not do
 
-- Model output never becomes a selector, coordinates, or JavaScript. Every executed target resolves
-  from a node id observed in the same snapshot.
-- Every action re-checks freshness immediately before input; a moved, replaced, disabled or covered
-  control raises `StalePage` instead of clicking something else.
-- Input is dispatched as trusted CDP events, never synthetic JS clicks.
-- Password, file and hidden inputs are never observed or reported.
+Canvas, file upload, pop-up windows, multi-tab workflows, auth flows, CAPTCHA, stealth. Pages with
+more than 250 visible controls report `omitted` and escalate `too_many_controls` rather than guessing.
+Cross-origin iframes are reported as one opaque element; open shadow roots and same-origin iframes
+**are** traversed.
 
-## Benchmarks
+Two of the three benchmark tasks — Google Flights and the Olive Young sort — currently come back
+`blocked`. See [docs/BENCHMARKS.md](docs/BENCHMARKS.md); the numbers there are not rounded in our
+favour.
 
-Recorded browser-use baseline, 2026-09-18, `use_vision=False`, one run each
-([raw rows](docs/benchmarks/2026-09-18-browser-use-baseline/)):
+## FAQ
 
-| task | gemini-3-flash | gemini-3-flash `flash_mode` | gpt-5-mini |
-|---|---|---|---|
-| Wikipedia: Gödel incompleteness article | 46,461 ms · 5 steps | 23,058 ms · 4 steps | 100,399 ms · 11 steps |
-| Google Flights ZRH→LON one-way | 63,565 ms · 11 steps | 66,414 ms · 11 steps | 238,045 ms (budget hit) |
-| Olive Young category: sort by 신상품순 | 17,493 ms · 3 steps | 15,071 ms · 3 steps | timeout at 240 s |
+**OpenRouter or a TypeSafe key?** Either. jev-ra resolves `JEV_RA_API_KEY`, then `TYPESAFE_API_KEY`,
+then `OPENROUTER_API_KEY`. A key starting `sk-or-` selects the OpenRouter route
+(`typesafe/jev-1.13`); anything else goes direct (`jev-latest`). `JEV_RA_ENDPOINT` and
+`JEV_RA_MODEL` override both. OpenRouter is easier to get; direct TypeSafe is roughly 140 ms faster
+per decision according to the upstream measurements.
 
-claude-sonnet-5 could not drive browser-use at all through OpenRouter (`compiled grammar is too
-large` on its structured-output schema) and is excluded.
+**What does a task cost?** The Wikipedia run above cost **$0.000874** for four decisions. Cost scales
+with decisions, not with page size, because the state sent is the element table and the visible text,
+never the HTML.
 
-`jev-ra bench` times two offline fixture tasks with scripted decisions and no network
-(form fill 164 ms · 4 steps; catalog sort 73 ms · 2 steps). `jev-ra bench --live` runs the three
-tasks above and prints `jev-ra ms / flash_mode ms = ratio` with a PASS/FAIL against the v0.1
-acceptance bar of ≥ 3× on every task.
+**Does it need its own Chrome?** It will find or launch one on its own profile
+(`$XDG_STATE_HOME/jev-ra/chrome-profile`) and reuse it. Point `BU_CDP_URL` at a different Chrome to
+override. Do not point it at a browser signed into anything you would not let an agent operate.
 
-**Where v0.1 stands, 2026-09-18, one run each:**
-
-| task | jev-ra | ratio | verdict |
-|---|---|---|---|
-| Wikipedia | 2,798 ms · 2 steps · 5 decisions | 8.2× | PASS |
-| Google Flights | `blocked` after 4,377 ms | - | FAIL, does not complete |
-| Olive Young sort | `blocked` after 6,482 ms | - | FAIL, does not complete |
-
-Both failures are capability, not speed: those pages put their controls inside shadow roots and
-iframes, which v0.1 does not traverse. No number in this README is estimated.
-
-## What it will not do in v0.1
-
-Shadow roots, iframes, canvas, file upload, pop-up windows, multi-tab workflows, auth flows,
-CAPTCHA, stealth. Pages with more than 250 visible controls report `omitted` and escalate
-`too_many_controls` rather than guessing.
+**Why no text model?** Because the host is already an LLM with the context. Adding a second one costs
+675-938 ms per field and invents values. You can still configure one with `JEV_RA_TEXT_MODEL`.
 
 ## Configuration
 
 | variable | effect |
 |---|---|
 | `JEV_RA_API_KEY`, `TYPESAFE_API_KEY`, `OPENROUTER_API_KEY` | key, in that order of precedence |
-| `JEV_RA_ENDPOINT`, `JEV_RA_MODEL` | override the route; a key starting `sk-or-` selects OpenRouter |
+| `JEV_RA_ENDPOINT`, `JEV_RA_MODEL` | override the route |
+| `JEV_RA_CHROME` | path to the browser binary to launch |
+| `BU_CDP_URL` | an existing Chrome to drive instead of launching one |
 | `JEV_RA_VIEWPORT` | e.g. `1280x900` (the default) |
 | `JEV_RA_MAX_STEPS`, `JEV_RA_MAX_DECISIONS`, `JEV_RA_TIMEOUT_S` | budgets (40 / 80 / 120) |
+| `JEV_RA_BLOCK_RESOURCES` | `0` to stop blocking fonts and media |
+| `JEV_RA_SEARCH_URL` | search endpoint template, `{query}` substituted |
 | `JEV_RA_TEXT_MODEL`, `JEV_RA_TEXT_BASE_URL`, `JEV_RA_TEXT_API_KEY` | optional text helper, off by default |
-| `BU_CDP_URL` | the Chrome to drive |
 
 `$XDG_CONFIG_HOME/jev-ra/config.json` sets the same keys; the environment wins.
 
@@ -201,6 +185,8 @@ CAPTCHA, stealth. Pages with more than 250 visible controls report `omitted` and
 
 `jev_ra/browser/snapshot.js` and the `NEXT_ACTION` / `TARGET` instruction texts are adapted from
 [browser-use/jev-ultrafast](https://github.com/browser-use/jev-ultrafast) (MIT), where they were
-measured. See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+measured. Chrome is driven through
+[browser-harness](https://github.com/browser-use/browser-harness) (MIT).
+See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
-MIT licensed. [한국어 README](README.ko.md).
+MIT licensed. [Contributing](CONTRIBUTING.md) · [Security](SECURITY.md) · [한국어](README.ko.md)

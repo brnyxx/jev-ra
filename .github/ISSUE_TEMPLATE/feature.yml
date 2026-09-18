@@ -1,0 +1,38 @@
+name: Feature request
+description: Something jev-ra should be able to do
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: The task you could not finish
+      description: What you were trying to automate, and where jev-ra stopped.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What you would like it to do
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - MCP tools
+        - CLI
+        - Python API
+        - Browser core (snapshot, guards, input)
+        - Decisions and policy
+        - Benchmarks
+        - Documentation
+    validations:
+      required: true
+  - type: checkboxes
+    id: non-goals
+    attributes:
+      label: Checked the non-goals
+      description: v0.1 deliberately leaves out canvas, file upload, pop-up windows, multi-tab workflows, auth flows, CAPTCHA and stealth.
+      options:
+        - label: My request is not one of those

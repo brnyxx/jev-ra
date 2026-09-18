@@ -6,7 +6,7 @@ from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 
 import pytest
 
-from jev_ra import config
+from jev_ra import config, search
 from jev_ra.browser.session import BLOCKED_URLS, Session
 from jev_ra.extract import extract
 from tests.conftest import FIXTURES
@@ -44,7 +44,15 @@ def test_blocking_is_on_by_default_and_can_be_turned_off():
     assert config.load({"JEV_RA_BLOCK_RESOURCES": "1"}).block_resources is True
 
 
-def test_blocked_image_requests_never_reach_the_server(chrome, recording_server):
+def test_the_default_list_blocks_fonts_and_media_but_never_images():
+    assert "*.woff2" in BLOCKED_URLS
+    assert "*.mp4" in BLOCKED_URLS
+    # Images size real layouts; blocking them costs half the observable page.
+    assert not any(pattern.endswith((".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg")) for pattern in BLOCKED_URLS)
+    assert "*.png" in search.BLOCKED_URLS
+
+
+def test_the_driving_session_still_loads_images(chrome, recording_server):
     base, requested = recording_server
     session = Session(config.load({}))
     try:
@@ -53,20 +61,30 @@ def test_blocked_image_requests_never_reach_the_server(chrome, recording_server)
         session.observe()
     finally:
         session.close()
-    assert any(path.startswith("/heavy.html") for path in requested)
-    assert not any("pixel.png" in path for path in requested)
+    assert any("pixel.png" in path for path in requested)
 
 
-def test_without_blocking_the_image_is_fetched(chrome, recording_server):
+def test_the_heavier_reading_list_keeps_images_off_the_wire(chrome, recording_server):
     base, requested = recording_server
-    session = Session(config.load({"JEV_RA_BLOCK_RESOURCES": "0"}))
+    session = Session(config.load({}))
     try:
-        assert session.blocked == []
+        session.block_resources(search.BLOCKED_URLS)
         session.open(f"{base}/heavy.html")
         session.observe()
     finally:
         session.close()
-    assert any("pixel.png" in path for path in requested)
+    assert any(path.startswith("/heavy.html") for path in requested)
+    assert not any("pixel.png" in path for path in requested)
+
+
+def test_blocking_can_be_turned_off_entirely(chrome, recording_server):
+    base, _requested = recording_server
+    session = Session(config.load({"JEV_RA_BLOCK_RESOURCES": "0"}))
+    try:
+        assert session.blocked == []
+        session.open(f"{base}/heavy.html")
+    finally:
+        session.close()
 
 
 def test_a_second_extract_of_the_same_url_is_served_from_cache(session, fixture_server):
