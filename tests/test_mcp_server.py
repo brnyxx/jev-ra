@@ -14,6 +14,7 @@ TOOLS = {
     "browser_run",
     "browser_act",
     "browser_observe",
+    "browser_search",
     "browser_extract",
     "browser_click",
     "browser_type",

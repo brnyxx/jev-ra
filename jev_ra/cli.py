@@ -357,6 +357,32 @@ def ratio_line(row):
     return f"  {row['task']}: {row['jev_ra_ms']} ms / {reference} = {ratio}  {'PASS' if row['passed'] else 'FAIL'}"
 
 
+def cmd_search(args):
+    from .search import search
+
+    config = load()
+    session = Session(config)
+    client = DecisionClient(config)
+    try:
+        payload = search(
+            args.query,
+            args.goal,
+            args.max_pages,
+            config=config,
+            decide=client.decide,
+            session=session,
+            session_factory=lambda: Session(config),
+        )
+    finally:
+        client.close()
+    lines = [f"{payload['query']} — {len(payload['results'])} pages in {payload['elapsed_ms']} ms"]
+    for item in payload["results"]:
+        title = item.get("title") or item["label"]
+        lines.append(f"  {item['rank']}. {title} (answers_goal={item.get('answers_goal', 0):.2f})")
+        lines.append(f"     {item.get('url', '')}")
+    return emit(args, payload, lines)
+
+
 def cmd_bench(args):
     from .bench import ACCEPTANCE_RATIO, flash_baseline, ratio_rows, run_live, run_offline
 
@@ -464,6 +490,12 @@ def build_parser():
 
     doctor = add_json(sub.add_parser("doctor", help="check the key, the endpoint, Chrome and one live decision"))
     doctor.set_defaults(handler=cmd_doctor)
+
+    search = add_json(sub.add_parser("search", help="search the web and read the best results"))
+    search.add_argument("query")
+    search.add_argument("goal", nargs="?", help="what the pages have to answer; defaults to the query")
+    search.add_argument("--max-pages", type=int, default=3)
+    search.set_defaults(handler=cmd_search)
 
     bench = add_json(sub.add_parser("bench", help="time the offline fixtures, and the live tasks with --live"))
     bench.add_argument("--live", action="store_true", help="also run the three live tasks (needs a key)")

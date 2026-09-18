@@ -13,6 +13,7 @@ from .browser.session import Session, StalePage
 from .config import load
 from .decide.client import DecisionClient, JevError
 from .extract import MODES, extract
+from .search import MAX_PAGES, search
 
 logger = logging.getLogger(__name__)
 
@@ -124,6 +125,18 @@ def build_server(browser=None):
         started = time.perf_counter()
         agent = browser.agent()
         return run_result(guarded(lambda: agent.act(instruction, values=values)), started)
+
+    @mcp.tool()
+    def browser_search(query: str, goal: str | None = None, max_pages: int = MAX_PAGES) -> dict:
+        """Search the web, read the best results in parallel tabs, and rank them against the goal."""
+        started = time.perf_counter()
+        session = browser.open()
+        decide = browser.decide or browser.agent().decide
+        payload = guarded(
+            lambda: search(query, goal, max_pages, config=browser.config, decide=decide, session=session)
+        )
+        payload["elapsed_ms"] = round((time.perf_counter() - started) * 1000)
+        return payload
 
     @mcp.tool()
     def browser_observe(max_elements: int | None = None) -> dict:
