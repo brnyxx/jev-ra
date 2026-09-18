@@ -5,6 +5,7 @@ Run it after changing a tool signature. CI regenerates it and fails if the commi
 
 import argparse
 import asyncio
+import difflib
 import sys
 from pathlib import Path
 
@@ -96,6 +97,8 @@ def main(argv=None):
         current = USAGE.read_text() if USAGE.exists() else ""
         if current != text:
             print(f"{USAGE} is out of date; run `uv run python scripts/gen_usage.py`", file=sys.stderr)
+            diff = difflib.unified_diff(current.splitlines(), text.splitlines(), "committed", "generated", lineterm="")
+            print("\n".join(list(diff)[:80]), file=sys.stderr)
             return 1
         return 0
     USAGE.parent.mkdir(parents=True, exist_ok=True)
