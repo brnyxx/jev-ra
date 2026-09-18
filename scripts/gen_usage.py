@@ -68,11 +68,30 @@ def render_tool(tool):
     return lines
 
 
-def cli_help(width=HELP_WIDTH):
-    """The CLI help at the width this script fixes, never the one the terminal happens to have."""
+def cli_help():
+    """The CLI help laid out by this script, so no interpreter's argparse can change it.
+
+    argparse's own formatter moved the help column between CPython patch releases, and a usage
+    guide that depends on which 3.12 a machine has is not a guide. The words are the parser's;
+    only the columns are ours.
+    """
     parser = build_parser()
-    parser.formatter_class = lambda prog: argparse.HelpFormatter(prog, width=width)
-    return parser.format_help().rstrip()
+    commands = next(a for a in parser._actions if isinstance(a, argparse._SubParsersAction))
+    rows = [(choice.dest, choice.help) for choice in commands._choices_actions]
+    options = [(", ".join(a.option_strings), a.help) for a in parser._actions if a.option_strings]
+    column = max(len(name) for name, _ in rows + options) + 2
+    lines = [
+        f"usage: {parser.prog} [-h] [--version] COMMAND ...",
+        "",
+        parser.description,
+        "",
+        "positional arguments:",
+        "  COMMAND",
+    ]
+    lines += [f"    {name.ljust(column)}{text}" for name, text in rows]
+    lines += ["", "options:"]
+    lines += [f"  {name.ljust(column + 2)}{text}" for name, text in options]
+    return "\n".join(lines)
 
 
 def render(tool_list):

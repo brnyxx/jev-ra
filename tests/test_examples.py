@@ -95,6 +95,10 @@ def test_the_usage_guide_does_not_depend_on_the_terminal_it_was_generated_in(gen
     assert narrow == wide == bare
 
 
-def test_the_help_is_rendered_at_the_width_the_generator_fixes(gen_usage):
-    assert gen_usage.cli_help(width=40) != gen_usage.cli_help(width=120)
-    assert max(len(line) for line in gen_usage.cli_help().splitlines()) <= gen_usage.HELP_WIDTH
+def test_the_help_does_not_depend_on_argparse_layout(gen_usage, monkeypatch):
+    before = gen_usage.cli_help()
+    monkeypatch.setattr(gen_usage.argparse.HelpFormatter, "_format_action", lambda *a, **k: "BROKEN")
+    assert gen_usage.cli_help() == before
+    rows = [line for line in before.splitlines() if line.startswith("    ")]
+    assert all(len(line.split(None, 1)) == 2 for line in rows), "every command sits on one line with its help"
+    assert max(len(line) for line in before.splitlines()) <= gen_usage.HELP_WIDTH
