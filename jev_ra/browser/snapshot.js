@@ -48,7 +48,11 @@
   const safe = e => !['password','file','hidden'].includes(e.type);
   // Whether a pointer landing on `top` reaches `e`: itself, its own subtree, or the label that
   // forwards a click to it - which is how a shop paints its filter checkboxes.
-  cache.reaches = (e,top) => top===e || e.contains(top) || top?.closest('label')?.control===e;
+  // Whether a pointer landing on `top` reaches `e`: itself, its own subtree, an ancestor that
+  // took the pointer for it, or the label that forwards a click to it. A cover is none of those:
+  // a consent wall is a sibling of what it hides, never its parent.
+  cache.reaches = (e,top) => !!top &&
+    (top===e || e.contains(top) || top.contains(e) || top.closest('label')?.control===e);
   const visible = e => !e.closest('[aria-hidden="true"],[inert]') &&
     e.checkVisibility({checkOpacity:true,checkVisibilityCSS:true});
   const name = (e,seen=new Set()) => {

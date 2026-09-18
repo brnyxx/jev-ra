@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>Service cards</title>
+<style>
+  body { font: 14px/1.5 system-ui; margin: 0; padding: 16px; }
+  .cards { display: grid; grid-template-columns: repeat(2, 200px); gap: 12px; }
+  .card { border: 1px solid #ccc; padding: 18px; cursor: pointer; }
+  /* The card takes the pointer; the link inside it is painted but never hit. A person
+     clicking the words still lands on the card, which is what carries the handler. */
+  .card a { pointer-events: none; color: #06c; text-decoration: none; }
+</style>
+</head>
+<body>
+<h1>자주 찾는 서비스</h1>
+<div class="cards">
+  <div class="card" onclick="go('인감증명서')"><a href="/seal">인감증명서</a></div>
+  <div class="card" onclick="go('소득금액 증명')"><a href="/income">소득금액 증명</a></div>
+</div>
+<p id="out"></p>
+<script>
+  function go(name) { document.getElementById('out').textContent = 'opened: ' + name; }
+</script>
+</body>
+</html>

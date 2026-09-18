@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Portal</title>
+<style>
+  body { font: 14px/1.5 system-ui; margin: 0; padding: 16px; }
+  .skeleton { color: #aaa; }
+</style>
+</head>
+<body>
+<!-- A single-page app: the document is complete long before anything you can act on exists.
+     Loading is finished, the page is empty, and the controls arrive a few frames later. -->
+<div id="app"><p class="skeleton">Loading services</p></div>
+<script>
+  setTimeout(() => {
+    document.getElementById('app').innerHTML =
+      '<h1>Services</h1>' +
+      '<form onsubmit="event.preventDefault(); out.textContent = \'searched \' + q.value;">' +
+      '<input id="q" aria-label="Search services" type="search">' +
+      '<button type="submit">Search</button></form><p id="out"></p>';
+  }, 400);
+</script>
+</body>
+</html>

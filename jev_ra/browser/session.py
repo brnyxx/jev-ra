@@ -18,6 +18,14 @@ from .chrome import ensure as ensure_chrome
 logger = logging.getLogger(__name__)
 
 LOAD_TIMEOUT_S = 15.0
+# A single-page app reports the document complete long before it paints anything, and a page with
+# nothing to act on reads as BLOCKED. Wait for the document to hold a control anywhere - not just
+# in the viewport, since a listing can legitimately open above its own controls.
+PAINT_BUDGET_S = 2.0
+CONTROLS_JS = (
+    "document.querySelectorAll('a[href],button,input,select,textarea,"
+    "[role=\"button\"],[role=\"link\"],[contenteditable=\"\"],[contenteditable=\"true\"]').length"
+)
 # The daemon's own default budget is 5 s, which a plain call never needs and the snapshot of a
 # large page routinely exceeds: oliveyoung.co.kr evaluates for longer than that, and the timeout
 # arrived as a transport exception from inside browser_harness rather than as anything a caller
@@ -172,6 +180,9 @@ class Session:
             except StalePage:
                 pass
             time.sleep(0.02)
+        deadline = time.monotonic() + PAINT_BUDGET_S
+        while time.monotonic() < deadline and not self.evaluate(CONTROLS_JS):
+            time.sleep(WAIT_SLEEP_S)
         return self.observe()
 
     def settle(self):
