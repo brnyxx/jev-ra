@@ -1,0 +1,12 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Quick search</title></head>
+<body>
+<h1>Quick search</h1>
+<form onsubmit="event.preventDefault(); out.textContent = 'searched ' + q.value;">
+  <input id="q" aria-label="Search the catalog">
+  <button type="submit">Go</button>
+</form>
+<p id="out"></p>
+</body>
+</html>

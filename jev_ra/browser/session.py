@@ -270,6 +270,8 @@ class Session:
         kind = action["kind"]
         if kind == "wait":
             time.sleep(WAIT_SLEEP_S)
+        elif kind == "press":
+            self.press(action.get("key", "Enter"))
         elif kind == "scroll":
             viewport = self.config.viewport
             self.call(

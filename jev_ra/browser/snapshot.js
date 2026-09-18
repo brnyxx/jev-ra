@@ -233,6 +233,13 @@
   const semantics=elements.map(({rect,...rest})=>rest);
   const marker=[performance.timeOrigin,location.href,scrollX,scrollY,innerWidth,innerHeight,
     document.title,text,semantics,actions,page_key[6]];
+  // A search palette that only answers to the Enter key has no control to click once its input
+  // holds the query. When the focused field is one that Enter submits, offer it as an operation.
+  const active=document.activeElement;
+  const typed=active?.tagName==='INPUT' && active.value?.trim() &&
+    !['password','file','hidden','checkbox','radio','submit','button','reset','image'].includes(active.type);
+  if (typed) actions.push({id:'press_enter',kind:'press',key:'Enter',
+    label:'Press Enter to submit the focused field'});
   if (scrollY+innerHeight<height-2) actions.push({id:'scroll_down',kind:'scroll',label:'Scroll down',delta:560});
   if (scrollY>0) actions.push({id:'scroll_up',kind:'scroll',label:'Scroll up',delta:-560});
   actions.push({id:'wait',kind:'wait',label:'Wait for the page to update'});

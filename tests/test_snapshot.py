@@ -75,6 +75,17 @@ def test_an_unlabelled_select_is_named_by_its_selection_not_its_option_list(fixt
     assert all(len(action["label"]) < 60 for action in options)
 
 
+def test_enter_is_offered_once_a_focused_field_holds_text(fixture_server, cdp_target):
+    page = load(cdp_target, f"{fixture_server}/sites/enter-submit.html")
+    assert not any(action["id"] == "press_enter" for action in page["actions"])
+    evaluate(cdp_target, "document.getElementById('q').focus()")
+    assert not any(action["id"] == "press_enter" for action in evaluate(cdp_target, snapshot_expression())["actions"])
+    evaluate(cdp_target, "document.getElementById('q').value='red shoes'")
+    armed = evaluate(cdp_target, snapshot_expression())["actions"]
+    press = next(action for action in armed if action["id"] == "press_enter")
+    assert (press["kind"], press["key"]) == ("press", "Enter")
+
+
 def test_links_are_observed_with_their_text(fixture_server, cdp_target):
     page = load(cdp_target, f"{fixture_server}/list.html")
     links = [element for element in page["elements"] if element["role"] == "link"]

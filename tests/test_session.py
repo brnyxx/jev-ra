@@ -105,3 +105,12 @@ def test_screenshot_returns_jpeg_bytes(session, fixture_server):
     image = session.screenshot()
     assert image[:3] == b"\xff\xd8\xff"
     assert len(image) > 1000
+
+
+def test_enter_submits_the_field_that_holds_the_query(session, fixture_server):
+    page = session.open(f"{fixture_server}/sites/enter-submit.html")
+    session.act(action_for(page, "Search the catalog", "fill"), page, text="red shoes")
+    after = session.observe()
+    press = next(action for action in after["actions"] if action["id"] == "press_enter")
+    session.act(press, after)
+    assert "searched red shoes" in session.observe()["text"]
