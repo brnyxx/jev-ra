@@ -27,9 +27,8 @@ uv run ty check
 uv run pytest -q          # coverage must stay at or above 85 %
 ```
 
-Without `BU_CDP_URL` the browser-marked tests skip and coverage will fall short. They must pass
-before anything is merged; CI sets `JEV_RA_REQUIRE_BROWSER=1` so a missing Chrome fails instead of
-skipping.
+Without `BU_CDP_URL` the browser-marked tests skip. They must pass before anything is merged; CI
+sets `JEV_RA_REQUIRE_BROWSER=1` so a missing Chrome fails instead of skipping.
 
 ## House rules
 
