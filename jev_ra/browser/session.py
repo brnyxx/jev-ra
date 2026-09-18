@@ -19,9 +19,35 @@ logger = logging.getLogger(__name__)
 
 LOAD_TIMEOUT_S = 15.0
 # A single-page app reports the document complete long before it paints anything, and a page with
-# nothing to act on reads as BLOCKED. Wait until the snapshot observes a control anywhere - not
-# just in the viewport, since a listing can legitimately open above its own controls.
+# nothing to act on reads as BLOCKED. Wait until the document holds a control that is reachable
+# where it sits, or that is simply outside the viewport: a listing legitimately opens a screenful
+# above its own sort bar, and waiting for that buys nothing. A control under a loading cover is
+# not reachable anywhere, so a portal drawing its header behind a veil is still waited out.
 PAINT_BUDGET_S = 2.0
+PAINTED_JS = """(() => {
+  const selector='a[href],button,input,select,textarea,summary,[contenteditable=""],'+
+    '[contenteditable="true"],[role="button"],[role="link"],[role="tab"],[role="checkbox"],'+
+    '[role="radio"],[role="option"],[role="combobox"],[role="textbox"],[role="searchbox"]';
+  const deepest=(x,y)=>{
+    let node=document.elementFromPoint(x,y);
+    while (node?.shadowRoot) {
+      const inner=node.shadowRoot.elementFromPoint(x,y);
+      if (!inner || inner===node) break;
+      node=inner;
+    }
+    return node;
+  };
+  return [...document.querySelectorAll(selector)].some(e => {
+    const r=e.getBoundingClientRect();
+    if (!r.width || !r.height) return false;
+    if (!e.checkVisibility({checkVisibilityCSS:true})) return false;
+    if (e.closest('[aria-hidden="true"],[inert]')) return false;
+    // Out of view is not covered: the page is ready, the viewport just has not reached it.
+    if (r.bottom<=0 || r.top>=innerHeight || r.right<=0 || r.left>=innerWidth) return true;
+    const top=deepest(r.x+r.width/2, r.y+r.height/2);
+    return !!top && (top===e || e.contains(top) || top.contains(e));
+  });
+})()"""
 # The daemon's own default budget is 5 s, which a plain call never needs and the snapshot of a
 # large page routinely exceeds: oliveyoung.co.kr evaluates for longer than that, and the timeout
 # arrived as a transport exception from inside browser_harness rather than as anything a caller
@@ -184,18 +210,17 @@ class Session:
             except StalePage:
                 pass
             time.sleep(0.02)
-        # A document that reports itself complete can still be a loading screen: a portal paints
-        # a cover over every control it has drawn, and a snapshot of it observes nothing, which
-        # reads as a page with nothing to act on. Wait for the page to observe a control, not
-        # merely to contain one, and stop as soon as it does.
+        # A document that reports itself complete can still be a loading screen: a portal paints a
+        # cover over every control it has drawn, and a snapshot of it observes nothing, which
+        # reads as a page with nothing to act on. Wait for a control that is reachable or merely
+        # out of view, and stop as soon as there is one.
         deadline = time.monotonic() + PAINT_BUDGET_S
         while time.monotonic() < deadline:
             try:
-                page = self.observe()
+                if self.evaluate(PAINTED_JS):
+                    break
             except StalePage:
-                page = None
-            if page is not None and page.get("elements"):
-                return page
+                logger.debug("The document changed while waiting for it to paint")
             time.sleep(WAIT_SLEEP_S)
         return self.observe()
 
