@@ -30,6 +30,7 @@ ACCEPTANCE_RATIO = 3.0
 
 @dataclass(frozen=True)
 class OfflineTask:
+    """A local fixture task whose decisions are scripted, not asked."""
     key: str
     page: str
     goal: str
@@ -40,6 +41,7 @@ class OfflineTask:
 
 @dataclass(frozen=True)
 class LiveTask:
+    """A real task, with the predicate that decides whether it was actually done."""
     key: str
     goal: str
     verify: object
@@ -122,13 +124,14 @@ LIVE_TASKS = (
 
 @contextlib.contextmanager
 def serve(directory=PAGES):
+    """Serve the bench fixture pages on loopback for the duration of the block."""
     handler = functools.partial(QuietHandler, directory=str(directory))
     server = ThreadingHTTPServer(("127.0.0.1", 0), handler)
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
-    host, port = server.server_address
+    address = server.server_address
     try:
-        yield f"http://{host}:{port}"
+        yield f"http://{address[0]}:{address[1]}"
     finally:
         server.shutdown()
         server.server_close()
@@ -136,11 +139,14 @@ def serve(directory=PAGES):
 
 
 class QuietHandler(SimpleHTTPRequestHandler):
-    def log_message(self, *_args):
-        pass
+    """A fixture server that does not narrate every request."""
+
+    def log_message(self, format, *args):
+        """Swallow the request log the base class would print to stderr."""
 
 
 def repo_root(start=None):
+    """The repository root, when jev-ra is running from a checkout."""
     for parent in [Path(start or __file__).resolve(), *Path(start or __file__).resolve().parents]:
         if (parent / "docs").is_dir() and (parent / "pyproject.toml").exists():
             return parent
@@ -148,6 +154,7 @@ def repo_root(start=None):
 
 
 def baseline_dir(root=None):
+    """The recorded browser-use baseline directory, when there is one."""
     root = root or repo_root()
     if root is None:
         return None
@@ -177,6 +184,7 @@ def load_baseline(directory=None):
 
 
 def flash_baseline(directory=None):
+    """The flash_mode wall time per task, from the recorded rows."""
     return {
         task: variants["flash"]["wall_ms"]
         for task, variants in load_baseline(directory).items()
@@ -216,6 +224,7 @@ VERIFY_TEXT_CHARS = 4000
 
 
 def measure(agent, task, url, values, max_steps):
+    """Run one task once and say whether the page shows it was done."""
     started = time.perf_counter()
     result = agent.run(task.goal, values=values, max_steps=max_steps, url=url)
     row = {
@@ -243,10 +252,12 @@ def verified(row, verify):
 
 
 def median(values):
+    """The median of the values, rounded, or None when there are none."""
     return round(statistics.median(values)) if values else None
 
 
 def percentile(values, fraction=0.9):
+    """The nearest-rank percentile of the values, rounded, or None."""
     if not values:
         return None
     ordered = sorted(values)
@@ -282,6 +293,7 @@ def summarise(rows):
 
 
 def run_offline(config=None, tasks=OFFLINE_TASKS, session=None, runs=1):
+    """Time the fixture tasks with scripted decisions and no network."""
     config = config or load()
     owned = session is None
     session = session or Session(config)
@@ -299,6 +311,7 @@ def run_offline(config=None, tasks=OFFLINE_TASKS, session=None, runs=1):
 
 
 def measure_search(task, config, decide):
+    """Run one search task once and score what it found."""
     from ..search import search as run_search
 
     session = Session(config)
@@ -334,6 +347,7 @@ def measure_search(task, config, decide):
 
 
 def run_live(config=None, tasks=LIVE_TASKS, runs=1):
+    """Run the live tasks against the real web, `runs` times each."""
     config = config or load()
     if not config.api_key:
         raise RuntimeError("bench --live needs a Jev key. Set OPENROUTER_API_KEY, then run `jev-ra doctor`.")
@@ -360,6 +374,7 @@ def run_live(config=None, tasks=LIVE_TASKS, runs=1):
 
 
 def markdown_table(rows, columns=None):
+    """Render rows as a markdown table of the given columns."""
     columns = columns or list(rows[0]) if rows else []
     lines = ["| " + " | ".join(columns) + " |", "|" + "|".join("---" for _ in columns) + "|"]
     for row in rows:

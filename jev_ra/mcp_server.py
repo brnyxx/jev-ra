@@ -35,26 +35,35 @@ class Browser:
         self.client = None
 
     def open(self):
+        """Open the shared session, creating it on first use."""
         if self.session is None:
             self.session = self.session_factory()
         return self.session
 
     def require(self):
+        """The open session, or a ToolError telling the caller to open one."""
         if self.session is None:
             raise ToolError("No browser session is open. Call browser_open first.")
         return self.session
 
-    def agent(self):
-        session = self.require()
-        if self.decide is None and self.client is None:
+    def decider(self):
+        """The decision callable, creating the client only when it is really needed."""
+        if self.decide is not None:
+            return self.decide
+        if self.client is None:
             self.client = DecisionClient(self.config)
-        return Agent(session=session, config=self.config, decide=self.decide or self.client.decide)
+        return self.client.decide
+
+    def agent(self):
+        """An agent bound to the shared session and the decision model."""
+        return Agent(session=self.require(), config=self.config, decide=self.decider())
 
     def stepper(self):
         """An agent for the direct tools: they move the browser without asking Jev anything."""
         return Agent(session=self.require(), config=self.config, decide=refuse)
 
     def close(self):
+        """Close the session and the decision client this server holds."""
         if self.session is not None:
             self.session.close()
             self.session = None
@@ -64,16 +73,19 @@ class Browser:
 
 
 def refuse(_state, _questions):
+    """Guard for tools that must never reach the decision model."""
     raise ToolError("This tool never calls the decision model")
 
 
 def element_line(element):
+    """Render one observed element as `[ref] role label · value`."""
     line = " ".join(part for part in (f"[{element['ref']}]", element.get("role"), element.get("label")) if part)
     value = element.get("value")
     return f"{line} · {value}" if value else line
 
 
 def summary(page, started, session):
+    """The short page summary every navigating tool returns."""
     space = actions.build(page, session.max_elements)
     return {
         "url": page.get("url", ""),
@@ -86,12 +98,14 @@ def summary(page, started, session):
 
 
 def run_result(result, started):
+    """A Result as JSON, timed from the tool call rather than the run."""
     payload = result.as_dict()
     payload["elapsed_ms"] = round((time.perf_counter() - started) * 1000)
     return payload
 
 
 def build_server(browser=None):
+    """Build the MCP server and register every browser tool on it."""
     browser = browser or Browser()
     mcp = MCPServer("jev-ra", version=__version__, instructions=INSTRUCTIONS)
 
@@ -131,7 +145,7 @@ def build_server(browser=None):
         """Search the web, read the best results in parallel tabs, and rank them against the goal."""
         started = time.perf_counter()
         session = browser.open()
-        decide = browser.decide or browser.agent().decide
+        decide = browser.decider()
         payload = guarded(
             lambda: search(query, goal, max_pages, config=browser.config, decide=decide, session=session)
         )
@@ -231,5 +245,6 @@ def build_server(browser=None):
 
 
 def main():
+    """Run the stdio MCP server."""
     logging.basicConfig(level=logging.WARNING)
     build_server().run("stdio")

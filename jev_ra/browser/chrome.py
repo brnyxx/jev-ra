@@ -49,12 +49,14 @@ class ChromeError(RuntimeError):
 
 
 def profile_dir(env=None):
+    """The automation profile directory under `$XDG_STATE_HOME`."""
     env = os.environ if env is None else env
     home = env.get("XDG_STATE_HOME") or Path(env.get("HOME", "~")).expanduser() / ".local" / "state"
     return Path(home) / "jev-ra" / "chrome-profile"
 
 
 def find_browser(platform=None, env=None, exists=None, which=None):
+    """The first Chrome, Chromium or Edge binary this platform offers."""
     env = os.environ if env is None else env
     platform = platform or sys.platform
     exists = exists or (lambda path: Path(path).exists())
@@ -85,10 +87,12 @@ def read_port(profile):
 
 
 def url_for(port):
+    """The CDP base url for a port on loopback."""
     return f"http://127.0.0.1:{port}"
 
 
 def alive(url, timeout=PROBE_TIMEOUT_S):
+    """Whether a Chrome answers `/json/version` at this url."""
     try:
         with urllib.request.urlopen(url.rstrip("/") + "/json/version", timeout=timeout):
             return True
@@ -97,6 +101,7 @@ def alive(url, timeout=PROBE_TIMEOUT_S):
 
 
 def launch(binary, profile, viewport=(1280, 900)):
+    """Start Chrome on its own profile with an ephemeral debugging port."""
     profile = Path(profile)
     profile.mkdir(parents=True, exist_ok=True)
     # A stale port file from a dead Chrome would otherwise be read as a live one.
@@ -115,6 +120,7 @@ def launch(binary, profile, viewport=(1280, 900)):
 
 
 def wait_for_port(profile, process=None, timeout=STARTUP_TIMEOUT_S):
+    """Block until the launched Chrome publishes a reachable port."""
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
         port = read_port(profile)

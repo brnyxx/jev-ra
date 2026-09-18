@@ -22,6 +22,7 @@ PREV_OK_THRESHOLD = 0.6
 
 @dataclass
 class Result:
+    """What one run did: its status, its steps, and what it cost."""
     status: str
     reason: str = ""
     url: str = ""
@@ -36,10 +37,12 @@ class Result:
     detail: dict = field(default_factory=dict)
 
     def as_dict(self):
+        """The result as plain JSON-safe data."""
         return asdict(self)
 
 
 class Agent:
+    """The loop: observe, decide once, verify, and hand control back when stuck."""
     def __init__(self, session=None, config=None, decide=None, client=None):
         self.config = config or load()
         self.session = session or Session(self.config)
@@ -50,15 +53,19 @@ class Agent:
         self.decide = decide
 
     def open(self, url):
+        """Navigate to a url and observe."""
         return self.session.open(url)
 
     def observe(self):
+        """Observe the current page."""
         return self.session.observe()
 
     def space(self, page):
+        """The action space of an observed page."""
         return actions.build(page, self.session.max_elements)
 
     def run(self, goal, values=None, max_steps=None, url=None):
+        """Pursue a goal until it is done, blocked, escalated or out of budget."""
         started = time.perf_counter()
         budgets = self.config.budgets
         limit = max_steps or budgets.max_steps
@@ -134,28 +141,36 @@ class Agent:
                 return run.escalate(stuck, page, decision)
 
     def act(self, instruction, values=None, max_steps=1):
+        """One decided step towards an instruction."""
         return self.run(instruction, values=values, max_steps=max_steps)
 
     def click(self, ref):
+        """Click one observed element by its ref, without asking the model."""
         return self.direct(ref, "click")
 
     def type(self, ref, text):
+        """Type into one observed field by its ref, without asking the model."""
         return self.direct(ref, "fill", text=text)
 
     def select(self, ref, option):
+        """Select an observed dropdown option, without asking the model."""
         return self.direct(ref, "select", option=option)
 
     def scroll(self, direction="down"):
+        """Scroll one viewport step, without asking the model."""
         return self.control(f"scroll_{direction}")
 
     def wait(self):
+        """Wait a moment and observe again."""
         return self.control("wait")
 
     def press(self, key):
+        """Press a key and observe again."""
         self.session.press(key)
         return self.session.observe()
 
     def direct(self, ref, kind, text=None, option=None):
+        """Execute one observed action chosen by ref, not by the model."""
         page = self.session.observe()
         candidates = [a for a in page["actions"] if a["id"] == ref and a["kind"] == kind]
         if kind == "select":
@@ -166,6 +181,7 @@ class Agent:
         return self.session.observe()
 
     def control(self, name):
+        """Execute one page control such as scroll or wait."""
         page = self.session.observe()
         action = next((a for a in page["actions"] if a["id"] == name), None)
         if action is None:
@@ -174,6 +190,7 @@ class Agent:
         return self.session.observe()
 
     def close(self):
+        """Close the session and the decision client this agent owns."""
         self.session.close()
         if self._client is not None:
             self._client.close()
@@ -199,9 +216,11 @@ class _Run:
         self.cost = 0.0
 
     def elapsed_ms(self):
+        """Milliseconds since the run started."""
         return round((time.perf_counter() - self.started) * 1000)
 
     def over_budget(self, limit, budgets, taken):
+        """The budget this run has exhausted, or None."""
         if taken >= limit:
             return f"max_steps ({limit}) reached"
         if self.decisions >= budgets.max_decisions:
@@ -211,6 +230,7 @@ class _Run:
         return None
 
     def record(self, decision, before, after, text):
+        """Record one executed step and what the page did about it."""
         changed = after.get("marker") != before.get("marker")
         self.steps.append(
             {
@@ -239,6 +259,7 @@ class _Run:
         )
 
     def stuck(self, space):
+        """The escalation reason if the run is going nowhere, else None."""
         recent = self.steps[-NO_PROGRESS_STREAK:]
         if len(recent) < NO_PROGRESS_STREAK:
             return None
@@ -257,6 +278,7 @@ class _Run:
         return None
 
     def final_page(self, page):
+        """The page text and element table the caller gets back."""
         space = self.agent.space(page)
         return {
             "text": page.get("text", ""),
@@ -265,6 +287,7 @@ class _Run:
         }
 
     def result(self, status, reason, page, decision=None, detail=None):
+        """Assemble the Result for this run."""
         return Result(
             status=status,
             reason=reason,
@@ -281,9 +304,11 @@ class _Run:
         )
 
     def finish(self, status, reason, page, decision=None):
+        """End the run with a terminal status."""
         return self.result(status, reason, page, decision)
 
     def escalate(self, reason, page, decision=None, detail=None, status="escalate"):
+        """End the run and hand back what the host needs to decide."""
         detail = dict(detail or {})
         detail["page_text"] = page.get("text", "")[:ESCALATION_TEXT_CHARS]
         return self.result(status, reason, page, decision, detail)
@@ -300,5 +325,6 @@ def verification(before, after):
 
 
 def field_state(page):
+    """The field-value part of a page key, or None."""
     key = page.get("page_key") or []
     return key[6] if len(key) > 6 else None

@@ -71,6 +71,7 @@ def fit(payload, max_chars):
 
 
 def extract(session, mode="text", max_chars=MAX_CHARS, use_cache=True):
+    """Structured page data for one mode, capped and cached per page."""
     if mode not in MODES:
         raise ValueError(f"mode must be one of {', '.join(MODES)}")
     page = session.observe()

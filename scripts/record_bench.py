@@ -13,13 +13,14 @@ import threading
 import time
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+if str(Path(__file__).resolve().parents[1]) not in sys.path:
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from jev_ra.bench import LIVE_TASKS, OFFLINE_TASKS, serve  # noqa: E402
-from jev_ra.bench.scripted import scripted  # noqa: E402
-from jev_ra.browser.session import Session  # noqa: E402
-from jev_ra.config import load  # noqa: E402
-from jev_ra.decide.client import DecisionClient  # noqa: E402
+from jev_ra.bench import LIVE_TASKS, OFFLINE_TASKS, serve
+from jev_ra.bench.scripted import scripted
+from jev_ra.browser.session import Session
+from jev_ra.config import load
+from jev_ra.decide.client import DecisionClient
 
 logger = logging.getLogger("record_bench")
 
@@ -38,6 +39,7 @@ class Recorder:
         self.thread = threading.Thread(target=self.loop, daemon=True)
 
     def loop(self):
+        """Capture a frame every interval until the recording is stopped."""
         started = time.perf_counter()
         index = 0
         while not self.stop.is_set():
@@ -119,6 +121,8 @@ def record_jev_ra(key, out_dir, fps=DEFAULT_FPS):
 
 
 class nullcontext:
+    """A context manager that yields nothing, for the live tasks that need no fixture server."""
+
     def __enter__(self):
         return None
 

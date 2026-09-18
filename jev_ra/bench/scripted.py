@@ -4,6 +4,7 @@ from ..decide.client import Reply
 
 
 def certain(choice, criteria):
+    """A choice answer that puts all of its probability on one option."""
     return {
         "choice": choice,
         "confidence": 0.95,
@@ -12,19 +13,24 @@ def certain(choice, criteria):
 
 
 def target_for(criteria, label):
+    """The offered target whose rendered criterion contains this label."""
     for key, text in criteria.items():
         if label in text:
             return key
     raise LookupError(f"{label!r} is not offered; criteria were {sorted(criteria)}")
 
 
-def scripted(plan):
-    """plan is a sequence of (operation, label, value_name); anything past it answers DONE."""
-    taken = []
+class scripted:
+    """A decider that walks a plan of (operation, label, value_name) and then answers DONE."""
 
-    def decide(_state, questions):
-        step = plan[len(taken)] if len(taken) < len(plan) else None
-        taken.append(step)
+    def __init__(self, plan):
+        self.plan = list(plan)
+        self.taken = []
+
+    def __call__(self, _state, questions):
+        """Answer the questions this step asks, following the plan."""
+        step = self.plan[len(self.taken)] if len(self.taken) < len(self.plan) else None
+        self.taken.append(step)
         if step is None:
             answers = {"operation": certain("DONE", questions["operation"]["criteria"])}
         else:
@@ -41,6 +47,3 @@ def scripted(plan):
         if "prev_ok" in questions:
             answers["prev_ok"] = {"noul": 0.9}
         return Reply(answers=answers, model="scripted", latency_ms=0, usage={})
-
-    decide.taken = taken
-    return decide

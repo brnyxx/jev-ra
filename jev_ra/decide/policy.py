@@ -34,6 +34,7 @@ class InvalidDecision(Exception):
 
 @dataclass(frozen=True)
 class Decision:
+    """What one answer set means: an operation, a target, and the confidence behind it."""
     operation: str
     target: str | None = None
     action: dict | None = None
@@ -48,33 +49,40 @@ class Decision:
 
     @property
     def terminal(self):
+        """Whether this decision ends the run rather than moving the browser."""
         return self.operation in TERMINAL
 
 
 def question_name(operation):
+    """The target question that belongs to an operation."""
     return operation.lower() + "_target"
 
 
 def instructions(goal, rules, **extra):
+    """The goal and the measured rules, as the one string both endpoints accept."""
     # One string on both endpoints: OpenRouter rejects structured instructions.
     return json.dumps({"goal": goal, **extra, "rules": rules}, ensure_ascii=False)
 
 
 def choice(criteria, text):
+    """A choice question over the given criteria."""
     return {"type": "choice", "criteria": criteria, "instructions": text}
 
 
 def noul(criteria, text):
+    """A noul question over the given criteria."""
     return {"type": "noul", "criteria": criteria, "instructions": text}
 
 
 def preview(value):
+    """A value shortened to fit one criterion line."""
     text = value if isinstance(value, str) else json.dumps(value, ensure_ascii=False)
     text = " ".join(text.split())
     return text if len(text) <= VALUE_PREVIEW_CHARS else text[: VALUE_PREVIEW_CHARS - 1] + "…"
 
 
 def offered_targets(space, exclude=()):
+    """The per-operation targets minus anything a corrective re-ask removed."""
     excluded = set(exclude)
     kept = {}
     for operation, candidates in space.targets.items():
@@ -87,6 +95,7 @@ def offered_targets(space, exclude=()):
 
 
 def build_questions(space, goal, history=(), values=None, exclude=()):
+    """Every question this step asks, in one request."""
     excluded = set(exclude)
     targets = offered_targets(space, excluded)
     operations = {operation: OPERATION_LABELS[operation] for operation in targets}
@@ -113,6 +122,7 @@ def build_questions(space, goal, history=(), values=None, exclude=()):
 
 
 def build_state(page, space, goal, history=(), values=None):
+    """The state sent alongside the questions: meaning, never markup."""
     return {
         "goal": goal,
         "page": {
@@ -130,6 +140,7 @@ def build_state(page, space, goal, history=(), values=None):
 
 
 def rank_candidates(space, answers, questions):
+    """The operation/target pairs by joint probability, best first."""
     operation_probabilities = answers["operation"]["probabilities"]
     ranked = []
     for operation, probability in operation_probabilities.items():
@@ -152,11 +163,12 @@ def rank_candidates(space, answers, questions):
             ranked.append(
                 {"operation": operation, "target": None, "label": label, "probability": round(probability, 6)}
             )
-    ranked.sort(key=lambda item: item["probability"], reverse=True)
+    ranked.sort(key=lambda item: float(item.get("probability") or 0.0), reverse=True)
     return ranked[:CANDIDATES]
 
 
 def read_answers(space, questions, reply):
+    """Turn one validated answer set into an executable decision."""
     answers = reply.answers
     operation_answer = answers["operation"]
     operation = operation_answer["choice"]

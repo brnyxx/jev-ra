@@ -40,7 +40,7 @@ packages = ["jev_ra"]
 
 [dependency-groups]
 # pillow renders the side-by-side benchmark GIFs in scripts/; it is not a runtime dependency.
-dev = ["pytest>=8.4,<9", "ruff>=0.14,<1", "pillow>=11,<14"]
+dev = ["pytest>=8.4,<9", "pytest-cov>=6,<8", "ruff>=0.14,<1", "ty>=0.0.82,<0.1", "pillow>=11,<14"]
 
 [tool.ruff]
 line-length = 120
@@ -48,8 +48,33 @@ line-length = 120
 extend-exclude = ["assets", "docs/benchmarks"]
 
 [tool.ruff.lint]
-select = ["E", "F", "I"]
+select = ["E", "F", "I", "B", "UP", "SIM", "RUF", "D"]
+# The class is documented; __init__ and the dunders are not public API.
+ignore = ["D105", "D107"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.per-file-ignores]
+# Tests and one-off scripts are read top to bottom; their names are their documentation.
+"tests/**" = ["D"]
+"scripts/**" = ["D103"]
+
+[tool.ty.src]
+include = ["jev_ra"]
+
+[tool.ty.rules]
+unresolved-attribute = "error"
+invalid-assignment = "error"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 markers = ["browser: needs a reachable Chrome over CDP"]
+addopts = "--cov=jev_ra --cov-report=term-missing:skip-covered --cov-fail-under=85"
+
+[tool.coverage.run]
+branch = true
+omit = ["jev_ra/__main__.py"]
+
+[tool.coverage.report]
+exclude_also = ["if __name__ == .__main__.:", "raise NotImplementedError", "if TYPE_CHECKING:"]

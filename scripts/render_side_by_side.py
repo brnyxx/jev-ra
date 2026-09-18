@@ -4,6 +4,7 @@ GIF always (pillow). MP4 as well when ffmpeg is on PATH; its absence is reported
 """
 
 import argparse
+import itertools
 import json
 import logging
 import shutil
@@ -30,7 +31,7 @@ def read_manifest(path):
     directory = path if path.is_dir() else path.parent
     frames = manifest["frames"]
     # The recorder writes frames in order; anything else means the recording is unusable.
-    if any(b["ms"] < a["ms"] for a, b in zip(frames, frames[1:], strict=False)):
+    if any(b["ms"] < a["ms"] for a, b in itertools.pairwise(frames)):
         raise ValueError(f"{path}: frame timestamps are not monotonic")
     manifest["directory"] = str(directory)
     return manifest

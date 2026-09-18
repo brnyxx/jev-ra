@@ -57,8 +57,11 @@ jobs:
       - name: Lint
         run: uv run ruff check .
 
-      - name: Test
+      - name: Type check
+        run: uv run ty check
+
+      - name: Test with coverage
         run: uv run pytest -q
 
       - name: Browser tests must have run
-        run: uv run pytest -q -m browser
+        run: uv run pytest -q -m browser --no-cov

@@ -7,8 +7,8 @@ from jev_ra.bench import verify
 
 FLIGHT_TEXT = (
     "Zurich to London\nSep 20, 2026\nOne way\n"
-    "7:05 AM – 8:15 AM\nSWISS\n1 hr 40 min\nNonstop\n$182\n"
-    "9:30 AM – 10:40 AM\nBritish Airways\n1 hr 40 min\nNonstop\n$204"
+    "7:05 AM - 8:15 AM\nSWISS\n1 hr 40 min\nNonstop\n$182\n"
+    "9:30 AM - 10:40 AM\nBritish Airways\n1 hr 40 min\nNonstop\n$204"
 )
 FLIGHT_URL = "https://www.google.com/travel/flights/search?tfs=CBwQAhooEgoyMDI2LTA5LTIw"
 

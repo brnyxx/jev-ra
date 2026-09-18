@@ -8,10 +8,12 @@ ACTIVE = {"true", "page", "step", "location", "date", "time", "on"}
 
 
 def text_of(row):
+    """The page text a predicate should read, never None."""
     return row.get("text") or ""
 
 
 def url_of(row):
+    """The final url a predicate should read, never None."""
     return row.get("url") or ""
 
 
@@ -22,6 +24,7 @@ def wikipedia(row):
 
 
 def flights(row):
+    """A submitted one-way search for the right route and date, with results on screen."""
     url = url_of(row)
     text = text_of(row)
     if "travel/flights" not in url or "tfs=" not in url:
@@ -33,6 +36,7 @@ def flights(row):
 
 
 def oliveyoung_sort(row):
+    """The newest-first sort is applied, by url or by the active tab."""
     if "prdSort=02" in url_of(row):
         return True
     for element in row.get("elements") or []:
@@ -46,12 +50,10 @@ def oliveyoung_sort(row):
 
 def search_fact(row):
     """A year and a page to cite it from."""
-    for result in row.get("results") or []:
-        if "2023" in (result.get("text") or "") and result.get("url"):
-            return True
-    return False
+    return any("2023" in (result.get("text") or "") and result.get("url") for result in row.get("results") or [])
 
 
 def form_fill(row):
+    """The confirmation page carries every value that was typed."""
     text = text_of(row)
     return "Order confirmed" in text and "Ada Lovelace" in text and "Express" in text

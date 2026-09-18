@@ -49,6 +49,7 @@ class SessionMissing(Exception):
 
 
 def read_state():
+    """The stored session, or None when there is none to reattach to."""
     path = state_path()
     if not path.exists():
         return None
@@ -60,18 +61,21 @@ def read_state():
 
 
 def write_state(session, url):
+    """Remember the target id so later commands reattach to it."""
     path = state_path()
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps({"target_id": session.target_id, "url": url}, indent=2))
 
 
 def clear_state():
+    """Forget the stored session."""
     path = state_path()
     if path.exists():
         path.unlink()
 
 
 def attach():
+    """Reattach to the session `open` left behind."""
     state = read_state()
     if not state:
         raise SessionMissing("No open session. Run `jev-ra open URL` first.")
@@ -83,6 +87,7 @@ def attach():
 
 
 def parse_values(pairs):
+    """Turn repeated `--value NAME=TEXT` into a mapping."""
     values = {}
     for pair in pairs or []:
         name, separator, text = pair.partition("=")
@@ -93,12 +98,14 @@ def parse_values(pairs):
 
 
 def element_line(element):
+    """Render one observed element as `[ref] role label · value`."""
     line = " ".join(part for part in (f"[{element['ref']}]", element.get("role"), element.get("label")) if part)
     value = element.get("value")
     return f"{line} · {value}" if value else line
 
 
 def page_summary(page, session):
+    """The short page summary the navigating commands print."""
     space = actions.build(page, session.max_elements)
     return {
         "url": page.get("url", ""),
@@ -110,6 +117,7 @@ def page_summary(page, session):
 
 
 def emit(args, data, lines=None):
+    """Print the payload as JSON, or the prepared lines."""
     stream = sys.stdout
     if getattr(args, "json", False) or lines is None:
         print(json.dumps(data, indent=2, ensure_ascii=False), file=stream)
@@ -120,6 +128,7 @@ def emit(args, data, lines=None):
 
 
 def summary_lines(data):
+    """The human rendering of a page summary."""
     return [
         f"{data['title']} — {data['url']}",
         f"{data['elements']} elements" + (f", {data['omitted']} omitted" if data.get("omitted") else ""),
@@ -127,6 +136,7 @@ def summary_lines(data):
 
 
 def result_lines(result):
+    """The human rendering of a run result."""
     lines = [f"{result['status']}: {result['reason']}", f"{result['url']}"]
     for step in result["steps"]:
         text = f" {step['text']!r}" if step.get("text") else ""
@@ -143,11 +153,13 @@ def result_lines(result):
 
 
 def agent_for(session):
+    """An agent and the decision client it owns, for one command."""
     client = DecisionClient(load())
     return Agent(session=session, config=load(), client=client), client
 
 
 def cmd_run(args):
+    """Pursue a goal from a URL in a session of its own."""
     session = Session(load())
     agent, client = agent_for(session)
     try:
@@ -159,6 +171,7 @@ def cmd_run(args):
 
 
 def cmd_open(args):
+    """Open a URL and remember the session for later commands."""
     session = Session(load())
     page = session.open(args.url)
     write_state(session, page["url"])
@@ -167,6 +180,7 @@ def cmd_open(args):
 
 
 def cmd_observe(args):
+    """List the controls and text of the open page."""
     session = attach()
     page = session.observe()
     space = actions.build(page, args.max_elements or session.max_elements)
@@ -181,11 +195,13 @@ def cmd_observe(args):
 
 
 def cmd_extract(args):
+    """Pull structured data out of the open page."""
     data = extract(attach(), args.mode)
     return emit(args, data, [json.dumps(data, indent=2, ensure_ascii=False)])
 
 
 def cmd_act(args):
+    """Take one decided step on the open page."""
     session = attach()
     agent, client = agent_for(session)
     try:
@@ -196,7 +212,9 @@ def cmd_act(args):
 
 
 def step_command(call):
+    """Wrap a direct browser call as a CLI handler."""
     def handler(args):
+        """Run the wrapped browser call and print the page it left behind."""
         session = attach()
         agent = Agent(session=session, config=load(), decide=no_decision)
         page = call(agent, args)
@@ -207,10 +225,12 @@ def step_command(call):
 
 
 def no_decision(_state, _questions):
+    """Guard for commands that must never reach the decision model."""
     raise RuntimeError("This command never calls the decision model")
 
 
 def cmd_screenshot(args):
+    """Save a JPEG of the open page's viewport."""
     session = attach()
     path = Path(args.path) if args.path else SCREENSHOT_DEFAULT
     path.write_bytes(session.screenshot())
@@ -218,6 +238,7 @@ def cmd_screenshot(args):
 
 
 def cmd_close(args):
+    """Close the session `open` left behind."""
     session = attach()
     session.close()
     clear_state()
@@ -241,7 +262,7 @@ def install_argv(agent, scope, config, which=None):
         flag = "--env"
     if config.api_key and config.key_variable and config.key_variable != "config.json":
         argv += [flag, f"{config.key_variable}={config.api_key}"]
-    return argv + ["--", *command]
+    return [*argv, "--", *command]
 
 
 def install_display(argv, key_variable):
@@ -254,6 +275,7 @@ def install_display(argv, key_variable):
 
 
 def cmd_install(args):
+    """Register jev-ra as an MCP server with a coding agent."""
     config = load()
     argv = install_argv(args.agent, args.scope, config)
     display = install_display(argv, config.key_variable)
@@ -286,6 +308,7 @@ SOURCE_NOTES = {
 
 
 def chrome_check(config):
+    """Whether a Chrome can be reached, and which one it was."""
     try:
         session = Session(config)
     except Exception as error:
@@ -302,6 +325,7 @@ def chrome_check(config):
 
 
 def cmd_doctor(args):
+    """Check the key, the route, Chrome and one live decision."""
     config = load()
     report = {
         "key": bool(config.api_key),
@@ -356,6 +380,7 @@ RATIO_COLUMNS = ("task", "jev_ra_ms", "flash_mode_ms", "ratio", "success_rate", 
 
 
 def summary_line(row):
+    """The human rendering of one benchmark summary row."""
     verified = f"{row['successes']}/{row['runs']} verified"
     if not row["median_ms"]:
         return f"  {row['task']}: {verified}; {', '.join(row['failures']) or 'no successful run'}"
@@ -366,6 +391,7 @@ def summary_line(row):
 
 
 def ratio_line(row):
+    """The human rendering of one ratio row."""
     reference = f"{row['flash_mode_ms']} ms" if row["flash_mode_ms"] else "no baseline row"
     ratio = f"{row['ratio']}x" if row["ratio"] else "n/a"
     ours = f"{row['jev_ra_ms']} ms" if row["jev_ra_ms"] else "never verified"
@@ -374,6 +400,7 @@ def ratio_line(row):
 
 
 def cmd_search(args):
+    """Search the web and read the best results."""
     from .search import search
 
     config = load()
@@ -400,6 +427,7 @@ def cmd_search(args):
 
 
 def cmd_bench(args):
+    """Time the offline fixtures, and the live tasks with --live."""
     from .bench import (
         ACCEPTANCE_RATIO,
         flash_baseline,
@@ -441,6 +469,7 @@ def cmd_bench(args):
 
 
 def cmd_mcp(_args):
+    """Run the MCP stdio server."""
     from .mcp_server import main as serve
 
     serve()
@@ -448,11 +477,13 @@ def cmd_mcp(_args):
 
 
 def add_json(parser):
+    """Give a subcommand a --json flag."""
     parser.add_argument("--json", action="store_true", help="print the raw JSON payload")
     return parser
 
 
 def build_parser():
+    """The full command line parser."""
     parser = argparse.ArgumentParser(prog="jev-ra", description="A fast browser-use layer for CLI coding agents.")
     parser.add_argument("--version", action="version", version=f"jev-ra {__version__}")
     sub = parser.add_subparsers(dest="command", metavar="COMMAND")
@@ -538,6 +569,7 @@ def build_parser():
 
 
 def main(argv=None):
+    """Run one command and return its exit code."""
     parser = build_parser()
     args = parser.parse_args(argv)
     if not getattr(args, "handler", None):

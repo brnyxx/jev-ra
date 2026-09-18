@@ -10,20 +10,25 @@ STATE_KEYS = ("checked", "selected", "expanded")
 
 @dataclass(frozen=True)
 class ActionSpace:
+    """The operations, targets and controls one observed page offers."""
+
     elements: list
     targets: dict
     controls: dict
     omitted: int = 0
 
     def offered(self):
+        """Every operation name a decision may choose from."""
         return list(self.targets) + list(self.controls)
 
     def action(self, operation, target=None):
+        """The action behind an operation, or an operation and target pair."""
         if operation in self.controls:
             return self.controls[operation]
         return self.targets[operation][target]
 
     def describe(self, target, action):
+        """Render one target as `[ref] role label · value`."""
         parts = [f"[{target}]", action.get("role") or action["kind"], action.get("label", "")]
         value = action.get("current_value") if action["kind"] == "select" else action.get("value")
         line = " ".join(part for part in parts if part)
@@ -31,6 +36,7 @@ class ActionSpace:
 
 
 def build(page, max_elements=MAX_ELEMENTS):
+    """Group an observed page into per-operation targets and page controls."""
     elements, seen = [], set()
     for element in page.get("elements", []):
         node = element.get("node")

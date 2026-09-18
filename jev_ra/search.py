@@ -37,12 +37,14 @@ ANSWERS_GOAL_CRITERIA = {
 
 
 def engine_url(query, engine=None, env=None):
+    """The search URL for a query, from the configured template."""
     env = os.environ if env is None else env
     template = engine or env.get("JEV_RA_SEARCH_URL") or DUCKDUCKGO
     return template.replace("{query}", quote_plus(query))
 
 
 def block_resources(session, urls=BLOCKED_URLS):
+    """Stop this tab fetching anything that is not text."""
     session.call("Network.enable")
     session.call("Network.setBlockedURLs", urls=list(urls))
     return list(urls)
@@ -78,10 +80,12 @@ def rank_results(space, decide, goal, page, limit):
 
 
 def href_for(session, action):
+    """The href behind an observed link, read from the node itself."""
     return session.evaluate(f"window.__jevRa?.nodes.get({action['node']})?.href ?? null")
 
 
 def read_page(session_factory, decide, goal, url):
+    """Open one result in its own tab, extract it, and score it against the goal."""
     session = session_factory()
     try:
         blocked = block_resources(session)
@@ -114,6 +118,7 @@ def read_page(session_factory, decide, goal, url):
 
 def search(query, goal=None, max_pages=MAX_PAGES, config=None, decide=None, session=None, session_factory=None,
            engine=None):
+    """Search, read the best results in parallel tabs, and rank them by the goal."""
     config = config or load()
     goal = goal or query
     started = time.perf_counter()
@@ -153,7 +158,7 @@ def search(query, goal=None, max_pages=MAX_PAGES, config=None, decide=None, sess
         "engine": engine_url(query, engine),
         "results": pages,
         "decisions": (1 if reply else 0) + len(pages),
-        "cost": round((reply.cost if reply else 0.0) + sum(item.get("cost", 0.0) for item in pages), 6),
+        "cost": round((reply.cost if reply else 0.0) + sum(float(item.get("cost") or 0.0) for item in pages), 6),
         "elapsed_ms": round((time.perf_counter() - started) * 1000),
         "blocked": list(BLOCKED_URLS),
     }

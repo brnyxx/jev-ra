@@ -2,6 +2,7 @@
 
 import os
 import re
+import tomllib
 from pathlib import Path
 
 import pytest
@@ -85,6 +86,30 @@ def test_ci_runs_lint_and_the_browser_tests_without_skipping_them():
     assert "uv run pytest -q -m browser" in text
     assert 'JEV_RA_REQUIRE_BROWSER: "1"' in text
     assert "not browser" not in text
+
+
+def test_ci_also_type_checks():
+    assert "uv run ty check" in WORKFLOW.read_text()
+
+
+def test_the_gates_are_configured_in_pyproject():
+    data = tomllib.loads((WORKFLOWS.parents[1] / "pyproject.toml").read_text())
+    lint = data["tool"]["ruff"]["lint"]
+    assert set(lint["select"]) == {"E", "F", "I", "B", "UP", "SIM", "RUF", "D"}
+    assert lint["pydocstyle"]["convention"] == "google"
+    assert "--cov-fail-under=85" in data["tool"]["pytest"]["ini_options"]["addopts"]
+    assert data["tool"]["ty"]["src"]["include"] == ["jev_ra"]
+    assert any(name.startswith("ty") for name in data["dependency-groups"]["dev"])
+    assert any(name.startswith("pytest-cov") for name in data["dependency-groups"]["dev"])
+
+
+def test_pre_commit_runs_the_same_gates():
+    text = (WORKFLOWS.parents[1] / ".pre-commit-config.yaml").read_text()
+    blocks(text)
+    assert "ruff-pre-commit" in text
+    assert "ty-pre-commit" in text
+    assert "uv run pytest -q" in text
+    assert "detect-private-key" in text
 
 
 def test_require_browser_turns_a_missing_chrome_into_a_failure(monkeypatch):

@@ -88,6 +88,7 @@ class StalePage(ValueError):
 
 
 class Session:
+    """One CDP target: observe it, act on it, and never act on a stale reading of it."""
     def __init__(self, config=None, target_id=None, max_elements=MAX_ELEMENTS):
         self.config = config or load()
         self.max_elements = max_elements
@@ -113,30 +114,37 @@ class Session:
         self.blocked = self.block_resources() if self.config.block_resources else []
 
     def block_resources(self, urls=BLOCKED_URLS):
+        """Stop this target fetching the given URL patterns."""
         self.call("Network.enable")
         self.call("Network.setBlockedURLs", urls=list(urls))
         return list(urls)
 
     def cache_get(self, key):
+        """A cached payload for this key, or None."""
         return self.cache.get(key)
 
     def cache_put(self, key, value):
+        """Cache a payload for this key and return it."""
         self.cache[key] = value
         return value
 
     def invalidate(self):
+        """Drop everything cached for the current page."""
         self.cache.clear()
 
     def call(self, method, **params):
+        """One CDP call on this target's session."""
         return cdp(method, session_id=self.session_id, **params)
 
     def evaluate(self, expression, await_promise=False):
+        """Evaluate an expression in the page, refusing a document that moved under it."""
         response = self.call("Runtime.evaluate", expression=expression, returnByValue=True, awaitPromise=await_promise)
         if response.get("exceptionDetails"):
             raise StalePage("Document changed during evaluation")
         return response.get("result", {}).get("value")
 
     def open(self, url):
+        """Navigate, wait for the load to finish, and observe."""
         self.after_input = None
         self.invalidate()
         self.call("Page.navigate", url=url)
@@ -151,6 +159,7 @@ class Session:
         return self.observe()
 
     def settle(self):
+        """Wait out the effect of the last input before observing again."""
         action, self.after_input = self.after_input, None
         if action is None:
             return
@@ -166,6 +175,7 @@ class Session:
             logger.debug("Post-input settle was interrupted")
 
     def observe(self):
+        """One atomic reading of the page: text, elements, actions, guards and marker."""
         self.settle()
         for attempt in range(SETTLE_ATTEMPTS):
             page = self.evaluate(snapshot_expression(self.max_elements))
@@ -176,6 +186,7 @@ class Session:
         raise StalePage("Page did not settle")
 
     def fresh(self, page, action=None):
+        """Whether the observed page still describes what is about to be acted on."""
         if action is not None and action.get("kind") in {"click", "select"}:
             node = action["node"]
             current = self.evaluate(guard_expression(node))
@@ -183,6 +194,7 @@ class Session:
         return self.evaluate(marker_expression(self.max_elements)) == page["marker"]
 
     def act(self, action, page, text=None):
+        """Execute one observed action, re-checking freshness immediately before input."""
         if not self.fresh(page, action):
             raise StalePage("Page changed since this decision. Observe again.")
         kind = action["kind"]
@@ -205,6 +217,7 @@ class Session:
         return {"executed": action["id"], "kind": kind, "text": text}
 
     def input(self, action, text):
+        """Resolve the target's live geometry, hit-test it, and dispatch trusted input."""
         if type(action.get("node")) is not int:
             raise ValueError("Invalid observed node")
         if action["kind"] == "fill" and not isinstance(text, str):
@@ -230,6 +243,7 @@ class Session:
             self.call("Input.insertText", text=text)
 
     def select_all(self):
+        """Select the focused field's contents so the next insert replaces them."""
         modifiers = 4 if sys.platform == "darwin" else 2
         self.call(
             "Input.dispatchKeyEvent",
@@ -242,6 +256,7 @@ class Session:
         self.call("Input.dispatchKeyEvent", type="keyUp", key="a", code="KeyA", modifiers=modifiers)
 
     def press(self, key):
+        """Press one of the supported keys."""
         if key not in KEYS:
             raise ValueError(f"press supports {', '.join(KEYS)}")
         code, name, text = KEYS[key]
@@ -261,9 +276,11 @@ class Session:
         return {"executed": f"press:{key}", "kind": "press"}
 
     def screenshot(self):
+        """The current viewport as JPEG bytes."""
         return base64.b64decode(self.call("Page.captureScreenshot", format="jpeg", quality=72)["data"])
 
     def close(self):
+        """Close the target this session owns."""
         if self.target_id:
             cdp("Target.closeTarget", targetId=self.target_id)
             self.target_id = None

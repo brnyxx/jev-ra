@@ -36,6 +36,7 @@ class JevInvalidResponse(JevError):
 
 @dataclass(frozen=True)
 class Reply:
+    """One validated answer set, with what it cost and how long it took."""
     answers: dict
     model: str = ""
     usage: dict = field(default_factory=dict)
@@ -43,15 +44,18 @@ class Reply:
 
     @property
     def cost(self):
+        """What this decision cost, in dollars, when the provider reports it."""
         value = self.usage.get("cost")
         return float(value) if isinstance(value, (int, float)) else 0.0
 
 
 def as_text(value):
+    """A value rendered as the string both endpoints accept."""
     return value if isinstance(value, str) else json.dumps(value, ensure_ascii=False)
 
 
 def as_text_questions(questions):
+    """Every instruction and criterion rendered as a string."""
     return {
         name: dict(
             question,
@@ -63,10 +67,12 @@ def as_text_questions(questions):
 
 
 def finite_unit(value):
+    """Whether a value is a real number in [0, 1]."""
     return isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value) and 0 <= value <= 1
 
 
 def read_choice(answer, criteria, name):
+    """Validate one choice answer against the options it was offered."""
     probabilities = answer.get("probabilities")
     if not isinstance(probabilities, dict) or set(probabilities) != set(criteria):
         raise JevInvalidResponse(f"{name}: probabilities do not cover the offered options")
@@ -85,12 +91,14 @@ def read_choice(answer, criteria, name):
 
 
 def read_noul(answer, name):
+    """Validate one noul answer."""
     if not finite_unit(answer.get("noul")):
         raise JevInvalidResponse(f"{name}: noul is not a number in [0, 1]")
     return answer
 
 
 def read_answers(payload, questions):
+    """Validate every asked question's answer, or refuse the whole reply."""
     answers = payload.get("answers")
     if not isinstance(answers, dict):
         raise JevInvalidResponse("Response carries no answers")
@@ -110,6 +118,7 @@ def read_answers(payload, questions):
 
 
 class DecisionClient:
+    """One HTTP connection to the decisions endpoint, reused across a run."""
     def __init__(self, config, transport=None, retry_delay_s=0.5):
         self.config = config
         self.retry_delay_s = retry_delay_s
@@ -118,6 +127,7 @@ class DecisionClient:
         self._client = httpx.Client(http2=True, timeout=TIMEOUT_S, transport=transport)
 
     def build(self, state, questions):
+        """The request body for one step, shaped for the configured route."""
         body = {"model": self.config.model, "state": state, "questions": questions}
         if is_openrouter(self.config.endpoint):
             body["questions"] = as_text_questions(questions)
@@ -125,6 +135,7 @@ class DecisionClient:
         return body
 
     def decide(self, state, questions):
+        """Ask one question set and return the validated answers."""
         if not self.config.api_key:
             raise JevAuthError("No Jev API key. Set JEV_RA_API_KEY, TYPESAFE_API_KEY or OPENROUTER_API_KEY.")
         started = time.perf_counter()
@@ -139,6 +150,7 @@ class DecisionClient:
         )
 
     def post(self, body):
+        """POST the body, retrying once on a transient status."""
         headers = {"Authorization": f"Bearer {self.config.api_key}"}
         for attempt in range(2):
             try:
@@ -164,4 +176,5 @@ class DecisionClient:
         raise JevUnavailable("Jev is unavailable")
 
     def close(self):
+        """Close the underlying HTTP connection."""
         self._client.close()

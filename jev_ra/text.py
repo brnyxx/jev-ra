@@ -42,6 +42,7 @@ class TextHelperError(NeedsValue):
 
 @dataclass(frozen=True)
 class Value:
+    """One resolved field value and where it came from."""
     text: str
     source: str
     name: str | None = None
@@ -62,6 +63,7 @@ class ValueBinder:
         self._client = None
 
     def available(self):
+        """The supplied values that have not reached the page yet."""
         return {name: value for name, value in self.values.items() if name not in self.used}
 
     def bind(self, name, action, goal, page=None, history=()):
@@ -79,15 +81,18 @@ class ValueBinder:
         return value
 
     def spend(self, value):
+        """Mark a value as used, once the action carrying it has landed."""
         if value.source == "values" and value.name not in self.used:
             self.used.append(value.name)
 
     def client(self):
+        """The HTTP client for the optional helper, created on first use."""
         if self._client is None:
             self._client = httpx.Client(http2=True, timeout=TIMEOUT_S, transport=self._transport)
         return self._client
 
     def context(self, action, goal, page, history):
+        """What the helper is told about the field, the goal and the page."""
         page = page or {}
         return {
             "goal": goal,
@@ -97,6 +102,7 @@ class ValueBinder:
         }
 
     def ask_helper(self, helper, action, goal, page, history):
+        """Call the configured helper and enforce its JSON contract."""
         body = {
             "model": helper.model,
             "max_tokens": 1024,
@@ -132,6 +138,7 @@ class ValueBinder:
         )
 
     def close(self):
+        """Close the helper's HTTP connection."""
         if self._client is not None:
             self._client.close()
             self._client = None
