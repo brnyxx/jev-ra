@@ -18,6 +18,18 @@ FORM_ELEMENTS = [
 ]
 
 
+SCROLL_DOWN = {"id": "scroll_down", "kind": "scroll", "label": "Scroll down", "delta": 560}
+
+
+def scrollable(count=60):
+    """Pages that always have more below the fold, the way a long listing does."""
+    pages = []
+    for index in range(count):
+        one = page(index)
+        pages.append({**one, "actions": [*FORM_ACTIONS, SCROLL_DOWN]})
+    return pages
+
+
 def page(marker, url="http://127.0.0.1/form.html", title="Booking form", text="Booking form"):
     return {
         "url": url,
@@ -123,18 +135,35 @@ def test_step_records_carry_the_documented_fields():
     assert step["verified"]["text"] is False
 
 
-def test_done_without_goal_achieved_takes_one_more_step_then_escalates():
+def test_done_without_goal_achieved_escalates_when_there_is_nowhere_left_to_look():
     weak_done = {"operation": answer("DONE"), "goal_achieved": {"noul": 0.2}}
     agent = agent_with(decider([weak_done]))
     result = agent.run("find flights")
     assert (result.status, result.reason) == ("escalate", "unverified_done")
-    assert result.decisions == 2
+    assert result.decisions == 1
     assert agent.session.acted == []
+
+
+def test_a_weak_done_scrolls_to_look_for_the_proof_before_giving_up():
+    weak_done = {"operation": answer("DONE"), "goal_achieved": {"noul": 0.2}}
+    agent = agent_with(decider([weak_done]), session=FakeSession(scrollable()))
+    result = agent.run("find flights")
+    assert (result.status, result.reason) == ("escalate", "unverified_done")
+    assert [action for action, _kind, _text in agent.session.acted] == ["scroll_down", "scroll_down"]
+    assert [step["operation"] for step in result.steps] == ["SCROLL_DOWN", "SCROLL_DOWN"]
+
+
+def test_the_proof_found_by_looking_finishes_the_run():
+    weak_done = {"operation": answer("DONE"), "goal_achieved": {"noul": 0.2}}
+    agent = agent_with(decider([weak_done, DONE]), session=FakeSession(scrollable()))
+    result = agent.run("find flights")
+    assert (result.status, result.reason) == ("done", "goal_achieved")
+    assert [action for action, _kind, _text in agent.session.acted] == ["scroll_down"]
 
 
 def test_a_weak_done_followed_by_a_real_one_still_finishes():
     weak_done = {"operation": answer("DONE"), "goal_achieved": {"noul": 0.2}}
-    result = agent_with(decider([weak_done, CLICK_SUBMIT, DONE])).run("find flights")
+    result = agent_with(decider([weak_done, CLICK_SUBMIT, DONE]), session=FakeSession(scrollable())).run("find flights")
     assert result.status == "done"
 
 

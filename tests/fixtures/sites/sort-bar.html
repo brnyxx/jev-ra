@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>Sorted listing</title>
+<style>
+  body { font: 14px/1.5 system-ui; margin: 0; padding: 16px; }
+  nav ul, .sort ul { list-style: none; display: flex; gap: 12px; padding: 0; }
+  .sort li.on a { font-weight: 700; text-decoration: underline; }
+  [aria-current] { font-weight: 700; }
+  .tabs button[aria-selected="true"] { background: #111; color: #fff; }
+  .products { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 16px; }
+  .products div { border: 1px solid #ccc; padding: 24px 8px; }
+</style>
+</head>
+<body>
+<!-- Three ways the real web marks "this is the one you are on", none of them a form control:
+     a state class on the wrapping list item, aria-current on the link itself, and
+     aria-selected on a tab. All three have to reach the decision. -->
+<nav aria-label="Sections">
+  <ul>
+    <li><a href="?page=1">1</a></li>
+    <li><a href="?page=2" aria-current="page">2</a></li>
+    <li><a href="?page=3">3</a></li>
+  </ul>
+</nav>
+
+<div class="sort">
+  <ul>
+    <li><a href="?prdSort=01">인기순</a></li>
+    <li class="on"><a href="?prdSort=02">신상품순</a></li>
+    <li><a href="?prdSort=04">낮은가격순</a></li>
+  </ul>
+</div>
+
+<div class="tabs">
+  <button type="button" role="tab" aria-selected="false">Reviews</button>
+  <button type="button" role="tab" aria-selected="true">Details</button>
+</div>
+
+<p class="deactivated">Inactive link styles live here; the word active appears in prose and must not count.</p>
+
+<div class="products">
+  <div>Serum A</div><div>Serum B</div><div>Serum C</div>
+</div>
+</body>
+</html>

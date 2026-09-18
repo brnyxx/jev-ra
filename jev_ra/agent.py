@@ -2,7 +2,7 @@
 
 import logging
 import time
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass, field, replace
 
 from .browser import actions
 from .browser.session import Session
@@ -20,6 +20,10 @@ ESCALATION_TEXT_CHARS = 3000
 NO_PROGRESS_STREAK = 3
 STALE_RETRIES = 3
 PREV_OK_THRESHOLD = 0.6
+# An unconfident DONE re-asked about the same pixels can only repeat itself. The proof the model
+# is missing is usually just below the fold - a sort bar under a filter list, a confirmation under
+# a form - so look there first, for at most this many viewports, before handing control back.
+LOOKS = 2
 
 
 @dataclass
@@ -74,7 +78,7 @@ class Agent:
         binder = ValueBinder(values, self.config)
         run = _Run(self, goal, binder, started)
         page = self.session.open(url) if url else self.session.observe()
-        exclude, stale_retries, unverified, reasked = set(), 0, False, False
+        exclude, stale_retries, looks, reasked = set(), 0, 0, False
         while True:
             over = run.over_budget(limit, budgets, len(run.steps))
             if over:
@@ -112,11 +116,18 @@ class Agent:
             if decision.operation == "DONE":
                 if (decision.goal_achieved or 0.0) >= GOAL_ACHIEVED_THRESHOLD:
                     return run.finish("done", "goal_achieved", page, decision)
-                if unverified:
+                look = space.controls.get("SCROLL_DOWN") if looks < LOOKS else None
+                if look is None:
                     return run.escalate("unverified_done", page, decision)
-                unverified = True
+                looks += 1
+                logger.info("DONE at %.2f; looking below the fold (%s/%s)", decision.goal_achieved or 0.0,
+                            looks, LOOKS)
+                self.session.act(look, page, timer=timer)
+                before, page = page, self.session.observe(timer)
+                run.record(replace(decision, operation="SCROLL_DOWN", target=look["id"], action=look),
+                           before, page, None, timer)
                 continue
-            unverified = False
+            looks = 0
 
             text, value = None, None
             if decision.operation == "TYPE_TEXT":

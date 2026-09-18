@@ -93,6 +93,21 @@
       e.getAttribute('aria-expanded'),e.getAttribute('aria-checked'),e.getAttribute('aria-selected'),
       e.getAttribute('href'),scope?.innerText?.slice(0,6000)||''];
   };
+  // Which item in a group you are on. aria-current is the standard answer; most of the web
+  // instead puts a state class on the item or on the list item wrapping it, so a wrapper is
+  // read only while it holds nothing but this element's own text.
+  const STATE=/(?:^|[\s_-])(?:on|active|selected|current)(?:$|[\s_-])/i;
+  const marked=e=>STATE.test(typeof e.className==='string'?e.className:(e.className?.baseVal||''));
+  const current=e=>{
+    const aria=e.getAttribute('aria-current');
+    if (aria!==null) return aria!=='false';
+    const own=(e.innerText||'').trim();
+    for (let node=e, hops=0; node && hops<3; node=node.parentElement, hops++) {
+      if (node!==e && (node.innerText||'').trim()!==own) break;
+      if (marked(node)) return true;
+    }
+    return false;
+  };
   const observed=[];
   for (const root of cache.roots()) {
     for (const e of root.querySelectorAll(selector)) {
@@ -110,6 +125,7 @@
         const value=e.getAttribute('aria-'+key);
         if (value!==null) element[key]=value;
       }
+      if (current(e)) element.current='true';
       if (['checkbox','radio'].includes(e.type)) element.checked=String(e.checked);
       observed.push({element:e, view:element});
     }
