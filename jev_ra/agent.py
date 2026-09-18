@@ -107,7 +107,7 @@ class Agent:
         if page is None:
             return run.escalate("stale", BLANK_PAGE, detail={"error": "The page never settled to be read."})
         exclude, stale_retries, looks, reasked = set(), 0, 0, False
-        best, waited = 0.0, False
+        best, waited, reasked_value = 0.0, False, False
         while True:
             over = run.over_budget(limit, budgets, len(run.steps))
             if over:
@@ -203,6 +203,15 @@ class Agent:
                 try:
                     value = binder.bind(decision.value_name, decision.action, goal, page, run.history)
                 except NeedsValue as error:
+                    if binder.available() and not reasked_value:
+                        # The host has values to spend and the model still found no field for
+                        # them: the panel the field lives in may have mounted a beat after the
+                        # page was read. Read it again and ask once more before handing the
+                        # missing value back to the host.
+                        reasked_value = True
+                        logger.info("No field for the supplied values; reading the page again")
+                        page = self.read(self.session.observe) or page
+                        continue
                     return run.escalate("needs_value", page, decision, detail=error.detail)
                 text = value.text
             try:
@@ -215,6 +224,7 @@ class Agent:
                 page = self.session.observe()
                 continue
             stale_retries = 0
+            reasked_value = False
             if value is not None:
                 # Only now is the value really on the page; a stale retry must not burn it.
                 binder.spend(value)

@@ -469,6 +469,20 @@ def test_type_text_without_a_fitting_value_escalates_as_needs_value():
     assert agent.session.acted == []
 
 
+def test_a_supplied_value_with_no_field_is_asked_again_on_a_fresh_reading():
+    no_field = {
+        "operation": answer("TYPE_TEXT"),
+        "type_text_target": answer("e1"),
+        "value_for_field": answer("none"),
+        "goal_achieved": {"noul": 0.1},
+    }
+    agent = agent_with(decider([no_field, DONE]))
+    result = agent.run("search for a city", values={"city": "London"})
+    assert (result.status, result.reason) == ("done", "goal_achieved")
+    assert result.decisions == 2
+    assert agent.session.acted == []
+
+
 def test_an_unofferable_target_triggers_one_corrective_re_ask():
     script = [
         {"operation": answer("CLICK"), "click_target": answer("e2"), "goal_achieved": {"noul": 0.1}},
