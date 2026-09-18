@@ -70,3 +70,15 @@ def cdp_target(chrome):
         yield call
     finally:
         cdp("Target.closeTarget", targetId=target)
+
+
+@pytest.fixture
+def session(chrome):
+    """A jev-ra Session on its own target, closed after the test."""
+    from jev_ra.browser.session import Session
+
+    opened = Session()
+    try:
+        yield opened
+    finally:
+        opened.close()
