@@ -20,7 +20,7 @@ classifiers = [
     "Operating System :: OS Independent",
     "Typing :: Typed",
 ]
-dependencies = ["browser-harness[mcp]>=0.1.13,<0.2", "httpx[http2]>=0.28,<1"]
+dependencies = ["browser-harness[mcp]>=0.1.13,<0.2", "httpx[http2]>=0.28.1,<1"]
 
 [project.scripts]
 jev-ra = "jev_ra.cli:main"
@@ -46,7 +46,7 @@ packages = ["jev_ra"]
 
 [dependency-groups]
 # pillow renders the side-by-side benchmark GIFs in scripts/; it is not a runtime dependency.
-dev = ["pytest>=8.4,<9", "pytest-cov>=6,<8", "ruff>=0.14,<1", "ty>=0.0.82,<0.1", "pillow>=11,<14"]
+dev = ["pytest>=9.1.1,<10", "pytest-cov>=7.1.0,<8", "ruff>=0.16.7,<1", "ty>=0.0.82,<0.1", "pillow>=12.3.0,<14"]
 
 [tool.ruff]
 line-length = 120
