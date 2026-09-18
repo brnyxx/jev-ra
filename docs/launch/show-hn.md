@@ -12,7 +12,7 @@ Numbers, same Chrome, same key, medians of 5 runs each (2026-09-18), against bro
 - Wikipedia lookup: 2.7 s vs 23.1 s (8.5x)
 - Google Flights one-way search, verified against the results page: 8.9 s vs 66.4 s (7.5x)
 - E-commerce sort: 3.8 s vs 15.1 s (4.0x)
-Our median against browser-use's fastest single run is still 5.8x / 5.6x / 4.6x, so the title says 3-5x. Raw rows and the method are in docs/BENCHMARKS.md, and a 40-task real-site corpus is published there too: 81% pass on the first measurement, the rest are escalations with a reason.
+Our median against browser-use's fastest single run is still 5.8x / 5.6x / 4.6x, so the title says 3-5x. Raw rows and the method are in docs/BENCHMARKS.md, and a 40-task real-site corpus is published there too: 85% pass on the second measurement, the rest are escalations with a reason.
 
 It is an MCP server + CLI. `uvx jev-ra install claude` or `npx -y jev-ra install codex`. Works with an OpenRouter key; no TypeSafe account needed.
 

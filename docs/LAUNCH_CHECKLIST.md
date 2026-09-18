@@ -7,7 +7,7 @@ Everything here must be true before the repository goes public.
 - [ ] `npx -y jev-ra install codex` same (after the npm release)
 - [x] `jev-ra doctor` explains every failure it can detect in one line with a next step
 - [x] `jev-ra bench --live --runs 5`: all tasks PASS ≥ 3x vs browser-use flash_mode, zero text-model calls (docs/BENCHMARKS.md, 2026-09-18)
-- [x] corpus measured and published: 97/120 = 81 % on 2026-09-18 (docs/BENCHMARKS.md). ≥ 90 % is the 0.2 bar, not a 0.1.0 gate
+- [x] corpus measured and published: 102/120 = 85 % on 2026-09-18 (main f581761) (docs/BENCHMARKS.md). ≥ 90 % is the 0.2 bar, not a 0.1.0 gate
 
 ## Repository
 - [x] README: hero, three numbers with date and method, GIF, 3-line install per agent, how it works, limits, FAQ

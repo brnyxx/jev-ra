@@ -8,4 +8,4 @@
 
 4/ Install: `uvx jev-ra install claude` or `npx -y jev-ra install codex`. OpenRouter key works; no TypeSafe account needed.
 
-5/ Limits: cross-origin iframes, canvas, uploads and captchas return an escalation with a reason. A 40-task real-site corpus passes 81% on the first measurement; the rest is published too. MIT, uses browser-use's jev-ultrafast snapshot approach with credit. github.com/brnyxx/jev-ra
+5/ Limits: cross-origin iframes, canvas, uploads and captchas return an escalation with a reason. A 40-task real-site corpus passes 85 % on the second measurement; the rest is published too. MIT, uses browser-use's jev-ultrafast snapshot approach with credit. github.com/brnyxx/jev-ra

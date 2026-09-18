@@ -42,7 +42,7 @@
   opened; a supplied value with no field is asked again on a fresh reading.
 
 ### Known gaps
-- The real-site corpus passes 97 of 120 attempts (81%). The 0.2 bar is 90%. The failures are stuck
-  loops on booking sites, portals that ban the machine after a day of runs, and login walls that read
-  as `blocked` instead of `needs_value` once in a while. `docs/BENCHMARKS.md` lists every row.
+- The real-site corpus passes 102 of 120 attempts (85%). The 0.2 bar is 90%. The failures are stuck
+  loops on two booking sites, three sites that serve a wall to this machine after a day of runs, and
+  one check stricter than its goal. `docs/BENCHMARKS.md` lists every row.
 - The npm launcher runs only after 0.1.0 is on PyPI. Windows is untested.

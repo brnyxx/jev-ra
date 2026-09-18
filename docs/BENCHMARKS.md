@@ -117,32 +117,39 @@ The levers that do exist, in the order they are worth pulling:
 forms, news, documentation SPAs, government portals, login walls), each with an `expect` and a
 `verify` spec. `uv run jev-ra corpus run --runs 3` runs all of them against the live web.
 
-Measured 2026-09-18 on main `03973c6` (raw rows: `docs/benchmarks/2026-09-18-v0.1/corpus-3runs.jsonl`):
+Measured twice on 2026-09-18. First on main `03973c6` (raw rows:
+`docs/benchmarks/2026-09-18-v0.1/corpus-3runs.jsonl`): 97 / 120 = 81 %. Then on main `f581761`,
+after the fixes below (raw rows: `docs/benchmarks/2026-09-18-v0.1/corpus-3runs-f581761.jsonl`):
 
 | family | pass / 15 |
 |---|---|
+| search_read | 15 |
+| forms | 15 |
 | auth | 15 |
-| forms | 13 |
-| portal | 13 |
-| search_read | 12 |
-| booking | 12 |
-| ecommerce | 11 |
-| news | 11 |
-| docs_spa | 10 |
-| **all** | **97 / 120 = 81 %** |
+| docs_spa | 14 |
+| ecommerce | 12 |
+| news | 12 |
+| portal | 10 |
+| booking | 9 |
+| **all** | **102 / 120 = 85 %** |
 
-What the 23 failing attempts were: `blocked` on a page the run could not progress on (11: an
-Olive Young category menu that opens on hover only, a Google Flights control that does not exist
-before a search, gov.kr and GitHub on 2 of 3 runs each, Vercel docs once); verify specs stricter
-than the page (10: an MDN url compared case-sensitively, `What's New` typeset with a curly
-apostrophe, a BBC article whose visible text was measured only inside the viewport); one Amazon
-search url check; one unverified done on Yonhap. The ten spec cases are fixed by commits after
-`03973c6` (`e12e260`, `8081f5d`, `aea70e3`, `437027e`); the two impossible tasks were replaced in
-`8f0c388` by tasks the same pages can answer. Neither is counted above: the table is the run as it
-happened.
+What the 18 failing attempts on `f581761` were: `blocked` on a page the run could not progress
+on (9: Coupang, Reuters and gov.kr on all 3 runs each; gov.kr answers every request from this
+machine with a device ban after a day of corpus runs, Reuters and Coupang serve a wall at open);
+`stuck_loop` on two booking sites (6: the Google Flights one-way search and the Trainline home
+search); the Seoul notice check on 2 runs that opened 입찰공고, a 공고 list reachable from 서울소식
+but not the `realmnews` list the check names; one React docs search whose page did not show
+`useEffect`.
+
+Between the two measurements: the first run's verify-spec failures (an MDN url compared
+case-sensitively, `What's New` typeset with a curly apostrophe, a BBC article measured only inside
+the viewport, the Amazon url case) were fixed, two impossible tasks were replaced in `8f0c388` by
+tasks the same pages can answer, and the paint, scroll, wait and press paths were corrected one root
+cause at a time (`af4247a..f581761`). GitHub's secondary rate limit, which blocked
+`github_search_repo` for the lanes that fixed it, had lifted by the second run: 3 / 3.
 
 The 0.1.0 bar is this measurement, published. The 0.2 bar is 90 % on the corpus as it stands
-today, re-measured on a tagged commit.
+today, re-measured on a tagged commit. The two booking loops and the Seoul check are the open items.
 
 ## Cost and latency per call
 
