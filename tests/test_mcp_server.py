@@ -1,5 +1,7 @@
 import asyncio
 import json
+import re
+from pathlib import Path
 
 import pytest
 from mcp import Client
@@ -8,6 +10,8 @@ from jev_ra import config
 from jev_ra.decide import Reply
 from jev_ra.mcp_server import Browser, build_server
 from tests.test_agent import FakeSession, answer
+
+ROOT = Path(__file__).resolve().parents[1]
 
 TOOLS = {
     "browser_open",
@@ -54,16 +58,25 @@ def payload(result):
     return json.loads(result.content[0].text)
 
 
+async def tools_of(server):
+    async with Client(server) as client:
+        return (await client.list_tools()).tools
+
+
 def test_the_tool_list_matches_the_design_table():
     server, _browser, _session = server_with()
+    tools = asyncio.run(tools_of(server))
+    assert {tool.name for tool in tools} == TOOLS
+    assert all(tool.description for tool in tools)
 
-    async def listing():
-        async with Client(server) as client:
-            return await client.list_tools()
 
-    tools = asyncio.run(listing())
-    assert {tool.name for tool in tools.tools} == TOOLS
-    assert all(tool.description for tool in tools.tools)
+def test_readme_lists_every_tool():
+    server, _browser, _session = server_with()
+    registered = {tool.name for tool in asyncio.run(tools_of(server))}
+    text = (ROOT / "README.md").read_text()
+    section = text.split("## MCP tools", 1)[1].split("## CLI", 1)[0]
+    listed = set(re.findall(r"^\| `(browser_\w+)`", section, re.MULTILINE))
+    assert listed == registered
 
 
 def test_browser_open_summarises_the_page():
