@@ -34,7 +34,35 @@ def test_the_server_command_prefers_an_installed_entry_point():
 
 
 def test_the_server_command_falls_back_to_uvx():
+    assert cli.server_command(which=lambda name: "/bin/uvx" if name == "uvx" else None) == [
+        "uvx",
+        "jev-ra",
+        "mcp",
+    ]
+
+
+def test_the_server_command_falls_back_to_npx_when_only_node_is_present():
+    assert cli.server_command(which=lambda name: "/bin/npx" if name == "npx" else None) == [
+        "npx",
+        "-y",
+        "jev-ra",
+        "mcp",
+    ]
+
+
+def test_with_nothing_on_path_the_command_still_names_uvx():
     assert cli.server_command(which=lambda _name: None) == ["uvx", "jev-ra", "mcp"]
+
+
+def test_the_npm_launcher_pins_the_same_version():
+    import json
+
+    package = json.loads((PYPROJECT.parent / "npm" / "package.json").read_text())
+    launcher = (PYPROJECT.parent / "npm" / "bin" / "jev-ra.js").read_text()
+    assert package["version"] == __version__
+    assert f'export const PINNED = "{__version__}"' in launcher
+    assert package["bin"] == {"jev-ra": "bin/jev-ra.js"}
+    assert "dependencies" not in package
 
 
 def test_install_registers_the_uvx_command_when_jev_ra_is_absent():

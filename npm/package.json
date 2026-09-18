@@ -1,0 +1,16 @@
+{
+  "name": "jev-ra",
+  "version": "0.1.0",
+  "description": "A fast browser-use layer for CLI coding agents: MCP server, CLI and Python API. This package is a launcher; it runs the Python tool through uv.",
+  "keywords": ["browser", "mcp", "agent", "cdp", "automation", "claude-code", "codex"],
+  "license": "MIT",
+  "author": "Brian Kim",
+  "homepage": "https://github.com/brnyxx/jev-ra",
+  "repository": { "type": "git", "url": "git+https://github.com/brnyxx/jev-ra.git", "directory": "npm" },
+  "bugs": { "url": "https://github.com/brnyxx/jev-ra/issues" },
+  "bin": { "jev-ra": "bin/jev-ra.js" },
+  "type": "module",
+  "engines": { "node": ">=20" },
+  "files": ["bin/", "README.md"],
+  "scripts": { "test": "node --test test/*.test.mjs" }
+}

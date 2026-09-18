@@ -249,9 +249,15 @@ def cmd_close(args):
 
 
 def server_command(which=None):
-    """How the agent should start the server: the installed entry point, or uvx on demand."""
+    """How the agent should start the server: the installed entry point, else uv, else npm."""
     which = which or shutil.which
-    return ["jev-ra", "mcp"] if which("jev-ra") else ["uvx", "jev-ra", "mcp"]
+    if which("jev-ra"):
+        return ["jev-ra", "mcp"]
+    if which("uvx"):
+        return ["uvx", "jev-ra", "mcp"]
+    if which("npx"):
+        return ["npx", "-y", "jev-ra", "mcp"]
+    return ["uvx", "jev-ra", "mcp"]
 
 
 def install_argv(agent, scope, config, which=None):

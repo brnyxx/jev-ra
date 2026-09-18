@@ -59,8 +59,11 @@ uvx jev-ra run https://en.wikipedia.org/wiki/Main_Page "Open the Godel incomplet
   --value "search_query=Godel incompleteness theorems"
 ```
 
-설치 단계는 없다. `uvx`가 PyPI에서 바로 실행하고, 서버 명령으로 `uvx jev-ra mcp`를 등록한다.
-영구 설치는 `uv tool install jev-ra`. 키는 이미 export해 둔 변수에서 전달되며 출력되지 않는다.
+Python을 따로 갖추기 싫다면 `npx -y jev-ra install claude`도 같은 일을 한다.
+
+어느 쪽이든 설치 단계는 없다. `uvx`가 PyPI에서 바로 실행하고, 서버 명령으로 `uvx jev-ra mcp`를
+등록한다. 영구 설치는 `uv tool install jev-ra`. 키는 이미 export해 둔 변수에서 전달되며 출력되지
+않는다.
 
 ## 동작 방식
 
