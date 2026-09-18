@@ -15,6 +15,7 @@ from ..errors import ChromeError
 logger = logging.getLogger(__name__)
 
 PORT_FILE = "DevToolsActivePort"
+STDERR_LOG = "chrome-stderr.log"
 STARTUP_TIMEOUT_S = 30.0
 PROBE_TIMEOUT_S = 2.0
 BINARIES = {
@@ -43,6 +44,14 @@ FLAGS = (
     "--disable-background-timer-throttling",
     "--disable-backgrounding-occluded-windows",
     "--disable-renderer-backgrounding",
+)
+# Chrome's own sandbox needs unprivileged user namespaces. Root never has them, and a Linux box
+# can take them away from everyone else: Ubuntu's AppArmor does it by default, and a container
+# can set the namespace budget to zero. Where the kernel has already said no, Chrome exits rather
+# than start, so the choice is running without the sandbox or not running at all.
+SANDBOX_BLOCKERS = (
+    ("/proc/sys/kernel/apparmor_restrict_unprivileged_userns", "1"),
+    ("/proc/sys/user/max_user_namespaces", "0"),
 )
 
 
@@ -98,12 +107,57 @@ def alive(url, timeout=PROBE_TIMEOUT_S):
         return False
 
 
-def launch(binary, profile, viewport=(1280, 900)):
+def sandbox_usable(platform=None, uid=None, read=None):
+    """Whether Chrome's own sandbox can start here, or this box has already taken it away."""
+    platform = platform or sys.platform
+    if platform != "linux":
+        return True
+    uid = os.geteuid() if uid is None else uid
+    if uid == 0:
+        return False
+    read = read or (lambda path: Path(path).read_text())
+    for path, blocked in SANDBOX_BLOCKERS:
+        try:
+            if read(path).strip() == blocked:
+                return False
+        except OSError:
+            continue
+    return True
+
+
+def platform_flags(platform=None, env=None, uid=None, read=None):
+    """What this machine needs and a desktop does not: no display, no shared memory, no sandbox."""
+    env = os.environ if env is None else env
+    platform = platform or sys.platform
+    if platform != "linux":
+        return ()
+    # /dev/shm is 64 MB in a container and Chrome will fill it and crash.
+    flags = ["--disable-dev-shm-usage"]
+    if not env.get("DISPLAY") and not env.get("WAYLAND_DISPLAY"):
+        flags += ["--headless=new", "--disable-gpu"]
+    if not sandbox_usable(platform, uid, read):
+        flags.append("--no-sandbox")
+    return tuple(flags)
+
+
+def complaint(profile):
+    """The last thing Chrome said before it gave up, if it said anything."""
+    try:
+        text = (Path(profile) / STDERR_LOG).read_text(errors="replace")
+    except OSError:
+        return ""
+    spoken = [line.strip() for line in text.splitlines() if line.strip()]
+    return spoken[-1] if spoken else ""
+
+
+def launch(binary, profile, viewport=(1280, 900), env=None):
     """Start Chrome on its own profile with an ephemeral debugging port."""
     profile = Path(profile)
     profile.mkdir(parents=True, exist_ok=True)
     # A stale port file from a dead Chrome would otherwise be read as a live one.
     (profile / PORT_FILE).unlink(missing_ok=True)
+    log = profile / STDERR_LOG
+    log.unlink(missing_ok=True)
     argv = [
         str(binary),
         "--remote-debugging-port=0",
@@ -111,10 +165,22 @@ def launch(binary, profile, viewport=(1280, 900)):
         f"--user-data-dir={profile}",
         f"--window-size={viewport[0]},{viewport[1]}",
         *FLAGS,
+        *platform_flags(env=env),
         "about:blank",
     ]
     logger.info("Launching %s on %s", binary, profile)
-    return subprocess.Popen(argv, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
+    # Chrome explains itself on stderr and then exits. Thrown away, every refusal looks the same.
+    handle = log.open("wb")
+    try:
+        return subprocess.Popen(argv, stdout=subprocess.DEVNULL, stderr=handle, start_new_session=True)
+    finally:
+        handle.close()
+
+
+def said(message, profile):
+    """A failure with whatever Chrome itself said about it appended."""
+    spoken = complaint(profile)
+    return f"{message}: {spoken}" if spoken else message
 
 
 def wait_for_port(profile, process=None, timeout=STARTUP_TIMEOUT_S):
@@ -125,9 +191,10 @@ def wait_for_port(profile, process=None, timeout=STARTUP_TIMEOUT_S):
         if port and alive(url_for(port)):
             return port
         if process is not None and process.poll() is not None:
-            raise ChromeError(f"Chrome exited with code {process.returncode} before it opened a debugging port")
+            gone = f"Chrome exited with code {process.returncode} before it opened a debugging port"
+            raise ChromeError(said(gone, profile))
         time.sleep(0.1)
-    raise ChromeError(f"Chrome did not open a debugging port on {profile} within {timeout:g}s")
+    raise ChromeError(said(f"Chrome did not open a debugging port on {profile} within {timeout:g}s", profile))
 
 
 def ensure(env=None, viewport=(1280, 900), allow_launch=True):

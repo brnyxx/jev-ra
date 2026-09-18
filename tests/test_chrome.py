@@ -135,3 +135,77 @@ def test_a_launched_chrome_answers_and_leaves_no_zombie(tmp_path):
         process.wait(timeout=20)
     assert process.poll() is not None
     assert not chrome.alive(chrome.url_for(port), timeout=1.0)
+
+
+ALLOWED = {
+    "/proc/sys/kernel/apparmor_restrict_unprivileged_userns": "0\n",
+    "/proc/sys/user/max_user_namespaces": "63988\n",
+}
+
+
+def test_a_desktop_needs_none_of_the_runner_flags():
+    assert chrome.platform_flags("darwin", env={}) == ()
+    assert chrome.platform_flags("win32", env={}) == ()
+
+
+def test_a_linux_box_with_no_display_runs_headless():
+    flags = chrome.platform_flags("linux", env={}, uid=1000, read=ALLOWED.__getitem__)
+    assert "--headless=new" in flags
+    assert "--disable-gpu" in flags
+    assert "--disable-dev-shm-usage" in flags
+
+
+def test_a_linux_desktop_keeps_its_window():
+    flags = chrome.platform_flags("linux", env={"DISPLAY": ":0"}, uid=1000, read=ALLOWED.__getitem__)
+    assert "--headless=new" not in flags
+    assert "--disable-dev-shm-usage" in flags
+
+
+def test_the_sandbox_is_kept_wherever_the_kernel_still_allows_it():
+    assert chrome.sandbox_usable("darwin", uid=0) is True
+    assert chrome.sandbox_usable("linux", uid=1000, read=ALLOWED.__getitem__) is True
+    flags = chrome.platform_flags("linux", env={}, uid=1000, read=ALLOWED.__getitem__)
+    assert "--no-sandbox" not in flags
+
+
+def test_the_sandbox_is_dropped_only_where_it_cannot_start():
+    assert chrome.sandbox_usable("linux", uid=0) is False
+    restricted = {"/proc/sys/kernel/apparmor_restrict_unprivileged_userns": "1\n"}
+    assert chrome.sandbox_usable("linux", uid=1000, read=lambda p: restricted.get(p, "")) is False
+    starved = {"/proc/sys/user/max_user_namespaces": "0\n"}
+    assert chrome.sandbox_usable("linux", uid=1000, read=lambda p: starved.get(p, "")) is False
+    assert "--no-sandbox" in chrome.platform_flags("linux", env={}, uid=0)
+
+
+def test_an_unreadable_sandbox_setting_is_not_a_blocker():
+    def missing(_path):
+        raise OSError("no such file")
+
+    assert chrome.sandbox_usable("linux", uid=1000, read=missing) is True
+
+
+def test_a_refusal_explains_itself_with_what_chrome_said(tmp_path):
+    profile = tmp_path / "profile"
+    profile.mkdir()
+    (profile / chrome.STDERR_LOG).write_text(
+        "[4445:4445:0918/074220.613337:ERROR:zygote_host_impl_linux.cc:102] "
+        "Running as root without --no-sandbox is not supported.\n"
+    )
+    assert "Running as root without --no-sandbox" in chrome.complaint(profile)
+
+    class Dead:
+        returncode = 1
+
+        def poll(self):
+            return 1
+
+    with pytest.raises(chrome.ChromeError) as caught:
+        chrome.wait_for_port(profile, Dead(), timeout=0.5)
+    assert "exited with code 1" in str(caught.value)
+    assert "Running as root without --no-sandbox" in str(caught.value)
+
+
+def test_a_silent_refusal_still_reads_cleanly(tmp_path):
+    profile = tmp_path / "profile"
+    profile.mkdir()
+    assert chrome.complaint(profile) == ""
