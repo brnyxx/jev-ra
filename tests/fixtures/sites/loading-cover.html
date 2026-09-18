@@ -10,7 +10,8 @@
 </head>
 <body>
 <!-- The controls exist from the first paint, but a loading screen covers every one of them.
-     A snapshot of this page observes nothing at all until the cover lifts. -->
+     A snapshot of this page observes nothing at all until the cover lifts. The footer link
+     below the fold is a control too, and it must not make the covered page look painted. -->
 <div id="cover"><p>잠시만 기다려 주세요</p></div>
 <main>
   <form onsubmit="event.preventDefault(); out.textContent = 'searched ' + q.value;">
@@ -19,6 +20,7 @@
   </form>
   <p id="out"></p>
 </main>
+<p style="margin-top: 1400px"><a href="#footer">Footer link</a></p>
 <script>setTimeout(() => document.getElementById('cover').remove(), 600);</script>
 </body>
 </html>

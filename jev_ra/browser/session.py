@@ -26,10 +26,10 @@ LOAD_TIMEOUT_S = 15.0
 # a call's, and charging it the five second call budget ended a first run with a timeout.
 NAVIGATE_TIMEOUT_S = 45.0
 # A single-page app reports the document complete long before it paints anything, and a page with
-# nothing to act on reads as BLOCKED. Wait until the document holds a control that is reachable
-# where it sits, or that is simply outside the viewport: a listing legitimately opens a screenful
-# above its own sort bar, and waiting for that buys nothing. A control under a loading cover is
-# not reachable anywhere, so a portal drawing its header behind a veil is still waited out.
+# nothing to act on reads as BLOCKED. Wait until a control in the viewport is reachable, or -
+# only when nothing at all is in view - until one waits below it: a listing legitimately opens a
+# screenful above its own sort bar, and waiting for that buys nothing. A portal's loading veil
+# leaves its header controls in view and unreachable, so it is still waited out.
 PAINT_BUDGET_S = 2.0
 PAINTED_JS = """(() => {
   const selector='a[href],button,input,select,textarea,summary,[contenteditable=""],'+
@@ -44,16 +44,20 @@ PAINTED_JS = """(() => {
     }
     return node;
   };
-  return [...document.querySelectorAll(selector)].some(e => {
+  let below=false, shown=0;
+  for (const e of document.querySelectorAll(selector)) {
     const r=e.getBoundingClientRect();
-    if (!r.width || !r.height) return false;
-    if (!e.checkVisibility({checkVisibilityCSS:true})) return false;
-    if (e.closest('[aria-hidden="true"],[inert]')) return false;
-    // Out of view is not covered: the page is ready, the viewport just has not reached it.
-    if (r.bottom<=0 || r.top>=innerHeight || r.right<=0 || r.left>=innerWidth) return true;
+    if (!r.width || !r.height) continue;
+    if (!e.checkVisibility({checkVisibilityCSS:true})) continue;
+    if (e.closest('[aria-hidden="true"],[inert]')) continue;
+    if (r.bottom<=0 || r.top>=innerHeight || r.right<=0 || r.left>=innerWidth) { below=true; continue; }
+    shown++;
     const top=deepest(r.x+r.width/2, r.y+r.height/2);
-    return !!top && (top===e || e.contains(top) || top.contains(e));
-  });
+    if (top && (top===e || e.contains(top) || top.contains(e) || top.closest('label')?.control===e)) return true;
+  }
+  // Out of view is not covered, but it is also no proof: a covered viewport with a footer link
+  // below it still has nothing to act on, and gov.kr serves exactly that while it loads.
+  return below && shown===0;
 })()"""
 # The daemon's own default budget is 5 s, which a plain call never needs and the snapshot of a
 # large page routinely exceeds: oliveyoung.co.kr evaluates for longer than that, and the timeout
