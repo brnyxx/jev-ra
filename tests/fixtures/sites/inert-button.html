@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Filters</title></head>
+<body>
+<h1>Filters</h1>
+<!-- A button that does nothing an action set can see: no dialog, no new control, only a state
+     class the page paints on itself. The waiting after the click has nothing to find. -->
+<button id="apply">Apply</button>
+<p id="out">Ready</p>
+<script>
+  document.getElementById('apply').addEventListener('click', () => {
+    document.getElementById('apply').classList.toggle('on');
+  });
+</script>
+</body>
+</html>

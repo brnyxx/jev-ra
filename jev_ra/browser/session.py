@@ -79,6 +79,15 @@ FOCUS_SLEEP_S = 0.05
 # well after its two frames are up, and a half-rendered page reads as one with nothing to do.
 QUIET_INTERVAL_S = 0.06
 QUIET_BUDGET_S = 0.6
+# One budget for everything a step waits for, and a turn that lengthens as it goes: a page that
+# has finished settling says so in the first two readings, and one that has not is not helped by
+# being asked twenty times a second.
+SETTLE_BUDGET_S = 2.0
+SETTLE_INTERVAL_CAP_S = 0.32
+SETTLE_BACKOFF = 1.5
+# The marker, as snapshot.js builds it: origin, address, scroll, size, then the page itself.
+MARKER_ORIGIN, MARKER_URL, MARKER_ACTIONS = 0, 1, 9
+MARKER_CONTENT = slice(6, None)
 # Fonts and media cost bytes and answer nothing. Images are deliberately NOT here: blocking
 # them on en.wikipedia.org drops the observed controls from 62 to 34, because real layouts
 # size themselves around their images and half the page then falls outside the viewport.
@@ -262,6 +271,7 @@ class Session:
         """Wait out the effect of the last input before observing again."""
         action, self.after_input = self.after_input, None
         was, self.moved_from = self.moved_from, None
+        before, self.before_input = self.before_input, None
         if action is None:
             return
         # Read-only, and only after the action was already recorded: navigation may cut it short.
@@ -274,78 +284,43 @@ class Session:
             )
         except RuntimeError:
             logger.debug("Post-input settle was interrupted")
-        self.rendered(was)
-        self.quiesce()
-        self.paint(action)
+        self.wait_out(action, was, before)
 
-    def paint(self, action):
-        """After a click on a button, wait until what it opened joins the page.
+    def wait_out(self, action, was, before):
+        """One budget and one reading per turn for everything a step waits for.
 
-        A dialog or a palette can mount a second or more after the click, and the quiet window
-        is over long before that. An action set that stays the same is the signal that there is
-        still something to wait for; a change that holds for another reading is the answer. A
-        control that blinks in and out - a Back to top link, a scroll control - is neither.
+        Three waits used to run here one after another, each on its own clock and its own
+        deadline: the route an address had already moved to, whatever the click opened, and the
+        page going quiet. They are three questions about successive readings of the same marker,
+        so read it once a turn, answer all three, and stop as soon as all three are answered.
+        Quiet keeps its own shorter allowance inside the shared one, so a page that never stops
+        moving costs what it always did rather than the whole budget.
         """
-        if self.before_input is None or action.get("kind") != "click" or action.get("role") != "button":
-            return
-        url, before = self.before_input
-        deadline = time.monotonic() + PAINT_BUDGET_S
-        changed = False
-        while time.monotonic() < deadline:
-            try:
-                page = self.evaluate(snapshot_expression(self.max_elements))
-            except StalePage:
-                return
-            if page is None:
-                return
-            current = (page.get("url"), action_set(page))
-            if current == (url, before):
-                changed = False
-            elif changed:
-                return
-            else:
-                changed = True
-            time.sleep(WAIT_SLEEP_S)
-
-    def rendered(self, was):
-        """Wait for a route the app changed the address for to actually put itself on screen.
-
-        A single-page app answers a click by pushing the new address and rendering a few frames
-        later. The marker has already moved - the url is in it - so two readings agree at once
-        and the page read back is the previous route wearing the new address. Wait, briefly, for
-        the part of the marker that is the page itself to move too.
-        """
-        if not was:
-            return
-        deadline = time.monotonic() + PAINT_BUDGET_S
+        opens = bool(before) and action.get("kind") == "click" and action.get("role") == "button"
+        deadline = time.monotonic() + SETTLE_BUDGET_S
         expression = marker_expression(self.max_elements)
+        previous, opened, differed = None, not opens, False
+        pause, ready = QUIET_INTERVAL_S, None
         while time.monotonic() < deadline:
             try:
                 marker = self.evaluate(expression)
             except StalePage:
                 return
-            if not marker or marker[0] != was[0] or marker[1] == was[1] or marker[6:] != was[6:]:
+            if not marker:
                 return
-            logger.debug("The address moved to %s before the route rendered; waiting", marker[1])
-            time.sleep(WAIT_SLEEP_S)
-
-    def quiesce(self):
-        """Wait, briefly, until two readings of the page marker agree."""
-        deadline = time.monotonic() + QUIET_BUDGET_S
-        expression = marker_expression(self.max_elements)
-        try:
-            previous = self.evaluate(expression)
-        except StalePage:
-            return
-        while time.monotonic() < deadline:
-            time.sleep(QUIET_INTERVAL_S)
-            try:
-                current = self.evaluate(expression)
-            except StalePage:
-                continue
-            if current == previous:
-                return
-            previous = current
+            if not opened:
+                differs = (marker[MARKER_URL], action_set(marker[MARKER_ACTIONS])) != before
+                opened, differed = differs and differed, differs
+            if opened and routed(marker, was):
+                if marker == previous:
+                    return
+                if ready is None:
+                    ready = time.monotonic()
+                elif time.monotonic() - ready >= QUIET_BUDGET_S:
+                    return
+            previous = marker
+            time.sleep(pause)
+            pause = min(pause * SETTLE_BACKOFF, SETTLE_INTERVAL_CAP_S)
 
     def observe(self, timer=None):
         """One atomic reading of the page: text, elements, actions, guards and marker."""
@@ -381,7 +356,7 @@ class Session:
         """The action itself: guard, then trusted input."""
         if not self.fresh(page, action):
             raise StalePage("Page changed since this decision. Observe again.")
-        self.before_input = (page.get("url", ""), action_set(page))
+        self.before_input = (page.get("url", ""), action_set(page.get("actions")))
         kind = action["kind"]
         if kind == "wait":
             time.sleep(WAIT_SLEEP_S)
@@ -516,6 +491,16 @@ class Session:
         self.close()
 
 
-def action_set(page):
+def action_set(actions):
     """The identity of every action a page offers, for comparing two readings of it."""
-    return frozenset((action.get("id"), action.get("kind")) for action in page.get("actions") or ())
+    return frozenset((action.get("id"), action.get("kind")) for action in actions or ())
+
+
+def routed(marker, was):
+    """Whether the page has caught up with an address a single-page app already moved it to."""
+    return (
+        not was
+        or marker[MARKER_ORIGIN] != was[MARKER_ORIGIN]
+        or marker[MARKER_URL] == was[MARKER_URL]
+        or marker[MARKER_CONTENT] != was[MARKER_CONTENT]
+    )
