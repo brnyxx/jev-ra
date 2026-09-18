@@ -161,6 +161,45 @@ def test_a_linux_desktop_keeps_its_window():
     assert "--disable-dev-shm-usage" in flags
 
 
+def test_a_headless_launch_claims_the_agent_a_windowed_one_would():
+    flags = chrome.platform_flags("linux", env={}, uid=1000, read=ALLOWED.__getitem__, version="153")
+    agents = [flag for flag in flags if flag.startswith("--user-agent=")]
+    assert agents == [
+        "--user-agent=Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/153.0.0.0 Safari/537.36"
+    ]
+    assert "HeadlessChrome" not in agents[0]
+
+
+def test_a_windowed_linux_box_keeps_its_own_agent():
+    flags = chrome.platform_flags("linux", env={"DISPLAY": ":0"}, uid=1000, read=ALLOWED.__getitem__, version="153")
+    assert not any(flag.startswith("--user-agent=") for flag in flags)
+
+
+def test_a_missing_version_means_no_invented_agent():
+    assert chrome.desktop_user_agent("linux", None) is None
+    assert chrome.desktop_user_agent("plan9", "153") is None
+    flags = chrome.platform_flags("linux", env={}, uid=1000, read=ALLOWED.__getitem__)
+    assert not any(flag.startswith("--user-agent=") for flag in flags)
+
+
+def test_the_version_comes_from_what_the_binary_reports():
+    def reports(argv, **_kwargs):
+        return subprocess.CompletedProcess(argv, 0, stdout="Chromium 153.0.8010.47 built on Debian\n", stderr="")
+
+    assert chrome.browser_version("/usr/bin/chromium", run=reports) == "153"
+
+    def refuses(argv, **_kwargs):
+        raise OSError("cannot run")
+
+    assert chrome.browser_version("/nope", run=refuses) is None
+
+    def silent(argv, **_kwargs):
+        return subprocess.CompletedProcess(argv, 0, stdout="not a version", stderr="")
+
+    assert chrome.browser_version("/usr/bin/chromium", run=silent) is None
+
+
 def test_the_sandbox_is_kept_wherever_the_kernel_still_allows_it():
     assert chrome.sandbox_usable("darwin", uid=0) is True
     assert chrome.sandbox_usable("linux", uid=1000, read=ALLOWED.__getitem__) is True

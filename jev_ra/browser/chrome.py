@@ -2,6 +2,7 @@
 
 import logging
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -53,6 +54,20 @@ SANDBOX_BLOCKERS = (
     ("/proc/sys/kernel/apparmor_restrict_unprivileged_userns", "1"),
     ("/proc/sys/user/max_user_namespaces", "0"),
 )
+# A headless Chrome announces "HeadlessChrome" in its user agent, and real sites answer that with
+# a bot challenge instead of a page - DuckDuckGo's html endpoint did exactly that on the first
+# headless container run. When we launch headless, claim what the same binary claims with a window.
+UA_PLATFORMS = {
+    "darwin": (
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
+        "(KHTML, like Gecko) Chrome/{version} Safari/537.36"
+    ),
+    "linux": ("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/{version} Safari/537.36"),
+    "win32": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+        "(KHTML, like Gecko) Chrome/{version} Safari/537.36"
+    ),
+}
 
 
 def profile_dir(env=None):
@@ -125,7 +140,26 @@ def sandbox_usable(platform=None, uid=None, read=None):
     return True
 
 
-def platform_flags(platform=None, env=None, uid=None, read=None):
+def browser_version(binary, run=None):
+    """The Chrome major version the binary reports, or None when it will not say."""
+    run = run or subprocess.run
+    try:
+        done = run([str(binary), "--version"], capture_output=True, text=True, timeout=5)
+    except (OSError, subprocess.SubprocessError):
+        return None
+    match = re.search(r"\b(\d+)\.", (done.stdout or "") + (done.stderr or ""))
+    return match.group(1) if match else None
+
+
+def desktop_user_agent(platform=None, version=None):
+    """The user agent a windowed Chrome on this platform sends, or None without a version."""
+    template = UA_PLATFORMS.get(platform or sys.platform)
+    if not template or not version:
+        return None
+    return template.format(version=f"{version}.0.0.0")
+
+
+def platform_flags(platform=None, env=None, uid=None, read=None, version=None):
     """What this machine needs and a desktop does not: no display, no shared memory, no sandbox."""
     env = os.environ if env is None else env
     platform = platform or sys.platform
@@ -135,6 +169,9 @@ def platform_flags(platform=None, env=None, uid=None, read=None):
     flags = ["--disable-dev-shm-usage"]
     if not env.get("DISPLAY") and not env.get("WAYLAND_DISPLAY"):
         flags += ["--headless=new", "--disable-gpu"]
+        agent = desktop_user_agent(platform, version)
+        if agent:
+            flags.append(f"--user-agent={agent}")
     if not sandbox_usable(platform, uid, read):
         flags.append("--no-sandbox")
     return tuple(flags)
@@ -165,7 +202,7 @@ def launch(binary, profile, viewport=(1280, 900), env=None):
         f"--user-data-dir={profile}",
         f"--window-size={viewport[0]},{viewport[1]}",
         *FLAGS,
-        *platform_flags(env=env),
+        *platform_flags(env=env, version=browser_version(binary)),
         "about:blank",
     ]
     logger.info("Launching %s on %s", binary, profile)
