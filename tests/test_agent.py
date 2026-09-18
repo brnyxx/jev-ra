@@ -428,3 +428,18 @@ def test_a_page_that_never_settles_escalates_rather_than_raising():
     assert (result.status, result.reason) == ("escalate", "stale")
     assert result.detail["error"]
     assert result.steps == []
+
+
+def test_looking_below_the_fold_survives_the_page_moving_under_it():
+    weak_done = {"operation": answer("DONE"), "goal_achieved": {"noul": 0.2}}
+    session = FakeSession(scrollable(), stale=1)
+    result = agent_with(decider([weak_done, DONE]), session=session).run("find flights")
+    assert result.status == "done"
+    assert session.acted == []
+
+
+def test_a_page_that_keeps_moving_while_being_looked_at_still_ends_cleanly():
+    weak_done = {"operation": answer("DONE"), "goal_achieved": {"noul": 0.2}}
+    session = FakeSession(scrollable(), stale=99)
+    result = agent_with(decider([weak_done]), session=session).run("find flights")
+    assert (result.status, result.reason) == ("escalate", "unverified_done")

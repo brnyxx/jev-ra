@@ -137,8 +137,18 @@ class Agent:
                 looks += 1
                 logger.info("DONE at %.2f; looking below the fold (%s/%s)", decision.goal_achieved or 0.0,
                             looks, LOOKS)
-                self.session.act(look, page, timer=timer)
-                before, page = page, self.session.observe(timer)
+                try:
+                    self.session.act(look, page, timer=timer)
+                except StalePage:
+                    # The page moved while being looked at, which is itself the new information.
+                    logger.info("The page moved before it could be looked at; reading it again")
+                    page = self.read(self.session.observe, timer) or page
+                    continue
+                after = self.read(self.session.observe, timer)
+                if after is None:
+                    return run.escalate("stale", page, decision,
+                                        detail={"error": "The page never settled while it was looked at."})
+                before, page = page, after
                 run.record(replace(decision, operation="SCROLL_DOWN", target=look["id"], action=look),
                            before, page, None, timer)
                 continue
