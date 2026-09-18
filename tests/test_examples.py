@@ -83,3 +83,18 @@ def test_the_python_api_example_runs_against_the_fixtures():
 def test_the_python_api_example_exits_zero_from_the_command_line():
     example = load(EXAMPLES / "python_api.py", "python_api_cli")
     assert example.main(["--fixtures"]) == 0
+
+
+def test_the_usage_guide_does_not_depend_on_the_terminal_it_was_generated_in(gen_usage, monkeypatch):
+    monkeypatch.setenv("COLUMNS", "40")
+    narrow = gen_usage.build()
+    monkeypatch.setenv("COLUMNS", "200")
+    wide = gen_usage.build()
+    monkeypatch.delenv("COLUMNS")
+    bare = gen_usage.build()
+    assert narrow == wide == bare
+
+
+def test_the_help_is_rendered_at_the_width_the_generator_fixes(gen_usage):
+    assert gen_usage.cli_help(width=40) != gen_usage.cli_help(width=120)
+    assert max(len(line) for line in gen_usage.cli_help().splitlines()) <= gen_usage.HELP_WIDTH
