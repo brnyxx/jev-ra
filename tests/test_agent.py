@@ -363,3 +363,35 @@ def test_a_direct_action_for_a_missing_ref_is_a_lookup_error():
         agent.click("e9")
     with pytest.raises(LookupError, match="scroll_down is not offered"):
         agent.scroll("down")
+
+
+BLOCKED_OVER_TYPING = {
+    "operation": answer("BLOCKED", {"BLOCKED": 0.52, "TYPE_TEXT": 0.45, "CLICK": 0.03}),
+    "type_text_target": answer("e1", {"e1": 1.0}),
+    "click_target": answer("e2", {"e2": 1.0}),
+    "goal_achieved": {"noul": 0.0},
+}
+
+
+def test_a_login_wall_asks_for_the_value_instead_of_reporting_blocked():
+    result = agent_with(decider([BLOCKED_OVER_TYPING])).run("sign in to the account")
+    assert (result.status, result.reason) == ("escalate", "needs_value")
+    assert result.detail["field"]["label"] == "City"
+    assert result.detail["field"]["ref"] == "e1"
+    assert result.detail["reason"] == "the page needs a value that was not supplied"
+    assert result.detail["goal"] == "sign in to the account"
+
+
+def test_blocked_stays_blocked_when_the_caller_did_supply_values():
+    result = agent_with(decider([BLOCKED_OVER_TYPING])).run("sign in", values={"city": "London"})
+    assert (result.status, result.reason) == ("blocked", "blocked")
+
+
+def test_blocked_stays_blocked_when_nothing_could_be_typed_into():
+    blocked = {
+        "operation": answer("BLOCKED", {"BLOCKED": 0.8, "CLICK": 0.2}),
+        "click_target": answer("e2", {"e2": 1.0}),
+        "goal_achieved": {"noul": 0.0},
+    }
+    result = agent_with(decider([blocked])).run("draw a red square")
+    assert (result.status, result.reason) == ("blocked", "blocked")

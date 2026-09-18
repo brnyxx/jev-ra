@@ -112,6 +112,9 @@ class Agent:
             exclude, reasked = set(), False
 
             if decision.operation == "BLOCKED":
+                wanted = unsupplied_field(decision, space, binder, goal)
+                if wanted is not None:
+                    return run.escalate("needs_value", page, decision, detail=wanted)
                 return run.escalate("blocked", page, decision, status="blocked")
             if decision.operation == "DONE":
                 if (decision.goal_achieved or 0.0) >= GOAL_ACHIEVED_THRESHOLD:
@@ -330,6 +333,24 @@ class _Run:
         detail = dict(detail or {})
         detail["page_text"] = page.get("text", "")[:ESCALATION_TEXT_CHARS]
         return self.result(status, reason, page, decision, detail)
+
+
+def unsupplied_field(decision, space, binder, goal):
+    """The field a BLOCKED page wanted filled, when nothing was supplied to fill it with.
+
+    A login wall is not blocked; it is waiting for a credential the caller has and jev-ra does
+    not. The model says so itself by ranking typing second behind BLOCKED, so the escalation
+    that helps the host agent is needs_value with the field named, not a dead end.
+    """
+    if binder.available():
+        return None
+    runner_up = next((candidate for candidate in decision.candidates[1:2]), None)
+    if runner_up is None or runner_up["operation"] != "TYPE_TEXT":
+        return None
+    action = space.targets.get("TYPE_TEXT", {}).get(runner_up["target"])
+    if action is None:
+        return None
+    return NeedsValue(action, goal, "the page needs a value that was not supplied").detail
 
 
 def verification(before, after):
