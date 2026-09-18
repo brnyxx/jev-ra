@@ -33,9 +33,7 @@ def flights(row):
     text = text_of(row)
     if "travel/flights" not in url or "tfs=" not in url:
         return False
-    return all(
-        pattern.search(text) for pattern in (ORIGIN, DESTINATION, DEPARTURE, DURATION, PRICE)
-    )
+    return all(pattern.search(text) for pattern in (ORIGIN, DESTINATION, DEPARTURE, DURATION, PRICE))
 
 
 def oliveyoung_sort(row):

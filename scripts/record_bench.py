@@ -175,8 +175,18 @@ def record_browser_use(key, out_dir, fps=DEFAULT_FPS, model=FLASH_MODEL):
     before = {item["id"]: (item.get("url") or "") for item in page_targets(cdp_url)}
     started = time.perf_counter()
     process = subprocess.Popen(
-        [shutil.which("uv"), "run", "--no-project", "--with", "browser-use==0.13.10", "python", str(copy),
-         model, "flash", key],
+        [
+            shutil.which("uv"),
+            "run",
+            "--no-project",
+            "--with",
+            "browser-use==0.13.10",
+            "python",
+            str(copy),
+            model,
+            "flash",
+            key,
+        ],
         stdout=subprocess.PIPE,
         stderr=subprocess.DEVNULL,
         text=True,

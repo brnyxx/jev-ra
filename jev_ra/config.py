@@ -36,6 +36,7 @@ ENV_VARIABLES = (
 @dataclass(frozen=True)
 class Viewport:
     """The window size every session emulates."""
+
     width: int = 1280
     height: int = 900
 
@@ -43,6 +44,7 @@ class Viewport:
 @dataclass(frozen=True)
 class Budgets:
     """How far one run may go before it stops on its own."""
+
     max_steps: int = 40
     max_decisions: int = 80
     timeout_s: float = 120.0
@@ -51,6 +53,7 @@ class Budgets:
 @dataclass(frozen=True)
 class TextModel:
     """An optional OpenAI-compatible model that writes field values."""
+
     model: str
     base_url: str = DEFAULT_TEXT_BASE_URL
     api_key: str | None = None
@@ -59,6 +62,7 @@ class TextModel:
 @dataclass(frozen=True)
 class Config:
     """Everything one run needs to know, resolved from env, file and defaults."""
+
     endpoint: str = TYPESAFE_ENDPOINT
     model: str = TYPESAFE_MODEL
     api_key: str | None = None

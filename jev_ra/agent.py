@@ -34,6 +34,7 @@ LOOK_GAIN = 0.02
 @dataclass
 class Result:
     """What one run did: its status, its steps, and what it cost."""
+
     status: str
     reason: str = ""
     url: str = ""
@@ -54,6 +55,7 @@ class Result:
 
 class Agent:
     """The loop: observe, decide once, verify, and hand control back when stuck."""
+
     def __init__(self, session=None, config=None, decide=None, client=None):
         self.config = config or load()
         self.session = session or Session(self.config)
@@ -159,11 +161,17 @@ class Agent:
                     continue
                 after = self.read(self.session.observe, timer)
                 if after is None:
-                    return run.escalate("stale", page, decision,
-                                        detail={"error": "The page never settled while it was looked at."})
+                    return run.escalate(
+                        "stale", page, decision, detail={"error": "The page never settled while it was looked at."}
+                    )
                 before, page = page, after
-                run.record(replace(decision, operation="SCROLL_DOWN", target=look["id"], action=look),
-                           before, page, None, timer)
+                run.record(
+                    replace(decision, operation="SCROLL_DOWN", target=look["id"], action=look),
+                    before,
+                    page,
+                    None,
+                    timer,
+                )
                 continue
             looks, best = 0, 0.0
 
@@ -190,8 +198,9 @@ class Agent:
 
             after = self.read(self.session.observe, timer)
             if after is None:
-                return run.escalate("stale", page, decision,
-                                    detail={"error": "The page never settled after that action."})
+                return run.escalate(
+                    "stale", page, decision, detail={"error": "The page never settled after that action."}
+                )
             before, page = page, after
             run.record(decision, before, page, text, timer)
             stuck = run.stuck(space)

@@ -96,8 +96,17 @@ MARKER_CONTENT = slice(6, None)
 # size themselves around their images and half the page then falls outside the viewport.
 # jev-ra search blocks the heavier list in its reading tabs, where only extracted text is used.
 BLOCKED_URLS = (
-    "*.woff", "*.woff2", "*.ttf", "*.otf", "*.eot",
-    "*.mp4", "*.webm", "*.mp3", "*.m4a", "*.avi", "*.mov",
+    "*.woff",
+    "*.woff2",
+    "*.ttf",
+    "*.otf",
+    "*.eot",
+    "*.mp4",
+    "*.webm",
+    "*.mp3",
+    "*.m4a",
+    "*.avi",
+    "*.mov",
 )
 # An action with a target is guarded by that target: its identity, its state and the text of the
 # block it sits in, plus the page key. The whole-page marker carries every word on the page, so a
@@ -172,6 +181,7 @@ FOCUSED_JS = """(node => {
 
 class Session:
     """One CDP target: observe it, act on it, and never act on a stale reading of it."""
+
     def __init__(self, config=None, target_id=None, max_elements=MAX_ELEMENTS):
         self.config = config or load()
         self.max_elements = max_elements
@@ -237,8 +247,13 @@ class Session:
 
     def evaluate(self, expression, await_promise=False):
         """Evaluate an expression in the page, refusing a document that moved under it."""
-        response = self.call("Runtime.evaluate", timeout=EVALUATE_TIMEOUT_S, expression=expression,
-                             returnByValue=True, awaitPromise=await_promise)
+        response = self.call(
+            "Runtime.evaluate",
+            timeout=EVALUATE_TIMEOUT_S,
+            expression=expression,
+            returnByValue=True,
+            awaitPromise=await_promise,
+        )
         if response.get("exceptionDetails"):
             raise StalePage("Document changed during evaluation")
         return response.get("result", {}).get("value")

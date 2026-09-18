@@ -32,5 +32,8 @@ def test_a_selected_tab_is_already_reported_and_stays_that_way(session, fixture_
 
 def test_the_word_active_in_ordinary_prose_marks_nothing(session, fixture_server):
     page = session.open(fixture_server + FIXTURE)
-    assert all("current" not in element for element in page["elements"] if element["role"] != "link"
-               or element["label"] not in {"신상품순", "2"})
+    assert all(
+        "current" not in element
+        for element in page["elements"]
+        if element["role"] != "link" or element["label"] not in {"신상품순", "2"}
+    )

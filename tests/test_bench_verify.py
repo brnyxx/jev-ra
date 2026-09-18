@@ -12,8 +12,7 @@ FLIGHT_TEXT = (
 )
 FLIGHT_URL = "https://www.google.com/travel/flights/search?tfs=CBwQAhooEgoyMDI2LTA5LTIw"
 KOREAN_FLIGHT_TEXT = (
-    "영국항공\n1시간 45분\n직항\n₩316,695\n"
-    "2026-09-20 취리히에서 출발하여 런던에 도착하는 항공편 가격 추적"
+    "영국항공\n1시간 45분\n직항\n₩316,695\n2026-09-20 취리히에서 출발하여 런던에 도착하는 항공편 가격 추적"
 )
 
 
@@ -148,12 +147,30 @@ def test_a_task_that_never_verifies_has_no_median_at_all():
 def test_the_ratio_table_needs_both_speed_and_every_run_verified():
     baseline = {"wikipedia": 23058, "flights": 66414}
     summaries = [
-        {"task": "wikipedia", "runs": 5, "success_rate": 1.0, "median_ms": 2200, "median_decisions": 4,
-         "median_cost": 0.0008},
-        {"task": "flights", "runs": 5, "success_rate": 0.8, "median_ms": 9000, "median_decisions": 14,
-         "median_cost": 0.004},
-        {"task": "search_fact", "runs": 5, "success_rate": 1.0, "median_ms": 5000, "median_decisions": 4,
-         "median_cost": 0.001},
+        {
+            "task": "wikipedia",
+            "runs": 5,
+            "success_rate": 1.0,
+            "median_ms": 2200,
+            "median_decisions": 4,
+            "median_cost": 0.0008,
+        },
+        {
+            "task": "flights",
+            "runs": 5,
+            "success_rate": 0.8,
+            "median_ms": 9000,
+            "median_decisions": 14,
+            "median_cost": 0.004,
+        },
+        {
+            "task": "search_fact",
+            "runs": 5,
+            "success_rate": 1.0,
+            "median_ms": 5000,
+            "median_decisions": 4,
+            "median_cost": 0.001,
+        },
     ]
     rows = {item["task"]: item for item in bench.ratio_rows(summaries, baseline=baseline)}
     assert rows["wikipedia"]["ratio"] == pytest.approx(10.48, abs=0.01)

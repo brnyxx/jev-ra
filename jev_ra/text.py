@@ -46,6 +46,7 @@ class TextHelperError(NeedsValue):
 @dataclass(frozen=True)
 class Value:
     """One resolved field value and where it came from."""
+
     text: str
     source: str
     name: str | None = None
@@ -100,7 +101,7 @@ class ValueBinder:
         return {
             "goal": goal,
             "field": {key: action.get(key) for key in ("label", "role", "value")},
-            "page": {"title": page.get("title", ""), "text": page.get("text", "")[:MAX_TEXT_CHARS * 3]},
+            "page": {"title": page.get("title", ""), "text": page.get("text", "")[: MAX_TEXT_CHARS * 3]},
             "recent_actions": [{key: step.get(key) for key in ("action", "text")} for step in list(history)[-6:]],
         }
 

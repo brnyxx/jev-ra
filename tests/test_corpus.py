@@ -80,7 +80,7 @@ def test_a_capability_outside_v0_1_expects_a_clean_blocked_and_says_so_in_the_re
     walls = [t for t in corpus.load_tasks() if t.expect == "escalate:blocked"]
     assert {t.name for t in walls} == {"file_upload_picker", "canvas_drawing"}
     limits = (ROOT / "README.md").read_text()
-    section = limits[limits.index("## What it will not do"):limits.index("## FAQ")]
+    section = limits[limits.index("## What it will not do") : limits.index("## FAQ")]
     for row in ("Canvas drawing", "File upload"):
         assert row in section and "`blocked`" in section
 
@@ -138,8 +138,15 @@ def test_an_escalating_task_passes_only_on_its_own_reason():
 
 
 def test_a_run_records_what_the_page_showed_and_closes_the_session(stub):
-    stub(Result(status="done", url="https://example.com/x?sort=new", decisions=3, cost=0.002,
-                final_page=page(url="https://example.com/x?sort=new", text="newest first")))
+    stub(
+        Result(
+            status="done",
+            url="https://example.com/x?sort=new",
+            decisions=3,
+            cost=0.002,
+            final_page=page(url="https://example.com/x?sort=new", text="newest first"),
+        )
+    )
     row = corpus.run_task(task(verify={"url_contains": ["sort=new"]}), config=None, decide=lambda *_: {})
     assert row["passed"] is True
     assert row["decisions"] == 3 and row["cost"] == 0.002
@@ -163,8 +170,10 @@ def test_the_page_text_kept_per_row_is_capped(stub):
 
 def test_selection_by_family_and_by_name(stub, monkeypatch):
     stub(Result(status="done", final_page=page()))
-    tasks = [task(name="a", family="one", verify={"text_contains": ["hello"]}),
-             task(name="b", family="two", verify={"text_contains": ["hello"]})]
+    tasks = [
+        task(name="a", family="one", verify={"text_contains": ["hello"]}),
+        task(name="b", family="two", verify={"text_contains": ["hello"]}),
+    ]
     rows = corpus.run(tasks, config=object(), runs=2, family="two", decide=lambda *_: {})
     assert [row["task"] for row in rows] == ["b", "b"]
     rows = corpus.run(tasks, config=object(), name="a", decide=lambda *_: {})
@@ -201,12 +210,39 @@ def test_the_corpus_owns_and_closes_a_decision_client_when_none_is_given(stub, m
 
 def test_the_summary_reports_pass_rate_median_and_the_reasons():
     rows = [
-        {"task": "a", "family": "f", "passed": True, "why": "", "elapsed_ms": 100, "decisions": 2, "cost": 0.001,
-         "status": "done", "reason": ""},
-        {"task": "a", "family": "f", "passed": True, "why": "", "elapsed_ms": 300, "decisions": 4, "cost": 0.003,
-         "status": "done", "reason": ""},
-        {"task": "b", "family": "g", "passed": False, "why": "escalate:stale", "elapsed_ms": 50, "decisions": 1,
-         "cost": 0.0, "status": "escalate", "reason": "stale"},
+        {
+            "task": "a",
+            "family": "f",
+            "passed": True,
+            "why": "",
+            "elapsed_ms": 100,
+            "decisions": 2,
+            "cost": 0.001,
+            "status": "done",
+            "reason": "",
+        },
+        {
+            "task": "a",
+            "family": "f",
+            "passed": True,
+            "why": "",
+            "elapsed_ms": 300,
+            "decisions": 4,
+            "cost": 0.003,
+            "status": "done",
+            "reason": "",
+        },
+        {
+            "task": "b",
+            "family": "g",
+            "passed": False,
+            "why": "escalate:stale",
+            "elapsed_ms": 50,
+            "decisions": 1,
+            "cost": 0.0,
+            "status": "escalate",
+            "reason": "stale",
+        },
     ]
     table = corpus.summarise(rows)
     first = next(row for row in table if row["task"] == "a")
@@ -239,8 +275,16 @@ def test_the_cli_lists_the_corpus_without_touching_the_network(capsys):
 def test_the_cli_reports_the_run_and_fails_under_the_bar(monkeypatch, tmp_path, capsys):
     rows = [
         {"task": "a", "family": "f", "passed": True, "why": "", "elapsed_ms": 100, "decisions": 2, "cost": 0.001},
-        {"task": "b", "family": "f", "passed": False, "why": "url does not contain 'x'", "elapsed_ms": 90,
-         "decisions": 1, "cost": 0.0, "status": "done"},
+        {
+            "task": "b",
+            "family": "f",
+            "passed": False,
+            "why": "url does not contain 'x'",
+            "elapsed_ms": 90,
+            "decisions": 1,
+            "cost": 0.0,
+            "status": "done",
+        },
     ]
     monkeypatch.setattr(corpus, "run", lambda **_kwargs: rows)
     monkeypatch.setattr(corpus, "RESULTS", tmp_path)

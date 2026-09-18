@@ -103,9 +103,7 @@ def test_prev_ok_appears_only_once_there_is_history():
 
 
 def test_every_criterion_and_instruction_is_a_string():
-    questions = build_questions(
-        space_for(), "goal", history=[{"action": "a"}], values={"city": "London"}
-    )
+    questions = build_questions(space_for(), "goal", history=[{"action": "a"}], values={"city": "London"})
     for question in questions.values():
         assert isinstance(question["instructions"], str)
         assert all(isinstance(value, str) for value in question["criteria"].values())
@@ -230,9 +228,7 @@ def test_candidates_stop_at_eight():
     refs = range(1, 21)
     links = {
         "elements": [{"ref": f"e{n}", "node": n, "role": "link", "label": f"Result {n}"} for n in refs],
-        "actions": [
-            {"id": f"e{n}", "node": n, "role": "link", "kind": "click", "label": f"Result {n}"} for n in refs
-        ],
+        "actions": [{"id": f"e{n}", "node": n, "role": "link", "kind": "click", "label": f"Result {n}"} for n in refs],
     }
     space = space_for(links)
     questions = build_questions(space, "goal")

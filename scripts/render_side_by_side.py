@@ -107,8 +107,19 @@ def encode_mp4(frames, out_stem, fps):
             frame.save(staging / f"{index:06d}.png")
         mp4 = Path(out_stem).with_suffix(".mp4")
         subprocess.run(
-            [ffmpeg, "-y", "-framerate", str(fps), "-i", str(staging / "%06d.png"),
-             "-pix_fmt", "yuv420p", "-vf", "pad=ceil(iw/2)*2:ceil(ih/2)*2", str(mp4)],
+            [
+                ffmpeg,
+                "-y",
+                "-framerate",
+                str(fps),
+                "-i",
+                str(staging / "%06d.png"),
+                "-pix_fmt",
+                "yuv420p",
+                "-vf",
+                "pad=ceil(iw/2)*2:ceil(ih/2)*2",
+                str(mp4),
+            ],
             check=True,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,

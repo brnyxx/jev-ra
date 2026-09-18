@@ -99,13 +99,15 @@ def page_copy(path=PAGE_COPY, locales=LOCALES):
     node = shutil.which("node")
     if node is None:
         return ["node is needed to read the landing page copy; install node or run this locally"]
-    done = subprocess.run([node, "-e", READ_KEYS_JS, str(path), *locales],
-                          capture_output=True, text=True, check=False)
+    done = subprocess.run([node, "-e", READ_KEYS_JS, str(path), *locales], capture_output=True, text=True, check=False)
     if done.returncode != 0:
         return [f"{path.relative_to(ROOT)}: {done.stderr.strip().splitlines()[-1] if done.stderr else 'unreadable'}"]
     read = json.loads(done.stdout)
-    return [f"{locale} is missing {len(keys)} of {read['keys']} keys: {keys[:5]}"
-            for locale, keys in read["missing"].items() if keys]
+    return [
+        f"{locale} is missing {len(keys)} of {read['keys']} keys: {keys[:5]}"
+        for locale, keys in read["missing"].items()
+        if keys
+    ]
 
 
 def report(paths=TRANSLATIONS):

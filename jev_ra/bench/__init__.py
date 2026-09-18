@@ -34,6 +34,7 @@ ACCEPTANCE_RATIO = 3.0
 @dataclass(frozen=True)
 class OfflineTask:
     """A local fixture task whose decisions are scripted, not asked."""
+
     key: str
     page: str
     goal: str
@@ -45,6 +46,7 @@ class OfflineTask:
 @dataclass(frozen=True)
 class LiveTask:
     """A real task, with the predicate that decides whether it was actually done."""
+
     key: str
     goal: str
     verify: object
@@ -90,10 +92,7 @@ LIVE_TASKS = (
     LiveTask(
         key="flights",
         url="https://www.google.com/travel/flights",
-        goal=(
-            "Search one-way flights from Zurich to London departing 2026-09-20 "
-            "and show the list of results."
-        ),
+        goal=("Search one-way flights from Zurich to London departing 2026-09-20 and show the list of results."),
         values={"origin": "Zurich", "destination": "London", "departure_date": "2026-09-20"},
         verify=predicates.flights,
     ),
@@ -189,9 +188,7 @@ def load_baseline(directory=None):
 def flash_baseline(directory=None):
     """The flash_mode wall time per task, from the recorded rows."""
     return {
-        task: variants["flash"]["wall_ms"]
-        for task, variants in load_baseline(directory).items()
-        if "flash" in variants
+        task: variants["flash"]["wall_ms"] for task, variants in load_baseline(directory).items() if "flash" in variants
     }
 
 
@@ -431,8 +428,17 @@ def run_baseline(runs=1, model=FLASH_MODEL, flash=True, directory=None, out_dir=
     for attempt in range(runs):
         logger.info("browser-use baseline run %s/%s", attempt + 1, runs)
         finished = subprocess.run(
-            [uv_command(), "run", "--no-project", "--with", BROWSER_USE_PIN, "python", str(copy),
-             model, "flash" if flash else "default"],
+            [
+                uv_command(),
+                "run",
+                "--no-project",
+                "--with",
+                BROWSER_USE_PIN,
+                "python",
+                str(copy),
+                model,
+                "flash" if flash else "default",
+            ],
             capture_output=True,
             text=True,
         )

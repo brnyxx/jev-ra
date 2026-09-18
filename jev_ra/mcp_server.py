@@ -144,9 +144,7 @@ def build_server(browser=None):
         started = time.perf_counter()
         session = browser.open()
         decide = browser.decider()
-        payload = guarded(
-            lambda: search(query, goal, max_pages, config=browser.config, decide=decide, session=session)
-        )
+        payload = guarded(lambda: search(query, goal, max_pages, config=browser.config, decide=decide, session=session))
         payload["elapsed_ms"] = round((time.perf_counter() - started) * 1000)
         return payload
 

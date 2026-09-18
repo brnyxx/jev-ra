@@ -19,9 +19,25 @@ MAX_PAGES = 3
 PAGE_TEXT_CHARS = 4000
 # Pictures, fonts and media cost seconds and answer nothing; the text is what gets read.
 BLOCKED_URLS = (
-    "*.png", "*.jpg", "*.jpeg", "*.gif", "*.webp", "*.avif", "*.svg", "*.ico",
-    "*.woff", "*.woff2", "*.ttf", "*.otf", "*.eot",
-    "*.mp4", "*.webm", "*.mp3", "*.m4a", "*.avi", "*.mov",
+    "*.png",
+    "*.jpg",
+    "*.jpeg",
+    "*.gif",
+    "*.webp",
+    "*.avif",
+    "*.svg",
+    "*.ico",
+    "*.woff",
+    "*.woff2",
+    "*.ttf",
+    "*.otf",
+    "*.eot",
+    "*.mp4",
+    "*.webm",
+    "*.mp3",
+    "*.m4a",
+    "*.avi",
+    "*.mov",
 )
 
 PICK_RESULT = """Rank the search results by how likely each is to answer the goal on its own page.
@@ -53,9 +69,7 @@ def block_resources(session, urls=BLOCKED_URLS):
 def rank_results(space, decide, goal, page, limit):
     """One choice question over the SERP links; the probabilities are the ranking."""
     links = {
-        target: action
-        for target, action in space.targets.get("CLICK", {}).items()
-        if action.get("role") == "link"
+        target: action for target, action in space.targets.get("CLICK", {}).items() if action.get("role") == "link"
     }
     if not links:
         return [], None
@@ -116,8 +130,9 @@ def read_page(session_factory, decide, goal, url):
         session.close()
 
 
-def search(query, goal=None, max_pages=MAX_PAGES, config=None, decide=None, session=None, session_factory=None,
-           engine=None):
+def search(
+    query, goal=None, max_pages=MAX_PAGES, config=None, decide=None, session=None, session_factory=None, engine=None
+):
     """Search, read the best results in parallel tabs, and rank them by the goal."""
     config = config or load()
     goal = goal or query

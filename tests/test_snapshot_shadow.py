@@ -38,9 +38,7 @@ def test_a_control_two_shadow_roots_down_is_reachable(session, fixture_server):
     page = session.open(f"{fixture_server}/shadow.html")
     assert "Buy deeply" in labels(page)
     session.act(action_for(page, "Buy deeply", "click"), page)
-    assert session.evaluate("document.getElementById('status').textContent") == (
-        "Bought from two shadow roots down"
-    )
+    assert session.evaluate("document.getElementById('status').textContent") == ("Bought from two shadow roots down")
 
 
 def test_typing_into_a_shadow_field_works(session, fixture_server):
@@ -62,8 +60,7 @@ def test_same_origin_frame_controls_are_listed_and_clickable(session, fixture_se
     assert by_label(page, "Frame button")["nested"] is True
     session.act(action_for(page, "Frame button", "click"), page)
     inner = session.evaluate(
-        "document.getElementById('same-origin').contentDocument"
-        ".getElementById('inner-status').textContent"
+        "document.getElementById('same-origin').contentDocument.getElementById('inner-status').textContent"
     )
     assert inner == "Frame button pressed"
 

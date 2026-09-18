@@ -20,9 +20,7 @@ def test_macos_paths_are_tried_in_order():
 
 
 def test_linux_and_windows_paths_are_recognised():
-    linux = chrome.find_browser(
-        "linux", env={}, exists=fake_exists({"/usr/bin/chromium"}), which=lambda _c: None
-    )
+    linux = chrome.find_browser("linux", env={}, exists=fake_exists({"/usr/bin/chromium"}), which=lambda _c: None)
     assert linux == "/usr/bin/chromium"
     windows = chrome.find_browser(
         "win32",

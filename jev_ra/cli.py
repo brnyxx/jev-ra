@@ -222,6 +222,7 @@ def cmd_act(args):
 
 def step_command(call):
     """Wrap a direct browser call as a CLI handler."""
+
     def handler(args):
         """Run the wrapped browser call and print the page it left behind."""
         session = attach()
@@ -396,8 +397,18 @@ def cmd_doctor(args):
     return 0 if ok else 1
 
 
-SUMMARY_COLUMNS = ("task", "runs", "successes", "success_rate", "median_ms", "p90_ms", "median_steps",
-                   "median_decisions", "median_cost", "text_calls")
+SUMMARY_COLUMNS = (
+    "task",
+    "runs",
+    "successes",
+    "success_rate",
+    "median_ms",
+    "p90_ms",
+    "median_steps",
+    "median_decisions",
+    "median_cost",
+    "text_calls",
+)
 RATIO_COLUMNS = ("task", "jev_ra_ms", "flash_mode_ms", "ratio", "success_rate", "passed")
 
 

@@ -15,9 +15,7 @@ def local_references(text):
     """Every repository-relative path a markdown or HTML file points at."""
     found = re.findall(r"\]\(([^)]+)\)", text) + re.findall(r'src="([^"]+)"', text)
     return [
-        item.split("#")[0]
-        for item in found
-        if not item.startswith(("http://", "https://", "#", "mailto:", "data:"))
+        item.split("#")[0] for item in found if not item.startswith(("http://", "https://", "#", "mailto:", "data:"))
     ]
 
 

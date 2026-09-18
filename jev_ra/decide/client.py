@@ -22,6 +22,7 @@ PROBABILITY_TOLERANCE = 0.02
 @dataclass(frozen=True)
 class Reply:
     """One validated answer set, with what it cost and how long it took."""
+
     answers: dict
     model: str = ""
     usage: dict = field(default_factory=dict)
@@ -104,6 +105,7 @@ def read_answers(payload, questions):
 
 class DecisionClient:
     """One HTTP connection to the decisions endpoint, reused across a run."""
+
     def __init__(self, config, transport=None, retry_delay_s=0.5):
         self.config = config
         self.retry_delay_s = retry_delay_s

@@ -35,6 +35,7 @@ class InvalidDecision(Exception):
 @dataclass(frozen=True)
 class Decision:
     """What one answer set means: an operation, a target, and the confidence behind it."""
+
     operation: str
     target: str | None = None
     action: dict | None = None
@@ -86,9 +87,7 @@ def offered_targets(space, exclude=()):
     excluded = set(exclude)
     kept = {}
     for operation, candidates in space.targets.items():
-        remaining = {
-            target: action for target, action in candidates.items() if (operation, target) not in excluded
-        }
+        remaining = {target: action for target, action in candidates.items() if (operation, target) not in excluded}
         if remaining:
             kept[operation] = remaining
     return kept
@@ -99,9 +98,7 @@ def build_questions(space, goal, history=(), values=None, exclude=()):
     excluded = set(exclude)
     targets = offered_targets(space, excluded)
     operations = {operation: OPERATION_LABELS[operation] for operation in targets}
-    operations.update(
-        {key: control["label"] for key, control in space.controls.items() if (key, None) not in excluded}
-    )
+    operations.update({key: control["label"] for key, control in space.controls.items() if (key, None) not in excluded})
     operations.update({name: OPERATION_LABELS[name] for name in TERMINAL})
     questions = {"operation": choice(operations, instructions(goal, NEXT_ACTION))}
     for operation, candidates in targets.items():
