@@ -1,0 +1,30 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Autocomplete</title>
+<style>body{margin:24px;font:14px system-ui} #suggestions{border:1px solid #ccc;min-height:20px;width:260px}
+[role=option]{padding:4px;cursor:pointer}</style>
+<h1>Where to?</h1>
+<label>Destination
+  <input id="query" role="combobox" aria-controls="suggestions" aria-expanded="false" autocomplete="off">
+</label>
+<div role="listbox" id="suggestions"></div>
+<p id="chosen">No destination chosen.</p>
+<script>
+  const query = document.getElementById("query");
+  const suggestions = document.getElementById("suggestions");
+  // The list arrives one tick late on purpose: act() must wait for real suggestions.
+  query.addEventListener("input", () => {
+    setTimeout(() => {
+      suggestions.innerHTML = "";
+      for (const city of ["London Heathrow", "London Gatwick"]) {
+        if (!city.toLowerCase().includes(query.value.toLowerCase()) || !query.value) continue;
+        const option = document.createElement("div");
+        option.setAttribute("role", "option");
+        option.textContent = city;
+        option.onclick = () => { document.getElementById("chosen").textContent = "Chosen: " + city; };
+        suggestions.append(option);
+      }
+      query.setAttribute("aria-expanded", String(suggestions.childElementCount > 0));
+    }, 60);
+  });
+</script>

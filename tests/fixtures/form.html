@@ -1,0 +1,24 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Booking form</title>
+<style>body{margin:24px;font:14px system-ui} label{display:block;margin:8px 0} input,select{padding:4px}</style>
+<h1>Booking form</h1>
+<p id="status">Nothing submitted yet.</p>
+<form id="booking" onsubmit="event.preventDefault();document.getElementById('status').textContent='Submitted '+city.value">
+  <label>City <input id="city" name="city" value="Zurich"></label>
+  <label>Email <input id="email" name="email" type="email" placeholder="you@example.com"></label>
+  <label>Guests <input id="guests" name="guests" type="number" value="2"></label>
+  <label>Cabin
+    <select id="cabin" aria-label="Cabin">
+      <option value="economy">Economy</option>
+      <option value="business">Business</option>
+      <option value="first" disabled>First</option>
+    </select>
+  </label>
+  <label><input id="refundable" type="checkbox"> Refundable</label>
+  <label>Notes <textarea id="notes"></textarea></label>
+  <label>Reference <input id="reference" value="RA-1" readonly></label>
+  <label>Password <input id="secret" type="password" value="never expose this"></label>
+  <button id="submit" type="submit">Search flights</button>
+  <button id="off" type="button" disabled>Unavailable</button>
+</form>
