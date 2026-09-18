@@ -177,10 +177,17 @@ PASS/FAIL。[方法、browser-use 原始数据与复现步骤](../BENCHMARKS.md)
 
 ## 不做的事
 
-Canvas、文件上传、弹出窗口、多标签页工作流、认证流程、CAPTCHA、stealth。可见控件超过 250 个的页面
-会报告 `omitted`，并以 `too_many_controls` 上交，而不是去猜。跨源 iframe 会作为一个不透明元素报告；
-open 的 shadow root 和同源 iframe **会**被遍历。
+| 限制 | 会发生什么 |
+|---|---|
+| 画布绘图、游戏等绘制而非标记的内容 | `blocked`：没有任何观测到的控件能推进目标 |
+| 文件上传 | `blocked`：文件输入既不提供，也不输入 |
+| CAPTCHA、机器人墙、隐身 | 返回 `blocked` 并附上页面文本，由你判断 |
+| 认证流程 | 返回 `needs_value` 并指明字段；jev-ra 从不猜测凭据 |
+| 弹出窗口、多标签页工作流 | 运行始终停留在自己的目标上 |
+| 跨源 iframe | 报告为一个不透明元素；开放的 shadow root 与同源 iframe **会**被遍历 |
+| 可见控件超过 250 个 | 报告 `omitted`，卡住的运行升级为 `too_many_controls` 而不是猜测 |
 
+以上每一种都是带着页面文本和候选排名的干净升级，既不是崩溃，也不是悄悄做错动作。
 ## 常见问题
 
 **用 OpenRouter 还是 TypeSafe 密钥？** 都可以。jev-ra 依次查找 `JEV_RA_API_KEY`、

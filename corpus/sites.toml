@@ -178,7 +178,7 @@ family = "forms"
 url = "https://www.w3schools.com/howto/howto_html_file_upload_button.asp"
 goal = "Upload a photograph from the computer using the file picker."
 max_steps = 8
-expect = "escalate:stuck_loop"
+expect = "escalate:blocked"
 
 [[task]]
 name = "github_search_repo"
@@ -265,7 +265,7 @@ family = "docs_spa"
 url = "https://jspaint.app/"
 goal = "Draw a red square in the middle of the canvas."
 max_steps = 8
-expect = "escalate:stuck_loop"
+expect = "escalate:blocked"
 
 [[task]]
 name = "mdn_theme_menu"

@@ -1,4 +1,5 @@
 import json
+from pathlib import Path
 from typing import ClassVar
 
 import pytest
@@ -7,6 +8,7 @@ from jev_ra import cli, corpus
 from jev_ra.agent import Result
 from jev_ra.errors import JevRaError
 
+ROOT = Path(__file__).resolve().parents[1]
 EXPECTED_FAMILIES = ["ecommerce", "search_read", "booking", "forms", "news", "docs_spa", "portal", "auth"]
 
 
@@ -72,6 +74,15 @@ def test_every_declared_task_is_well_formed():
             assert entry.verify, f"{entry.name} says done but proves nothing"
         else:
             assert not entry.verify, f"{entry.name} escalates, so there is no page to verify"
+
+
+def test_a_capability_outside_v0_1_expects_a_clean_blocked_and_says_so_in_the_readme():
+    walls = [t for t in corpus.load_tasks() if t.expect == "escalate:blocked"]
+    assert {t.name for t in walls} == {"file_upload_picker", "canvas_drawing"}
+    limits = (ROOT / "README.md").read_text()
+    section = limits[limits.index("## What it will not do"):limits.index("## FAQ")]
+    for row in ("Canvas drawing", "File upload"):
+        assert row in section and "`blocked`" in section
 
 
 def test_an_auth_wall_must_escalate_for_a_missing_value_never_guess():

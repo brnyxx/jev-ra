@@ -184,10 +184,18 @@ failure rather than as a time.
 
 ## What it will not do
 
-Canvas, file upload, pop-up windows, multi-tab workflows, auth flows, CAPTCHA, stealth. Pages with
-more than 250 visible controls report `omitted` and escalate `too_many_controls` rather than guessing.
-Cross-origin iframes are reported as one opaque element; open shadow roots and same-origin iframes
-**are** traversed.
+| limit | what happens |
+|---|---|
+| Canvas drawing, games, anything painted rather than marked up | `blocked`: no observed control can advance the goal |
+| File upload | `blocked`: a file input is never offered, and never typed into |
+| CAPTCHA, bot walls, stealth | `blocked`, with the page text, for you to decide |
+| Auth flows | `needs_value` with the field named; jev-ra never guesses a credential |
+| Pop-up windows, multi-tab workflows | the run stays on its own target |
+| Cross-origin iframes | reported as one opaque element; open shadow roots and same-origin iframes **are** traversed |
+| More than 250 visible controls | `omitted` is reported, and a stuck run escalates `too_many_controls` rather than guessing |
+
+Every one of these is a clean escalation carrying the page text and the ranked candidates, not a
+crash and not a silent wrong action.
 
 ## FAQ
 
