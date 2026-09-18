@@ -87,7 +87,7 @@
   section{padding:64px 0;border-top:1px solid var(--line2);position:relative}
   section::before{content:"";position:absolute;top:-1px;left:0;width:160px;height:1px;background:linear-gradient(90deg,var(--amber),transparent)}
   h2{font-size:36px;letter-spacing:-1.2px;margin:0 0 10px;font-weight:700}
-  .kicker{font-family:var(--mono);color:var(--cyan);font-size:12.5px;letter-spacing:1.5px;text-transform:uppercase;margin:0 0 10px}
+  .kicker{font-family:var(--mono);color:var(--dim);font-size:12.5px;letter-spacing:1.5px;text-transform:uppercase;margin:0 0 10px}
   .lead{color:var(--muted);font-size:18px;margin:0 0 28px;max-width:720px}
   .demo{border-radius:4px;overflow:hidden;border:1px solid var(--line);background:#000;box-shadow:0 0 40px rgba(255,183,3,.08)}
   .demo #jev-demo{aspect-ratio:16/9;background:#070A0F}
@@ -235,9 +235,9 @@
 
   <header class="hero">
     <div>
-      <p class="hud"><i></i>System One · decision layer online · ~300 ms/step</p>
+      <p class="hud"><i></i>v0.1 · MCP server + CLI · MIT</p>
       <h1>Browser use for coding agents.<br><span class="accent">3-5x faster than browser-use.</span></h1>
-      <p class="sub">Jev decides every step in ~300 ms. Your agent plans, reads the page, and takes over when it matters. No second LLM in the loop.</p>
+      <p class="sub">Claude Code, Codex or any MCP client sends a goal. TypeSafe Jev picks the next click or keystroke in about 300 ms. Your agent supplies the text to type, reads the page, and gets control back when jev-ra cannot continue.</p>
       <div class="cta">
         <button class="pill" data-copy="uvx jev-ra install claude">$ uvx jev-ra install claude <small>copy</small></button>
         <a class="ghost" href="https://github.com/brnyxx/jev-ra"><svg class="ic"><use href="#i-github"/></svg> Star on GitHub</a>
@@ -263,37 +263,37 @@
   <p class="note">jev-ra median of 5 runs vs browser-use 0.13 <code>flash_mode</code> with gemini-3-flash, same Chrome, same OpenRouter key, 2026-09-18. The headline stays at 3-5x because even our median against browser-use's fastest single run is 5.8x / 5.6x / 4.6x. Method and raw rows in <a href="https://github.com/brnyxx/jev-ra/blob/main/docs/BENCHMARKS.md">BENCHMARKS.md</a>.</p>
 
   <section id="demo">
-    <p class="kicker">// 01 · demo</p>
-    <h2>Watch a recorded run, replayed live.</h2>
-    <p class="lead">Not a screen recording and not a video file: the browser draws this from the run log of one real Google Flights task (2026-09-18). Every click, typed value and millisecond comes from that log.</p>
+    <p class="kicker">Demo</p>
+    <h2>A recorded run, replayed in the page</h2>
+    <p class="lead">The browser draws this from the log of one Google Flights run made on 2026-09-18. Each click, typed value and timing comes from that log. It is not a video.</p>
     <div class="demo"><div id="jev-demo"></div></div>
     <p class="legend">Source: <a href="https://github.com/brnyxx/jev-ra/blob/main/docs/assets-site/demo.js">demo.js</a> (a dependency-free SVG replayer) fed by <a href="https://github.com/brnyxx/jev-ra/blob/main/docs/benchmarks/2026-09-18-v0.1/demo-run-flights.json">demo-run-flights.json</a>. Raw screen recordings of the benchmark tasks are in <a href="https://github.com/brnyxx/jev-ra/tree/main/assets/demo">assets/demo/</a>.</p>
   </section>
 
   <section id="how">
-    <p class="kicker">// 02 · one step</p>
+    <p class="kicker">Loop</p>
     <h2>How a step works</h2>
-    <p class="lead">Every step is the same five moves. The only network call is one typed decision; there is no prompt, no generated text, and nothing the model says ever becomes a selector or a script.</p>
+    <p class="lead">Each step is five operations. The only network call is one request to Jev with typed questions. jev-ra builds no prompt and generates no text, and model output is never used as a selector or as script.</p>
     <div class="pipe" aria-hidden="true">
       <i class="pulse"></i>
       <div class="node"><div class="dot"><svg class="pi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></div><h3>Observe</h3><p>one <code>Runtime.evaluate</code> runs <code>snapshot.js</code>: visible text, every control as <code>[e12] button "Search"</code>, identity guards</p><span class="ms">1 CDP call</span></div>
       <div class="node"><div class="dot"><svg class="pi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2 4 14h7l-1 8 9-12h-7l1-8z"/></svg></div><h3>Decide</h3><p>one Jev request with five typed questions: operation, target, which value, did the last step work, is the goal done</p><span class="ms">~300 ms</span></div>
       <div class="node"><div class="dot"><svg class="pi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 3l14 8-6 1.5L9.5 19 5 3z"/></svg></div><h3>Act</h3><p>guard re-checked, geometry re-resolved, hit-tested, then a trusted <code>Input.dispatchMouseEvent</code> / <code>insertText</code></p><span class="ms">trusted input</span></div>
       <div class="node"><div class="dot"><svg class="pi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12.5 9.5 18 20 6.5"/></svg></div><h3>Verify</h3><p>url, title, text and field values diffed before vs after; loop detection on three unchanged pages</p><span class="ms">deterministic</span></div>
-      <div class="node"><div class="dot"><svg class="pi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6v5a4 4 0 0 1-4 4H5"/><path d="m9 11-4 4 4 4"/></svg></div><h3>Done or hand back</h3><p><code>DONE</code> needs <code>goal_achieved ≥ 0.6</code> in the same answer; otherwise escalate with a reason and the top candidates</p><span class="ms">8 reasons</span></div>
+      <div class="node"><div class="dot"><svg class="pi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6v5a4 4 0 0 1-4 4H5"/><path d="m9 11-4 4 4 4"/></svg></div><h3>Finish or return</h3><p><code>DONE</code> is accepted only with <code>goal_achieved ≥ 0.6</code> in the same answer; otherwise the run returns with a reason and the top candidates</p><span class="ms">8 reasons</span></div>
     </div>
 
     <div class="bars" aria-label="wall time per step">
       <div class="bar bu"><div class="lbl">browser-use<small>flash_mode, gemini-3-flash</small></div><div class="track"><div class="fill"></div></div><div class="val">5.8 s/step</div></div>
       <div class="bar jr"><div class="lbl">jev-ra<small>Jev via OpenRouter</small></div><div class="track"><div class="fill"></div></div><div class="val">0.7 s/step</div></div>
     </div>
-    <p class="legend">Wall time divided by steps on the Wikipedia task (23.1 s / 4 vs 4.3 s / 6, 2026-09-18). A jev-ra step is one ~300 ms decision plus the page's own load and settle time; there is no prompt to build and no tokens to stream.</p>
+    <p class="legend">Wall time divided by steps on the Wikipedia task (23.1 s / 4 vs 4.3 s / 6, 2026-09-18). A jev-ra step is one decision of about 300 ms plus the page's own load and settle time.</p>
   </section>
 
   <section id="decision">
-    <p class="kicker">// 03 · anatomy of a decision</p>
-    <h2>Five questions, one request, no text.</h2>
-    <p class="lead">Jev is a decision model, not a chat model. jev-ra sends the page as state and asks typed questions; it gets back a choice with a probability distribution and yes/no answers with confidence. That is why a step costs about $0.00025 and never has to parse prose.</p>
+    <p class="kicker">Request</p>
+    <h2>What one request looks like</h2>
+    <p class="lead">Jev is a decision model. jev-ra sends the page as state with five typed questions and gets back a chosen option with probabilities and two yes/no answers with confidence. A step costs about $0.00025 and there is no prose to parse.</p>
     <div class="anat">
       <div class="panel">
         <p class="t"><span>request · state + questions</span><span class="rt">POST /decisions</span></p>
@@ -314,13 +314,13 @@
         <div class="act">→ act: click e3 (guard ok, hit-test ok) · verify: text changed, page_changed=true · next step</div>
       </div>
     </div>
-    <p class="legend">Question ids and instruction texts are the ones in <code>jev_ra/decide/questions.py</code>; the model answers are illustrative. Values your agent passes are only ever chosen by name; jev-ra never invents a string to type.</p>
+    <p class="legend">Question ids and instruction texts are the ones in <code>jev_ra/decide/questions.py</code>; the answers shown are an example. Values your agent passes are chosen by name; jev-ra does not invent strings to type.</p>
   </section>
 
   <section id="arch">
-    <p class="kicker">// 04 · architecture</p>
-    <h2>Three processes, two wires, one decision model.</h2>
-    <p class="lead">Your agent talks MCP over stdio. jev-ra owns a real Chrome through the DevTools Protocol and asks Jev for every step. Nothing else runs.</p>
+    <p class="kicker">Architecture</p>
+    <h2>Architecture</h2>
+    <p class="lead">Your agent talks to jev-ra over MCP (stdio). jev-ra drives Chrome over the DevTools Protocol and calls Jev over HTTPS once per step.</p>
     <div class="arch">
       <svg viewBox="0 0 1100 430" role="img" aria-label="architecture: agent to jev-ra over MCP, jev-ra to Chrome over CDP and to Jev over HTTPS">
         <!-- agent -->
@@ -376,13 +376,13 @@
         <text class="lbl" x="795" y="324" text-anchor="middle">CDP · ws://</text>
         <text id="a-w5" class="m" x="795" y="364" text-anchor="middle">snapshot · input</text>
 
-        <text id="a-foot" class="m" x="20" y="410">One process per box. No queue, no daemon, no vector store, no second model.</text>
+        <text id="a-foot" class="m" x="20" y="410">One process per box; no queue, daemon, vector store or second model.</text>
       </svg>
     </div>
     <div class="archnotes">
-      <div><b>Why no screenshots</b>The snapshot is text and an element table, so a step sends a few KB and Jev answers in ~300 ms. Screenshots are available as a tool for the rare case text is not enough.</div>
-      <div><b>Why the model never touches the DOM</b>Every target is an observed node id. Before input, jev-ra re-checks the element's identity guard and hit-tests its geometry; a covered or changed control raises <code>stale</code> instead of clicking the wrong thing.</div>
-      <div><b>Why your agent stays in charge</b>jev-ra does not plan, does not invent text, and does not summarise. It executes a concrete goal fast and hands the page back with candidates the moment it cannot.</div>
+      <div><b>Why there are no screenshots</b>The snapshot is text and an element table, so a step sends a few KB and Jev answers in about 300 ms. A screenshot tool exists for pages where text is not enough.</div>
+      <div><b>Why the model never touches the DOM</b>Every target is an observed node id. Before input, jev-ra re-checks the element's identity guard and hit-tests its geometry; a covered or changed control returns <code>stale</code> instead of a wrong click.</div>
+      <div><b>What your agent still does</b>Planning, supplying text values, and reading the page. jev-ra executes one concrete goal and returns the page with candidates when it cannot continue.</div>
     </div>
     <div class="stack">
       <a class="chip" href="https://www.python.org/"><svg class="ic"><use href="#i-python"/></svg>Python 3.12+</a>
@@ -396,9 +396,9 @@
   </section>
 
   <section id="escalate">
-    <p class="kicker">// 05 · escalation contract</p>
-    <h2>When it cannot, it says why.</h2>
-    <p class="lead">Eight reasons, each with a prescribed move for the agent. The reply always carries the top candidates and the page text, so the agent can act without another observe.</p>
+    <p class="kicker">Escalation</p>
+    <h2>When a run stops early</h2>
+    <p class="lead">A run that cannot finish returns one of eight reasons, the top candidates and the page text, so the agent can act without observing again.</p>
     <div class="esc">
       <div><code>needs_value</code>a field needs a string you did not supply. Add it to <code>values</code>, call again.</div>
       <div><code>stuck_loop</code>three steps, no page change. Read the text, click one candidate, continue.</div>
@@ -412,9 +412,9 @@
   </section>
 
   <section id="bench">
-    <p class="kicker">// 06 · benchmarks</p>
-    <h2>Measured, not claimed.</h2>
-    <p class="lead">Every number below is reproducible with <code>jev-ra bench --live</code> against browser-use in the same Chrome with the same key.</p>
+    <p class="kicker">Benchmarks</p>
+    <h2>Benchmarks</h2>
+    <p class="lead"><code>jev-ra bench --live</code> reproduces every number below: browser-use and jev-ra in the same Chrome with the same key.</p>
     <div class="tablewrap"><table>
       <thead><tr><th>Task</th><th>browser-use flash_mode</th><th>browser-use default</th><th>jev-ra</th><th>ratio</th></tr></thead>
       <tbody>
@@ -427,9 +427,9 @@
   </section>
 
   <section id="install">
-    <p class="kicker">// 07 · install</p>
-    <h2>One line.</h2>
-    <p class="lead">Works with the OpenRouter key you already have; no TypeSafe account required. <code>jev-ra doctor</code> proves the whole path with one live decision.</p>
+    <p class="kicker">Install</p>
+    <h2>Install</h2>
+    <p class="lead">An OpenRouter key is enough; no TypeSafe account is needed. <code>jev-ra doctor</code> checks the key, Chrome and one live decision.</p>
     <div class="tabs" role="tablist">
       <button class="tab" role="tab" aria-selected="true" data-for="claude"><svg class="ic"><use href="#i-claude"/></svg>Claude Code</button>
       <button class="tab" role="tab" aria-selected="false" data-for="codex"><svg class="ic"><use href="#i-openai"/></svg>Codex</button>
@@ -454,31 +454,31 @@ npx -y jev-ra install claude   # or: install codex</pre></div>
 }</pre></div>
     <div class="code" id="tab-cli" hidden><button class="copy">copy</button><pre>uvx jev-ra run https://en.wikipedia.org/wiki/Main_Page \
   "Find and open the article about Gödel's incompleteness theorems" --json
-uvx jev-ra search "python 3.12 release date" --goal "the exact release date, with source"
+uvx jev-ra search "python 3.12 release date" "the exact release date, with source"
 uvx jev-ra doctor</pre></div>
-    <p class="legend">Writing an agent that should install this for someone? Point it at <a href="https://github.com/brnyxx/jev-ra/blob/main/AGENTS.md">AGENTS.md</a>; it covers install, the tool table, the escalation moves and cost.</p>
+    <p class="legend">If an agent installs this for you, point it at <a href="https://github.com/brnyxx/jev-ra/blob/main/AGENTS.md">AGENTS.md</a>: install steps, the tool table, what to do on each escalation, and cost.</p>
   </section>
 
   <section id="limits">
-    <p class="kicker">// 08 · limits</p>
-    <h2>What it will not do (yet)</h2>
-    <p class="lead">These escalate to your agent with a reason instead of guessing.</p>
+    <p class="kicker">Limits</p>
+    <h2>Limits</h2>
+    <p class="lead">These return an escalation with a reason.</p>
     <div class="limits">
       <div><h3>Out of scope in v0.1</h3><ul><li>Cross-origin iframes (same-origin and open shadow roots work)</li><li>Canvas-drawn UIs</li><li>File uploads</li><li>Captchas, bot walls</li><li>Multi-tab workflows</li></ul></div>
-      <div><h3>By design</h3><ul><li>Never types a value your agent did not supply (no guessed personal data)</li><li>Never turns model output into selectors or JavaScript</li><li>Never reports done without a visible check</li><li>Sends visible page text to Jev; never file bodies or screenshots</li></ul></div>
+      <div><h3>By design</h3><ul><li>Types only values your agent supplied; personal data is never guessed</li><li>Model output is never used as a selector or as JavaScript</li><li>Done is reported only after a visible check</li><li>Jev receives visible page text, not file bodies or screenshots</li></ul></div>
     </div>
   </section>
 
   <footer>
     <div class="row">
-      <div>MIT · built on <a href="https://github.com/browser-use/browser-harness">browser-harness</a> and the <a href="https://github.com/browser-use/jev-ultrafast">jev-ultrafast</a> snapshot idea · decisions by <a href="https://typesafe.ai">TypeSafe Jev</a></div>
+      <div>MIT · uses <a href="https://github.com/browser-use/browser-harness">browser-harness</a> and the snapshot approach from <a href="https://github.com/browser-use/jev-ultrafast">jev-ultrafast</a> · decisions by <a href="https://typesafe.ai">TypeSafe Jev</a></div>
       <div class="soc">
         <a href="https://github.com/brnyxx/jev-ra" title="GitHub"><svg class="ic"><use href="#i-github"/></svg></a>
         <a href="https://pypi.org/project/jev-ra/" title="PyPI"><svg class="ic"><use href="#i-pypi"/></svg></a>
         <a href="https://www.npmjs.com/package/jev-ra" title="npm"><svg class="ic"><use href="#i-npm"/></svg></a>
       </div>
     </div>
-    <p>Brand icons from <a href="https://simpleicons.org/">Simple Icons</a> (CC0). Product names and logos belong to their owners; their use here means "works with", not endorsement.</p>
+    <p>Brand icons from <a href="https://simpleicons.org/">Simple Icons</a> (CC0). Product names and logos belong to their owners and indicate compatibility, not endorsement.</p>
   </footer>
 </div>
 <script>
