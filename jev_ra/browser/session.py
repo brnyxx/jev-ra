@@ -68,13 +68,11 @@ RESOLVE_JS = """(action => {
   if (!e?.isConnected || e.matches(':disabled') || e.closest('[aria-disabled="true"],[inert]') ||
       !e.checkVisibility({checkVisibilityCSS:true})) return null;
   if (action.kind==='fill' && (e.readOnly || e.getAttribute('aria-readonly')==='true')) return null;
-  const r=e.getBoundingClientRect(), [dx,dy]=cache.offset(e);
-  const local={x:r.x+r.width/2, y:r.y+r.height/2};
-  const x=local.x+dx, y=local.y+dy;
-  if (!r.width || !r.height || x<0 || y<0 || x>=innerWidth || y>=innerHeight) return null;
-  // Hit-test in the element's own root: elementFromPoint stops at a shadow host otherwise.
-  const hit=cache.deepest(e.ownerDocument, local.x, local.y);
-  if (!cache.reaches(e,hit)) return null;
+  // The point the snapshot would have offered it at, hit-tested in the element's own root:
+  // elementFromPoint stops at a shadow host otherwise.
+  const local=cache.point(e);
+  if (!local) return null;
+  const [dx,dy]=cache.offset(e), x=local.x+dx, y=local.y+dy;
   if (action.kind==='select') {
     if (e.tagName!=='SELECT' || ![...e.options].some(o=>o.value===action.value &&
         !o.disabled && !o.closest('optgroup[disabled]'))) return null;
@@ -287,6 +285,18 @@ class Session:
         self.invalidate()
         return {"executed": action["id"], "kind": kind, "text": text}
 
+    def hover(self, node):
+        """Move the pointer onto one observed node, without pressing anything."""
+        if type(node) is not int:
+            raise ValueError("Invalid observed node")
+        target = self.evaluate(f"{RESOLVE_JS}({json.dumps({'node': node, 'kind': 'click'})})")
+        if target is None:
+            raise StalePage("Target changed or is covered. Observe again.")
+        self.call("Input.dispatchMouseEvent", type="mouseMoved", x=target["x"], y=target["y"])
+        self.after_input = {"id": f"hover-{node}", "kind": "hover", "node": node}
+        self.invalidate()
+        return {"executed": f"hover-{node}", "kind": "hover"}
+
     def input(self, action, text):
         """Resolve the target's live geometry, hit-test it, and dispatch trusted input."""
         if type(action.get("node")) is not int:
@@ -300,6 +310,10 @@ class Session:
             raise StalePage("Target changed or is covered. Observe again.")
         if action["kind"] == "select":
             return
+        # A pointer arrives before it presses. Menus that open on hover and nothing else - a
+        # shop's category bar, a docs site's version picker - never open for a click alone, and
+        # the pointer stays where it was put, so the next observation sees what opened.
+        self.call("Input.dispatchMouseEvent", type="mouseMoved", x=target["x"], y=target["y"])
         for event in ("mousePressed", "mouseReleased"):
             self.call(
                 "Input.dispatchMouseEvent",

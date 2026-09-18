@@ -53,6 +53,25 @@
   // a consent wall is a sibling of what it hides, never its parent.
   cache.reaches = (e,top) => !!top &&
     (top===e || e.contains(top) || top.contains(e) || top.closest('label')?.control===e);
+  // Where to put the pointer. The centre is where a person aims, but a bar floating over the
+  // middle of a filter list leaves the names beside it perfectly clickable, so a few points along
+  // the element are tried before giving up on it. The first one that reaches is the one used, by
+  // observation and by execution alike, so what is offered is what can be pressed.
+  cache.point = e => {
+    const r=e.getBoundingClientRect();
+    if (!r.width || !r.height) return null;
+    const [dx,dy]=cache.offset(e), midX=r.x+r.width/2, midY=r.y+r.height/2;
+    const inset=(size,most)=>Math.min(size/4,most)+1;
+    const tries=[[midX,midY],
+      [r.x+inset(r.width,40),midY], [r.right-inset(r.width,40),midY],
+      [midX,r.y+inset(r.height,12)], [midX,r.bottom-inset(r.height,12)]];
+    for (const [x,y] of tries) {
+      if (x<0 || y<0 || x+dx<0 || y+dy<0 || x+dx>=innerWidth || y+dy>=innerHeight) continue;
+      const top=cache.deepest(e.ownerDocument,x,y);
+      if (cache.reaches(e,top)) return {x,y,top};
+    }
+    return null;
+  };
   // Rendered: the browser lays it out and the accessibility tree keeps it. Visible: rendered and
   // not painted transparent. The two differ on purpose - a control drawn at opacity 0 over its own
   // artwork is the ordinary way to style a checkbox, and it still catches every click.
@@ -138,17 +157,14 @@
       if (e.tagName==='IFRAME' && contentOf(e)?.body) continue;
       if (e.tagName==='LABEL' && !standIn(e)) continue;
       if (!safe(e) || !rendered(e) || e.matches(':disabled') || e.closest('[aria-disabled="true"]')) continue;
-      const r=e.getBoundingClientRect(), [dx,dy]=cache.offset(e);
-      const x=r.x+dx+r.width/2, y=r.y+dy+r.height/2, rname=role(e);
-      if (!rname || r.width<=0 || r.height<=0 || x<0 || y<0 || x>=innerWidth || y>=innerHeight) continue;
-      // The same hit test the resolver runs before dispatching input: whatever is offered here
-      // has to be reachable there. A consent wall leaves the page under it visible to CSS and
-      // unclickable in fact, and an element nobody can click is not an action.
-      const top=cache.deepest(e.ownerDocument, r.x+r.width/2, r.y+r.height/2);
-      if (!cache.reaches(e,top)) continue;
-      // Transparent counts only when the pointer lands on the element itself: that is a control
-      // wearing someone else's pixels. Anything else transparent is hidden, and stays hidden.
-      if (top!==e && !visible(e)) continue;
+      const r=e.getBoundingClientRect(), [dx,dy]=cache.offset(e), rname=role(e);
+      if (!rname) continue;
+      // Whatever is offered here has to be reachable by the resolver: a consent wall leaves the
+      // page under it visible to CSS and unclickable in fact, and what nobody can click is not
+      // an action. Transparency counts against an element only when the pointer lands elsewhere:
+      // a control wearing someone else's pixels still catches every press.
+      const spot=cache.point(e);
+      if (!spot || (spot.top!==e && !visible(e))) continue;
       if (rname==='gridcell' && e.querySelector('button,[role="button"]')) continue;
       const element={node:identity(e),role:rname,label:name(e)||rname,
         rect:{x:r.x+dx,y:r.y+dy,w:r.width,h:r.height}};

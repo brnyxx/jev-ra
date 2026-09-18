@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>Brand filter</title>
+<style>
+  body { font: 14px/1.5 system-ui; margin: 0; padding: 0; }
+  .brands { position: absolute; left: 20px; top: 20px; width: 420px; }
+  .brands label { display: block; width: 300px; padding: 6px 0; }
+  /* The checkbox has no pixels; the row is the control, the way a shop's filter list is built. */
+  .brands input { position: absolute; width: 0; height: 0; opacity: 0; }
+  /* A bar floating over the middle of the list: the reset control of a filter panel, a sticky
+     apply strip, a chat bubble. Every brand name is still readable and clickable to its left. */
+  .bar { position: absolute; left: 110px; top: 20px; width: 260px; height: 130px;
+         background: rgba(240,240,240,.98); border: 1px solid #bbb; }
+  #hidden-one { position: absolute; left: 20px; top: 220px; width: 240px; height: 40px; }
+  .fully { position: absolute; left: 10px; top: 210px; width: 300px; height: 60px;
+           background: #fff; border: 1px solid #bbb; }
+</style>
+</head>
+<body>
+<div class="brands">
+  <label><input type="checkbox" name="brand" value="dr-jart"> 닥터자르트</label>
+  <label><input type="checkbox" name="brand" value="laneige"> 라네즈</label>
+  <label><input type="checkbox" name="brand" value="round-lab"> 라운드랩</label>
+  <label><input type="checkbox" name="brand" value="numbuzin"> 넘버즈인</label>
+</div>
+<div class="bar">선택 초기화</div>
+
+<button type="button" id="hidden-one" onclick="document.title='clicked'">완전히 가려진 버튼</button>
+<div class="fully"></div>
+
+<p id="out" style="position:absolute;left:20px;top:300px"></p>
+<script>
+  document.querySelectorAll('.brands input').forEach(i => i.addEventListener('change', () => {
+    const on = [...document.querySelectorAll('.brands input:checked')].map(x => x.value);
+    document.getElementById('out').textContent = 'filtered: ' + on.join(', ');
+  }));
+</script>
+</body>
+</html>

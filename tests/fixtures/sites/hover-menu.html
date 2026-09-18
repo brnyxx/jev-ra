@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>Store</title>
+<style>
+  body { font: 14px/1.5 system-ui; margin: 0; padding: 16px; }
+  .nav { position: relative; display: inline-block; }
+  .nav > button { padding: 8px 14px; border: 1px solid #888; background: #fff; }
+  /* Opens on hover and on nothing else: no click handler, no focus, no aria-expanded.
+     A pointer that never moves never sees this menu. */
+  .nav .panel { display: none; position: absolute; left: 0; top: 100%; border: 1px solid #ccc;
+                background: #fff; padding: 10px; width: 200px; }
+  .nav:hover .panel { display: block; }
+  .panel a { display: block; padding: 4px 0; }
+</style>
+</head>
+<body>
+<div class="nav">
+  <button type="button" id="trigger">카테고리</button>
+  <div class="panel">
+    <a href="/sites/empty.html?dispCatNo=1000">스킨케어</a>
+    <a href="/sites/empty.html?dispCatNo=2000">메이크업</a>
+  </div>
+</div>
+<p>상품 목록</p>
+</body>
+</html>
