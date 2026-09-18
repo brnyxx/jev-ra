@@ -112,6 +112,7 @@ class Session:
         self.config = config or load()
         self.max_elements = max_elements
         self.after_input = None
+        self.before_input = None
         self.cache = {}
         viewport = self.config.viewport
         self.cdp_url, self.chrome_source = ensure_chrome(viewport=(viewport.width, viewport.height))
@@ -214,6 +215,36 @@ class Session:
         except RuntimeError:
             logger.debug("Post-input settle was interrupted")
         self.quiesce()
+        self.paint(action)
+
+    def paint(self, action):
+        """After a click on a button, wait until what it opened joins the page.
+
+        A dialog or a palette can mount a second or more after the click, and the quiet window
+        is over long before that. An action set that stays the same is the signal that there is
+        still something to wait for; a change that holds for another reading is the answer. A
+        control that blinks in and out - a Back to top link, a scroll control - is neither.
+        """
+        if self.before_input is None or action.get("kind") != "click" or action.get("role") != "button":
+            return
+        url, before = self.before_input
+        deadline = time.monotonic() + PAINT_BUDGET_S
+        changed = False
+        while time.monotonic() < deadline:
+            try:
+                page = self.evaluate(snapshot_expression(self.max_elements))
+            except StalePage:
+                return
+            if page is None:
+                return
+            current = (page.get("url"), action_set(page))
+            if current == (url, before):
+                changed = False
+            elif changed:
+                return
+            else:
+                changed = True
+            time.sleep(WAIT_SLEEP_S)
 
     def quiesce(self):
         """Wait, briefly, until two readings of the page marker agree."""
@@ -267,6 +298,7 @@ class Session:
         """The action itself: guard, then trusted input."""
         if not self.fresh(page, action):
             raise StalePage("Page changed since this decision. Observe again.")
+        self.before_input = (page.get("url", ""), action_set(page))
         kind = action["kind"]
         if kind == "wait":
             time.sleep(WAIT_SLEEP_S)
@@ -379,3 +411,8 @@ class Session:
 
     def __exit__(self, *_args):
         self.close()
+
+
+def action_set(page):
+    """The identity of every action a page offers, for comparing two readings of it."""
+    return frozenset((action.get("id"), action.get("kind")) for action in page.get("actions") or ())

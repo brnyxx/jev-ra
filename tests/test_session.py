@@ -114,3 +114,10 @@ def test_enter_submits_the_field_that_holds_the_query(session, fixture_server):
     press = next(action for action in after["actions"] if action["id"] == "press_enter")
     session.act(press, after)
     assert "searched red shoes" in session.observe()["text"]
+
+
+def test_a_button_that_opens_a_panel_late_is_waited_for(session, fixture_server):
+    page = session.open(f"{fixture_server}/sites/late-panel.html")
+    session.act(action_for(page, "Open search panel", "click"), page)
+    after = session.observe()
+    assert [element["label"] for element in after["elements"] if element["role"] == "textbox"] == ["Search help"]

@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Support</title></head>
+<body>
+<h1>Support</h1>
+<button id="open">Open search panel</button>
+<!-- A click on a button can mount what it opens a beat later; the observation right after
+     the click has to wait for it, or the panel might as well not exist. -->
+<script>
+  document.getElementById('open').addEventListener('click', () => {
+    setTimeout(() => {
+      const form = document.createElement('form');
+      form.innerHTML = '<input id="q" aria-label="Search help"><button type="submit">Search</button>';
+      document.body.appendChild(form);
+    }, 500);
+  });
+</script>
+</body>
+</html>
