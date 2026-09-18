@@ -61,7 +61,7 @@ RESOLVE_JS = """(action => {
   if (!r.width || !r.height || x<0 || y<0 || x>=innerWidth || y>=innerHeight) return null;
   // Hit-test in the element's own root: elementFromPoint stops at a shadow host otherwise.
   const hit=cache.deepest(e.ownerDocument, local.x, local.y);
-  if (hit!==e && !e.contains(hit)) return null;
+  if (!cache.reaches(e,hit)) return null;
   if (action.kind==='select') {
     if (e.tagName!=='SELECT' || ![...e.options].some(o=>o.value===action.value &&
         !o.disabled && !o.closest('optgroup[disabled]'))) return null;

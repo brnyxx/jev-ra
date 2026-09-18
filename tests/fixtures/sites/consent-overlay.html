@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Book a train</title>
+<style>
+  body { font: 14px/1.5 system-ui; margin: 0; padding: 16px; }
+  form { display: flex; gap: 8px; margin-top: 12px; }
+  input { padding: 6px 8px; }
+  #consent { position: fixed; inset: 0; background: rgba(0,0,0,.55); display: grid; place-items: center; }
+  #consent .card { background: #fff; padding: 24px; max-width: 420px; }
+  #consent.gone { display: none; }
+</style>
+</head>
+<body>
+<!-- The consent wall every European site opens with. The booking form underneath is perfectly
+     visible to CSS - it is not hidden, not inert, not aria-hidden - and completely unclickable,
+     because the overlay is on top of it. -->
+<h1>Buy train tickets</h1>
+<form onsubmit="event.preventDefault(); out.textContent = 'searching ' + origin.value;">
+  <input id="origin" name="origin" type="search" aria-label="From" placeholder="From">
+  <input id="destination" name="destination" type="search" aria-label="To" placeholder="To">
+  <button type="submit">Find cheap tickets</button>
+</form>
+<p id="out"></p>
+
+<div id="consent">
+  <div class="card">
+    <h2>Your privacy and us</h2>
+    <p>We and our partners store and access information on your device.</p>
+    <button type="button" onclick="document.getElementById('consent').classList.add('gone')">Accept all</button>
+    <button type="button" onclick="document.getElementById('consent').classList.add('gone')">Reject all</button>
+  </div>
+</div>
+</body>
+</html>

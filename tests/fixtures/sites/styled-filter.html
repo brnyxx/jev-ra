@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>Brand filter</title>
+<style>
+  body { font: 14px/1.5 system-ui; margin: 0; padding: 16px; }
+  .filter label { display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; border: 1px solid #ccc; }
+  /* The checkbox is painted over by its own label art, which is how nearly every shop
+     styles a filter. The input is still the control; the label is what the pointer meets. */
+  .filter input { position: absolute; width: 18px; height: 18px; opacity: 0.01; }
+  .filter .box { position: relative; z-index: 1; margin-left: 0; width: 18px; height: 18px;
+                 border: 1px solid #888; display: inline-block; background: #fff; }
+  .filter label { position: relative; }
+  .filter input { left: 10px; top: 10px; }
+  .filter input:checked + .box { background: #111; }
+</style>
+</head>
+<body>
+<h1>브랜드</h1>
+<div class="filter">
+  <label for="b1"><input type="checkbox" id="b1" name="brand" value="dr-jart"><span class="box"></span>닥터자르트</label>
+  <label for="b2"><input type="checkbox" id="b2" name="brand" value="laneige"><span class="box"></span>라네즈</label>
+</div>
+<p id="out"></p>
+<script>
+  document.querySelectorAll('.filter input').forEach(input => {
+    input.addEventListener('change', () => {
+      const on = [...document.querySelectorAll('.filter input:checked')].map(i => i.value);
+      document.getElementById('out').textContent = 'filtered: ' + on.join(', ');
+    });
+  });
+</script>
+</body>
+</html>

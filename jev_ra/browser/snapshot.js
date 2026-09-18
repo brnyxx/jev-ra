@@ -46,6 +46,9 @@
     return node;
   };
   const safe = e => !['password','file','hidden'].includes(e.type);
+  // Whether a pointer landing on `top` reaches `e`: itself, its own subtree, or the label that
+  // forwards a click to it - which is how a shop paints its filter checkboxes.
+  cache.reaches = (e,top) => top===e || e.contains(top) || top?.closest('label')?.control===e;
   const visible = e => !e.closest('[aria-hidden="true"],[inert]') &&
     e.checkVisibility({checkOpacity:true,checkVisibilityCSS:true});
   const name = (e,seen=new Set()) => {
@@ -117,6 +120,11 @@
       const r=e.getBoundingClientRect(), [dx,dy]=cache.offset(e);
       const x=r.x+dx+r.width/2, y=r.y+dy+r.height/2, rname=role(e);
       if (!rname || r.width<=0 || r.height<=0 || x<0 || y<0 || x>=innerWidth || y>=innerHeight) continue;
+      // The same hit test the resolver runs before dispatching input: whatever is offered here
+      // has to be reachable there. A consent wall leaves the page under it visible to CSS and
+      // unclickable in fact, and an element nobody can click is not an action.
+      const top=cache.deepest(e.ownerDocument, r.x+r.width/2, r.y+r.height/2);
+      if (!cache.reaches(e,top)) continue;
       if (rname==='gridcell' && e.querySelector('button,[role="button"]')) continue;
       const element={node:identity(e),role:rname,label:name(e)||rname,
         rect:{x:r.x+dx,y:r.y+dy,w:r.width,h:r.height}};
