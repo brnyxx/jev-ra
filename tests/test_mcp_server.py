@@ -1,0 +1,137 @@
+import asyncio
+import json
+
+import pytest
+from mcp import Client
+
+from jev_ra import config
+from jev_ra.decide import Reply
+from jev_ra.mcp_server import Browser, build_server
+from tests.test_agent import FakeSession, answer
+
+TOOLS = {
+    "browser_open",
+    "browser_run",
+    "browser_act",
+    "browser_observe",
+    "browser_extract",
+    "browser_click",
+    "browser_type",
+    "browser_select",
+    "browser_scroll",
+    "browser_press",
+    "browser_wait",
+    "browser_screenshot",
+    "browser_close",
+}
+
+
+def decide_done(state, questions):
+    return Reply(
+        answers={"operation": answer("DONE"), "goal_achieved": {"noul": 0.95}},
+        latency_ms=12,
+        usage={"cost": 0.0001},
+    )
+
+
+def server_with(session=None, decide=decide_done):
+    fake = session or FakeSession()
+    browser = Browser(config=config.load({}), session_factory=lambda: fake, decide=decide)
+    return build_server(browser), browser, fake
+
+
+def call(server, name, **arguments):
+    async def once():
+        async with Client(server, raise_exceptions=False) as client:
+            return await client.call_tool(name, arguments)
+
+    return asyncio.run(once())
+
+
+def payload(result):
+    assert not result.is_error, result.content
+    return json.loads(result.content[0].text)
+
+
+def test_the_tool_list_matches_the_design_table():
+    server, _browser, _session = server_with()
+
+    async def listing():
+        async with Client(server) as client:
+            return await client.list_tools()
+
+    tools = asyncio.run(listing())
+    assert {tool.name for tool in tools.tools} == TOOLS
+    assert all(tool.description for tool in tools.tools)
+
+
+def test_browser_open_summarises_the_page():
+    server, _browser, _session = server_with()
+    result = payload(call(server, "browser_open", url="http://127.0.0.1/form.html"))
+    assert result["title"] == "Booking form"
+    assert result["elements"] == 2
+    assert result["elapsed_ms"] >= 0
+    assert len(result["text"]) <= 1500
+
+
+def test_browser_observe_returns_the_element_table_and_text():
+    server, _browser, _session = server_with()
+    call(server, "browser_open", url="http://127.0.0.1/form.html")
+    result = payload(call(server, "browser_observe"))
+    assert result["elements"] == ["[e1] textbox City", "[e2] button Search flights"]
+    assert result["text"] == "Booking form"
+    assert result["omitted"] == 0
+
+
+def test_browser_run_returns_the_result_json():
+    server, _browser, _session = server_with()
+    call(server, "browser_open", url="http://127.0.0.1/form.html")
+    result = payload(call(server, "browser_run", goal="confirm the page"))
+    assert result["status"] == "done"
+    assert result["reason"] == "goal_achieved"
+    assert result["decisions"] == 1
+    assert result["cost"] == pytest.approx(0.0001)
+    assert result["elapsed_ms"] >= 0
+    assert result["steps"] == []
+    assert "final_page" in result
+
+
+def test_tools_refuse_to_work_on_a_closed_session():
+    server, _browser, _session = server_with()
+    call(server, "browser_open", url="http://127.0.0.1/form.html")
+    assert payload(call(server, "browser_close"))["ok"] is True
+    failed = call(server, "browser_observe")
+    assert failed.is_error
+    assert "No browser session is open" in failed.content[0].text
+    assert call(server, "browser_close").is_error
+
+
+def test_direct_tools_move_the_browser_without_a_decision():
+    calls = []
+
+    def never(state, questions):
+        calls.append(questions)
+        raise AssertionError("no decision expected")
+
+    server, _browser, fake = server_with(decide=never)
+    call(server, "browser_open", url="http://127.0.0.1/form.html")
+    assert payload(call(server, "browser_click", ref="e2"))["title"] == "Booking form"
+    assert payload(call(server, "browser_type", ref="e1", text="London"))["elements"] == 2
+    assert fake.acted == [("e2", "click", None), ("e1", "fill", "London")]
+    assert calls == []
+
+
+def test_an_unknown_ref_comes_back_as_a_tool_error():
+    server, _browser, _session = server_with()
+    call(server, "browser_open", url="http://127.0.0.1/form.html")
+    failed = call(server, "browser_click", ref="e9")
+    assert failed.is_error
+    assert "No click action for e9" in failed.content[0].text
+
+
+def test_extract_rejects_an_unknown_mode():
+    server, _browser, _session = server_with()
+    call(server, "browser_open", url="http://127.0.0.1/form.html")
+    failed = call(server, "browser_extract", mode="summary")
+    assert failed.is_error
+    assert "mode must be one of" in failed.content[0].text
