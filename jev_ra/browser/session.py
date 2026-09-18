@@ -26,13 +26,18 @@ KEYS = {
 
 # Code-owned node ids refer to observed elements. A decision never supplies a selector.
 RESOLVE_JS = """(action => {
-  const e=window.__jevRa?.nodes.get(action.node);
+  const cache=window.__jevRa;
+  const e=cache?.nodes.get(action.node);
   if (!e?.isConnected || e.matches(':disabled') || e.closest('[aria-disabled="true"],[inert]') ||
       !e.checkVisibility({checkOpacity:true,checkVisibilityCSS:true})) return null;
   if (action.kind==='fill' && (e.readOnly || e.getAttribute('aria-readonly')==='true')) return null;
-  const r=e.getBoundingClientRect(), x=r.x+r.width/2, y=r.y+r.height/2;
+  const r=e.getBoundingClientRect(), [dx,dy]=cache.offset(e);
+  const local={x:r.x+r.width/2, y:r.y+r.height/2};
+  const x=local.x+dx, y=local.y+dy;
   if (!r.width || !r.height || x<0 || y<0 || x>=innerWidth || y>=innerHeight) return null;
-  if (!e.contains(document.elementFromPoint(x,y))) return null;
+  // Hit-test in the element's own root: elementFromPoint stops at a shadow host otherwise.
+  const hit=cache.deepest(e.ownerDocument, local.x, local.y);
+  if (hit!==e && !e.contains(hit)) return null;
   if (action.kind==='select') {
     if (e.tagName!=='SELECT' || ![...e.options].some(o=>o.value===action.value &&
         !o.disabled && !o.closest('optgroup[disabled]'))) return null;
@@ -45,7 +50,8 @@ RESOLVE_JS = """(action => {
 
 # Two frames settle ordinary input; a combobox gets up to 200 ms for real suggestions.
 SETTLE_JS = """(action => new Promise(resolve => {
-  const field=window.__jevRa?.nodes.get(action.node);
+  const cache=window.__jevRa;
+  const field=cache?.nodes.get(action.node);
   const autocomplete=action.kind==='fill' && field?.getAttribute('role')==='combobox';
   let frames=0, stopped=false;
   const finish=()=>{stopped=true;resolve()};
@@ -54,7 +60,9 @@ SETTLE_JS = """(action => new Promise(resolve => {
     if (stopped) return;
     const ids=(field?.getAttribute('aria-controls')||field?.getAttribute('aria-owns')||'')
       .split(/\\s+/).filter(Boolean);
-    const roots=ids.length ? ids.map(id=>document.getElementById(id)).filter(Boolean) : [document];
+    const home=field?.getRootNode() ?? document;
+    const named=ids.map(id=>home.getElementById?.(id)).filter(Boolean);
+    const roots=named.length ? named : (cache?.roots() ?? [document]);
     const options=roots.flatMap(root=>[...root.querySelectorAll('[role="option"]')]);
     if (++frames>=2 && (!autocomplete || options.some(e=>{
       const r=e.getBoundingClientRect();

@@ -1,0 +1,41 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Shadow controls</title>
+<style>body{margin:24px;font:14px system-ui}</style>
+<h1>Shadow controls</h1>
+<p id="status">Nothing pressed yet.</p>
+<button id="light">Light button</button>
+<sort-bar></sort-bar>
+<deep-card></deep-card>
+<script>
+  class SortBar extends HTMLElement {
+    connectedCallback() {
+      const root = this.attachShadow({ mode: "open" });
+      root.innerHTML =
+        '<style>button{margin-right:8px;padding:6px 12px}</style>' +
+        '<label>Query <input id="query" aria-label="Shadow query"></label>' +
+        '<button id="newest">Newest first</button>';
+      root.getElementById("newest").onclick = () => {
+        document.getElementById("status").textContent = "Sorted: Newest first";
+      };
+    }
+  }
+  class DeepCard extends HTMLElement {
+    connectedCallback() {
+      const outer = this.attachShadow({ mode: "open" });
+      outer.innerHTML = "<inner-card></inner-card>";
+      class InnerCard extends HTMLElement {
+        connectedCallback() {
+          const inner = this.attachShadow({ mode: "open" });
+          inner.innerHTML = '<button id="buy">Buy deeply</button>';
+          inner.getElementById("buy").onclick = () => {
+            document.getElementById("status").textContent = "Bought from two shadow roots down";
+          };
+        }
+      }
+      if (!customElements.get("inner-card")) customElements.define("inner-card", InnerCard);
+    }
+  }
+  customElements.define("sort-bar", SortBar);
+  customElements.define("deep-card", DeepCard);
+</script>

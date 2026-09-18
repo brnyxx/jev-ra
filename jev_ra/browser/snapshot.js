@@ -3,6 +3,8 @@
 //
 // One evaluation returns visible text, the observed elements, the operations they
 // support, and the identity/freshness material the act-time guards compare against.
+// Open shadow roots and same-origin iframes are flattened into the same list; a
+// cross-origin iframe is reported as one opaque element instead.
 (options => {
   if (!document.body) return null;
   const limit = options?.max_elements ?? 250;
@@ -12,14 +14,46 @@
     const id=cache.ids.get(e); cache.nodes.set(id,e); return id;
   };
   for (const [id,e] of cache.nodes) if (!e.isConnected) cache.nodes.delete(id);
+  const contentOf = frame => { try { return frame.contentDocument; } catch { return null; } };
+  // Every root whose elements this page owns: the document, open shadow roots, same-origin frames.
+  cache.roots = () => {
+    const found=[document];
+    const visit = root => {
+      for (const e of root.querySelectorAll('*')) {
+        if (e.shadowRoot) { found.push(e.shadowRoot); visit(e.shadowRoot); }
+        else if (e.tagName==='IFRAME') { const doc=contentOf(e); if (doc?.body) { found.push(doc); visit(doc); } }
+      }
+    };
+    visit(document);
+    return found;
+  };
+  // A rect inside a frame is meaningless to CDP input, which speaks top-level coordinates.
+  cache.offset = e => {
+    let dx=0, dy=0, view=e.ownerDocument.defaultView;
+    while (view && view!==window && view.frameElement) {
+      const r=view.frameElement.getBoundingClientRect();
+      dx+=r.x; dy+=r.y; view=view.frameElement.ownerDocument.defaultView;
+    }
+    return [dx,dy];
+  };
+  cache.deepest = (doc,x,y) => {
+    let node=doc.elementFromPoint(x,y);
+    while (node?.shadowRoot) {
+      const inner=node.shadowRoot.elementFromPoint(x,y);
+      if (!inner || inner===node) break;
+      node=inner;
+    }
+    return node;
+  };
   const safe = e => !['password','file','hidden'].includes(e.type);
   const visible = e => !e.closest('[aria-hidden="true"],[inert]') &&
     e.checkVisibility({checkOpacity:true,checkVisibilityCSS:true});
   const name = (e,seen=new Set()) => {
     if (!e || seen.has(e)) return '';
     seen.add(e);
+    const root=e.getRootNode();
     const referenced=(e.getAttribute('aria-labelledby')||'').split(/\s+/)
-      .map(id=>name(document.getElementById(id),seen)).filter(Boolean).join(' ');
+      .map(id=>name(root.getElementById?.(id),seen)).filter(Boolean).join(' ');
     return referenced || e.getAttribute('aria-label') ||
       [...(e.labels||[])].map(l=>name(l,seen)).filter(Boolean).join(' ') ||
       (['button','submit','reset'].includes(e.type) ? e.value : '') || e.getAttribute('alt') ||
@@ -29,13 +63,14 @@
   };
   const roles=['button','link','checkbox','radio','switch','tab','menuitem','menuitemradio',
     'option','gridcell','combobox','textbox','searchbox','spinbutton'];
-  const selector='a[href],button,input,textarea,select,summary,[contenteditable="true"],'+
+  const selector='a[href],button,input,textarea,select,summary,iframe,[contenteditable="true"],'+
     roles.map(role=>'[role="'+role+'"]').join(',');
   const role = e => {
     const explicit=e.getAttribute('role');
     if (roles.includes(explicit)) return explicit;
     if (e.tagName==='BUTTON' || e.tagName==='SUMMARY') return 'button';
     if (e.tagName==='A') return 'link';
+    if (e.tagName==='IFRAME') return 'frame';
     if (e.tagName==='SELECT') return 'combobox';
     if (e.tagName==='TEXTAREA' || e.isContentEditable) return 'textbox';
     if (e.tagName==='INPUT') {
@@ -47,9 +82,9 @@
     }
     return null;
   };
-  cache.pageKey=()=>[performance.timeOrigin,location.href,scrollX,scrollY,innerWidth,innerHeight,
-    [...document.querySelectorAll('input,textarea,select')].filter(safe)
-      .map(e=>[identity(e),e.value,e.checked,e.selectedIndex,e.disabled,e.readOnly])];
+  cache.fields = () => cache.roots().flatMap(root=>[...root.querySelectorAll('input,textarea,select')])
+    .filter(safe).map(e=>[identity(e),e.value,e.checked,e.selectedIndex,e.disabled,e.readOnly]);
+  cache.pageKey=()=>[performance.timeOrigin,location.href,scrollX,scrollY,innerWidth,innerHeight,cache.fields()];
   cache.guard=e=>{
     if (!e?.isConnected || !visible(e)) return null;
     const scope=e.closest('form,dialog,[role="dialog"],article,li,tr,[role="row"]') || e.parentElement;
@@ -59,19 +94,25 @@
       e.getAttribute('href'),scope?.innerText?.slice(0,6000)||''];
   };
   const observed=[];
-  for (const e of document.querySelectorAll(selector)) {
-    if (!safe(e) || !visible(e) || e.matches(':disabled') || e.closest('[aria-disabled="true"]')) continue;
-    const r=e.getBoundingClientRect(), x=r.x+r.width/2, y=r.y+r.height/2, rname=role(e);
-    if (!rname || r.width<=0 || r.height<=0 || x<0 || y<0 || x>=innerWidth || y>=innerHeight) continue;
-    if (rname==='gridcell' && e.querySelector('button,[role="button"]')) continue;
-    const element={node:identity(e),role:rname,label:name(e)||rname,
-      rect:{x:r.x,y:r.y,w:r.width,h:r.height}};
-    for (const key of ['checked','selected','expanded']) {
-      const value=e.getAttribute('aria-'+key);
-      if (value!==null) element[key]=value;
+  for (const root of cache.roots()) {
+    for (const e of root.querySelectorAll(selector)) {
+      // A frame we can read is traversed, not offered; only an opaque one is an element.
+      if (e.tagName==='IFRAME' && contentOf(e)?.body) continue;
+      if (!safe(e) || !visible(e) || e.matches(':disabled') || e.closest('[aria-disabled="true"]')) continue;
+      const r=e.getBoundingClientRect(), [dx,dy]=cache.offset(e);
+      const x=r.x+dx+r.width/2, y=r.y+dy+r.height/2, rname=role(e);
+      if (!rname || r.width<=0 || r.height<=0 || x<0 || y<0 || x>=innerWidth || y>=innerHeight) continue;
+      if (rname==='gridcell' && e.querySelector('button,[role="button"]')) continue;
+      const element={node:identity(e),role:rname,label:name(e)||rname,
+        rect:{x:r.x+dx,y:r.y+dy,w:r.width,h:r.height}};
+      if (root!==document) element.nested=true;
+      for (const key of ['checked','selected','expanded']) {
+        const value=e.getAttribute('aria-'+key);
+        if (value!==null) element[key]=value;
+      }
+      if (['checkbox','radio'].includes(e.type)) element.checked=String(e.checked);
+      observed.push({element:e, view:element});
     }
-    if (['checkbox','radio'].includes(e.type)) element.checked=String(e.checked);
-    observed.push({element:e, view:element});
   }
   const omitted=Math.max(0,observed.length-limit);
   observed.splice(limit);
@@ -97,14 +138,22 @@
       if (editable) actions.push({...shared,kind:'click',label:'Open '+view.label,value:view.value});
     }
   });
-  const words=[], walker=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT);
-  const range=document.createRange(); let node,length=0;
-  while ((node=walker.nextNode()) && length<6000) {
-    const value=node.textContent.trim(), parent=node.parentElement;
-    if (!value || !parent || parent.closest('script,style,noscript,template') || !visible(parent)) continue;
-    range.selectNodeContents(node); const r=range.getBoundingClientRect();
-    if (r.width>0 && r.height>0 && r.bottom>0 && r.top<innerHeight && r.right>0 && r.left<innerWidth) {
-      words.push(value); length+=value.length;
+  const words=[]; let length=0;
+  const range=document.createRange();
+  for (const root of cache.roots()) {
+    const host=root.body ?? root;
+    if (!host || length>=6000) continue;
+    const walker=(root.ownerDocument ?? root).createTreeWalker(host,NodeFilter.SHOW_TEXT);
+    let node;
+    while ((node=walker.nextNode()) && length<6000) {
+      const value=node.textContent.trim(), parent=node.parentElement;
+      if (!value || !parent || parent.closest('script,style,noscript,template') || !visible(parent)) continue;
+      range.selectNodeContents(node);
+      const r=range.getBoundingClientRect(), [dx,dy]=cache.offset(parent);
+      const top=r.top+dy, left=r.left+dx;
+      if (r.width>0 && r.height>0 && top+r.height>0 && top<innerHeight && left+r.width>0 && left<innerWidth) {
+        words.push(value); length+=value.length;
+      }
     }
   }
   const text=words.join('\n').slice(0,6000), height=document.documentElement.scrollHeight;
