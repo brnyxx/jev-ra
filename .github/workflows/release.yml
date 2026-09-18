@@ -19,30 +19,39 @@ jobs:
         with:
           python-version: "3.12"
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          registry-url: https://registry.npmjs.org
+
+      - name: Every version agrees with the tag
+        run: |
+          if [ "${{ github.ref_type }}" = "tag" ]; then
+            uv run --no-project python scripts/check_versions.py --tag "$GITHUB_REF_NAME"
+          else
+            uv run --no-project python scripts/check_versions.py
+          fi
+
       - name: Build wheel and sdist
         run: uv build
-
-      - name: Check the version matches the tag
-        if: startsWith(github.ref, 'refs/tags/v')
-        run: |
-          tagged="${GITHUB_REF_NAME#v}"
-          built="$(uv run --no-project python -c 'import tomllib,pathlib;print(tomllib.loads(pathlib.Path("pyproject.toml").read_text())["project"]["version"])')"
-          if [ "$tagged" != "$built" ]; then
-            echo "tag $GITHUB_REF_NAME does not match project version $built" >&2
-            exit 1
-          fi
 
       - name: Smoke test the wheel
         run: |
           cd "$(mktemp -d)"
           uvx --from "$GITHUB_WORKSPACE"/dist/*.whl jev-ra --version
 
+      - name: Test the npm launcher
+        working-directory: npm
+        run: |
+          node --test "test/*.test.mjs"
+          npm pack --dry-run
+
       - uses: actions/upload-artifact@v4
         with:
           name: dist
           path: dist/*
 
-  publish:
+  pypi:
     needs: build
     if: startsWith(github.ref, 'refs/tags/v') && vars.PYPI_TRUSTED == 'true'
     runs-on: ubuntu-latest
@@ -57,3 +66,24 @@ jobs:
 
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
+
+  npm:
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v') && vars.NPM_PUBLISH == 'true'
+    runs-on: ubuntu-latest
+    environment: npm
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          registry-url: https://registry.npmjs.org
+
+      - name: Publish the launcher
+        working-directory: npm
+        run: npm publish --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

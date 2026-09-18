@@ -9,6 +9,17 @@ import pytest
 
 from tests.conftest import chrome_url, require_browser
 
+
+def load_script(name):
+    import importlib.util
+
+    root = Path(__file__).resolve().parents[1]
+    spec = importlib.util.spec_from_file_location(name, root / "scripts" / f"{name}.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
 WORKFLOWS = Path(__file__).resolve().parents[1] / ".github" / "workflows"
 WORKFLOW = WORKFLOWS / "ci.yml"
 RELEASE = WORKFLOWS / "release.yml"
@@ -37,7 +48,7 @@ def test_the_release_workflow_is_well_formed():
     blocks(text)
     assert text.startswith("name: release\n")
     assert re.search(r"^jobs:$", text, re.MULTILINE)
-    assert text.count("steps:") == 2
+    assert text.count("steps:") == 3
 
 
 def test_the_release_workflow_builds_and_uploads_on_tags():
@@ -60,8 +71,26 @@ def test_publishing_is_gated_on_trusted_publishing_being_configured():
 
 def test_the_release_workflow_refuses_a_tag_that_does_not_match_the_version():
     text = RELEASE.read_text()
-    assert "does not match project version" in text
-    assert 'tagged="${GITHUB_REF_NAME#v}"' in text
+    assert 'scripts/check_versions.py --tag "$GITHUB_REF_NAME"' in text
+
+
+def test_the_release_workflow_publishes_the_npm_launcher_with_provenance():
+    text = RELEASE.read_text()
+    assert "npm publish --provenance --access public" in text
+    assert "vars.NPM_PUBLISH == 'true'" in text
+    assert "NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}" in text
+    assert 'npm pack --dry-run' in text
+    assert 'node --test "test/*.test.mjs"' in text
+
+
+def test_every_version_in_the_repository_agrees():
+    check = load_script("check_versions")
+    found = check.versions()
+    assert set(found) == {"pyproject.toml", "npm/package.json", "npm/bin/jev-ra.js", "jev_ra/__init__.py"}
+    assert check.disagreements(found)[0] == []
+    assert check.disagreements(found, tag="v" + found["pyproject.toml"])[0] == []
+    assert check.disagreements(found, tag="v9.9.9")[0] == ["tag: v9.9.9"]
+    assert check.main([]) == 0
 
 
 def test_the_matrix_covers_python_3_12_to_3_14():
