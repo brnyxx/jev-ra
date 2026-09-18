@@ -163,10 +163,11 @@ loop, and that is the point.
 
 ## When it hands control back
 
-`Result.status` is `done`, `blocked`, `escalate` or `budget`. An escalation carries `reason`
-(`needs_value`, `stuck_loop`, `unverified_done`, `stale`, `invalid_decision`, `too_many_controls`),
-the top eight operation/target candidates with their probabilities, and up to 3,000 characters of
-page text — enough to decide what to do without observing again.
+`Result.status` is `done`, `blocked`, `escalate` or `budget`. When a run stops short, `reason` is one
+of `needs_value`, `stuck_loop`, `unverified_done`, `stale`, `invalid_decision`, `too_many_controls` or
+`blocked`. A `budget` status carries the budget that was hit instead of a reason name. An escalation
+also carries the top eight operation/target candidates with their probabilities, and up to 3,000
+characters of page text — enough to decide what to do without observing again.
 
 Verification is deterministic: after every action jev-ra compares url, title, text and field state,
 and `page_changed` comes from a semantic page marker, not from the model's opinion.

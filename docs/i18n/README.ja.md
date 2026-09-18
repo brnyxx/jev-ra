@@ -163,10 +163,11 @@ Jev が*あなたが渡した*値のどれがそのフィールドに入るか�
 
 ## 制御を返すとき
 
-`Result.status` は `done`、`blocked`、`escalate`、`budget` のいずれか。escalate には `reason`
-(`needs_value`、`stuck_loop`、`unverified_done`、`stale`、`invalid_decision`、`too_many_controls`)、
-確率つきの上位 8 件の操作/対象候補、そして最大 3,000 文字のページテキストが含まれる。もう一度観測
-しなくても判断できるだけの材料だ。
+`Result.status` は `done`、`blocked`、`escalate`、`budget` のいずれか。実行が途中で止まったときの
+`reason` は `needs_value`、`stuck_loop`、`unverified_done`、`stale`、`invalid_decision`、
+`too_many_controls`、`blocked` のいずれか。`budget` 状態には理由名ではなく使い切った予算が入る。
+escalate には確率つきの上位 8 件の操作/対象候補と、最大 3,000 文字のページテキストが含まれる。
+もう一度観測しなくても判断できるだけの材料だ。
 
 検証は決定論的だ。各アクションのあとに url、title、text、フィールド状態を比較し、`page_changed` は
 モデルの意見ではなくページの意味ベースの marker から決まる。

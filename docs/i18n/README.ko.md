@@ -162,10 +162,11 @@ Jev가 *당신이 준* 값 중 어느 것이 그 필드에 들어갈지 고른�
 
 ## 제어를 되돌려줄 때
 
-`Result.status`는 `done`, `blocked`, `escalate`, `budget` 중 하나다. escalate에는 `reason`
-(`needs_value`, `stuck_loop`, `unverified_done`, `stale`, `invalid_decision`, `too_many_controls`),
-확률이 붙은 상위 8개 연산/대상 후보, 최대 3,000자의 페이지 텍스트가 담긴다. 다시 관측하지 않고도
-판단할 수 있을 만큼이다.
+`Result.status`는 `done`, `blocked`, `escalate`, `budget` 중 하나다. 실행이 중간에 멈추면 `reason`은
+`needs_value`, `stuck_loop`, `unverified_done`, `stale`, `invalid_decision`, `too_many_controls`,
+`blocked` 중 하나다. `budget` 상태에는 이유 이름 대신 소진된 예산이 담긴다. escalate에는 확률이
+붙은 상위 8개 연산/대상 후보와 최대 3,000자의 페이지 텍스트가 담긴다. 다시 관측하지 않고도 판단할
+수 있을 만큼이다.
 
 검증은 결정론적이다. 매 행동 뒤 url, title, text, 필드 상태를 비교하고, `page_changed`는 모델의
 의견이 아니라 페이지의 의미 기반 marker에서 나온다.
