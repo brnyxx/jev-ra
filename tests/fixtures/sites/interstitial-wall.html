@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Continue shopping</title>
+<style>
+  body { font: 14px/1.5 system-ui; margin: 0; padding: 48px; text-align: center; }
+  button { padding: 8px 18px; }
+  .shop { display: none; }
+  body.through .wall { display: none; }
+  body.through .shop { display: block; }
+</style>
+</head>
+<body>
+<!-- The wall a shop puts in front of itself: one button, no search, nothing to do but pass.
+     Answering "no supported operation can progress" here is wrong - the operation is right there. -->
+<div class="wall">
+  <p>Click the button below to continue shopping</p>
+  <button type="button" onclick="document.body.classList.add('through')">Continue shopping</button>
+  <p><a href="/sites/empty.html">Conditions of Use</a> <a href="/sites/empty.html">Privacy Policy</a></p>
+</div>
+
+<div class="shop">
+  <h1>Books</h1>
+  <form onsubmit="event.preventDefault(); out.textContent = 'results for ' + q.value;">
+    <input id="q" type="search" aria-label="Search books">
+    <button type="submit">Go</button>
+  </form>
+  <p id="out"></p>
+</div>
+</body>
+</html>

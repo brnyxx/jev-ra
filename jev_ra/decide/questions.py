@@ -16,6 +16,8 @@ SCROLL_DOWN to look for one before concluding BLOCKED. Scrolling is never the an
 autocomplete suggestion is waiting to be selected, or while a listed control still needs setting.
 Two scrolls in the recent actions without a usable control appearing means this page does not have
 one: answer with the best listed control, or BLOCKED.
+A page offering only a way through - continue, accept, close, a region or language choice - is a
+wall in front of the goal, not the absence of one. Take it, then pursue the goal.
 WAIT only when the needed control is absent/disabled, or submitted results are still loading.
 If Search/Submit is visible and the required fields are ready, CLICK it immediately.
 Recent WAIT actions are not evidence of loading. Prefer a useful visible control over WAIT.
