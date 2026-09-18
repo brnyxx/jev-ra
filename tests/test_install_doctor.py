@@ -136,7 +136,7 @@ def test_doctor_reports_route_chrome_and_one_live_decision(clean_env, monkeypatc
     out = capsys.readouterr().out
     assert "key: found in OPENROUTER_API_KEY" in out
     assert f"endpoint: {config.OPENROUTER_ENDPOINT} (openrouter)" in out
-    assert "chrome: ok" in out
+    assert "chrome: ok, http://127.0.0.1:9222 (the Chrome you pointed BU_CDP_URL at)" in out
     assert "decision: DONE in" in out
     assert " ms via typesafe/jev-1.13" in out
     assert SECRET not in out
@@ -147,6 +147,7 @@ def test_doctor_json_reports_the_measured_latency(clean_env, monkeypatch, capsys
     doctor_client(monkeypatch, reply=Reply(answers={"operation": answer("DONE")}, model="m", latency_ms=1))
     assert cli.main(["doctor", "--json"]) == 0
     payload = json.loads(capsys.readouterr().out)
+    assert payload["chrome"]["source"] == "BU_CDP_URL"
     assert payload["decision"]["ok"] is True
     assert payload["decision"]["latency_ms"] >= 0
     assert payload["key"] is True

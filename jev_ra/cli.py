@@ -272,16 +272,25 @@ def cmd_install(args):
     return finished.returncode
 
 
+SOURCE_NOTES = {
+    "BU_CDP_URL": "the Chrome you pointed BU_CDP_URL at",
+    "reused": "the automation Chrome already running on the jev-ra profile",
+    "launched": "a Chrome jev-ra launched on its own profile",
+}
+
+
 def chrome_check(config):
     try:
         session = Session(config)
     except Exception as error:
-        return False, str(error)
+        return False, str(error), None
     try:
         session.open("about:blank")
-        return True, f"viewport {config.viewport.width}x{config.viewport.height}"
+        note = SOURCE_NOTES.get(session.chrome_source, session.chrome_source)
+        viewport = f"{config.viewport.width}x{config.viewport.height}"
+        return True, f"{session.cdp_url} ({note}), viewport {viewport}", session.chrome_source
     except Exception as error:
-        return False, str(error)
+        return False, str(error), None
     finally:
         session.close()
 
@@ -306,8 +315,8 @@ def cmd_doctor(args):
         lines.append("Set JEV_RA_API_KEY, TYPESAFE_API_KEY or OPENROUTER_API_KEY, then run `jev-ra doctor` again.")
         emit(args, report, lines)
         return 1
-    ok, detail = chrome_check(config)
-    report["chrome"] = {"ok": ok, "detail": detail}
+    ok, detail, source = chrome_check(config)
+    report["chrome"] = {"ok": ok, "detail": detail, "source": source}
     lines.append(f"chrome: {'ok, ' + detail if ok else 'unreachable'}")
     if not ok:
         lines.append(CHROME_HINT)

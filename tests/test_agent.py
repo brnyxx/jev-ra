@@ -42,6 +42,9 @@ class FakeSession:
         self.max_elements = max_elements
         self.acted = []
         self.closed = False
+        self.target_id = "fake-target"
+        self.cdp_url = "http://127.0.0.1:9222"
+        self.chrome_source = "BU_CDP_URL"
 
     def open(self, url):
         return self.observe()

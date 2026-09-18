@@ -11,6 +11,7 @@ from browser_harness.helpers import cdp
 
 from ..config import load
 from . import MAX_ELEMENTS, guard_expression, marker_expression, snapshot_expression
+from .chrome import ensure as ensure_chrome
 
 logger = logging.getLogger(__name__)
 
@@ -75,13 +76,14 @@ class Session:
         self.config = config or load()
         self.max_elements = max_elements
         self.after_input = None
+        viewport = self.config.viewport
+        self.cdp_url, self.chrome_source = ensure_chrome(viewport=(viewport.width, viewport.height))
         ensure_daemon()
         created = target_id is None
         self.target_id = (
             cdp("Target.createTarget", url="about:blank", background=True)["targetId"] if created else target_id
         )
         self.session_id = cdp("Target.attachToTarget", targetId=self.target_id, flatten=True)["sessionId"]
-        viewport = self.config.viewport
         self.call(
             "Emulation.setDeviceMetricsOverride",
             width=viewport.width,

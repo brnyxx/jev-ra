@@ -1,0 +1,139 @@
+import subprocess
+import sys
+
+import pytest
+
+from jev_ra.browser import chrome
+
+
+def fake_exists(present):
+    return lambda path: str(path) in present
+
+
+def test_macos_paths_are_tried_in_order():
+    present = {
+        "/Applications/Chromium.app/Contents/MacOS/Chromium",
+        "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+    }
+    found = chrome.find_browser("darwin", env={}, exists=fake_exists(present), which=lambda _c: None)
+    assert found == "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+
+
+def test_linux_and_windows_paths_are_recognised():
+    linux = chrome.find_browser(
+        "linux", env={}, exists=fake_exists({"/usr/bin/chromium"}), which=lambda _c: None
+    )
+    assert linux == "/usr/bin/chromium"
+    windows = chrome.find_browser(
+        "win32",
+        env={},
+        exists=fake_exists({r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe"}),
+        which=lambda _c: None,
+    )
+    assert windows.endswith("msedge.exe")
+
+
+def test_path_lookup_is_the_fallback():
+    def which(command):
+        return f"/opt/{command}" if command == "chromium" else None
+
+    found = chrome.find_browser("linux", env={}, exists=fake_exists(set()), which=which)
+    assert found == "/opt/chromium"
+
+
+def test_nothing_found_returns_none():
+    assert chrome.find_browser("linux", env={}, exists=fake_exists(set()), which=lambda _c: None) is None
+
+
+def test_an_explicit_binary_wins_and_must_exist():
+    env = {"JEV_RA_CHROME": "/opt/my-chrome"}
+    assert chrome.find_browser("linux", env=env, exists=fake_exists({"/opt/my-chrome"}), which=lambda _c: None) == (
+        "/opt/my-chrome"
+    )
+    with pytest.raises(chrome.ChromeError, match="does not exist"):
+        chrome.find_browser("linux", env=env, exists=fake_exists(set()), which=lambda _c: None)
+
+
+def test_the_profile_follows_xdg_state_home(tmp_path):
+    env = {"XDG_STATE_HOME": str(tmp_path)}
+    assert chrome.profile_dir(env) == tmp_path / "jev-ra" / "chrome-profile"
+
+
+def test_the_port_file_is_parsed_and_bad_ones_are_ignored(tmp_path):
+    (tmp_path / chrome.PORT_FILE).write_text("54321\n/devtools/browser/abc\n")
+    assert chrome.read_port(tmp_path) == 54321
+    (tmp_path / chrome.PORT_FILE).write_text("not a port\n")
+    assert chrome.read_port(tmp_path) is None
+    (tmp_path / chrome.PORT_FILE).write_text("")
+    assert chrome.read_port(tmp_path) is None
+    assert chrome.read_port(tmp_path / "missing") is None
+
+
+def test_bu_cdp_url_wins_over_everything(monkeypatch):
+    monkeypatch.setattr(chrome, "launch", lambda *_a, **_k: pytest.fail("must not launch"))
+    url, source = chrome.ensure(env={"BU_CDP_URL": "http://127.0.0.1:9222"})
+    assert (url, source) == ("http://127.0.0.1:9222", "BU_CDP_URL")
+
+
+def test_a_live_profile_port_is_reused(monkeypatch, tmp_path):
+    profile = tmp_path / "jev-ra" / "chrome-profile"
+    profile.mkdir(parents=True)
+    (profile / chrome.PORT_FILE).write_text("41234\n")
+    monkeypatch.setattr(chrome, "alive", lambda url, timeout=2.0: url == "http://127.0.0.1:41234")
+    monkeypatch.setattr(chrome, "launch", lambda *_a, **_k: pytest.fail("must not launch"))
+    env = {"XDG_STATE_HOME": str(tmp_path)}
+    url, source = chrome.ensure(env=env)
+    assert (url, source) == ("http://127.0.0.1:41234", "reused")
+    assert env["BU_CDP_URL"] == url
+
+
+def test_a_dead_profile_port_leads_to_a_launch(monkeypatch, tmp_path):
+    profile = tmp_path / "jev-ra" / "chrome-profile"
+    profile.mkdir(parents=True)
+    (profile / chrome.PORT_FILE).write_text("41234\n")
+    monkeypatch.setattr(chrome, "alive", lambda _url, timeout=2.0: False)
+    monkeypatch.setattr(chrome, "find_browser", lambda **_k: "/opt/chrome")
+    launched = []
+    monkeypatch.setattr(chrome, "launch", lambda binary, path, viewport: launched.append(binary))
+    monkeypatch.setattr(chrome, "wait_for_port", lambda *_a, **_k: 45000)
+    env = {"XDG_STATE_HOME": str(tmp_path)}
+    assert chrome.ensure(env=env) == ("http://127.0.0.1:45000", "launched")
+    assert launched == ["/opt/chrome"]
+
+
+def test_no_browser_anywhere_is_a_clear_error(monkeypatch, tmp_path):
+    monkeypatch.setattr(chrome, "alive", lambda _url, timeout=2.0: False)
+    monkeypatch.setattr(chrome, "find_browser", lambda **_k: None)
+    with pytest.raises(chrome.ChromeError, match="No Chrome, Chromium or Edge found"):
+        chrome.ensure(env={"XDG_STATE_HOME": str(tmp_path)})
+
+
+def test_launching_can_be_refused(monkeypatch, tmp_path):
+    monkeypatch.setattr(chrome, "alive", lambda _url, timeout=2.0: False)
+    with pytest.raises(chrome.ChromeError, match="launching is disabled"):
+        chrome.ensure(env={"XDG_STATE_HOME": str(tmp_path)}, allow_launch=False)
+
+
+def test_a_chrome_that_dies_before_opening_a_port_is_reported(tmp_path):
+    dead = subprocess.Popen([sys.executable, "-c", "raise SystemExit(3)"])
+    dead.wait()
+    with pytest.raises(chrome.ChromeError, match="exited with code 3"):
+        chrome.wait_for_port(tmp_path, dead, timeout=2.0)
+
+
+@pytest.mark.browser
+def test_a_launched_chrome_answers_and_leaves_no_zombie(tmp_path):
+    binary = chrome.find_browser()
+    if binary is None:
+        pytest.skip("no Chrome binary on this machine")
+    profile = tmp_path / "profile"
+    process = chrome.launch(binary, profile)
+    try:
+        port = chrome.wait_for_port(profile, process)
+        assert chrome.alive(chrome.url_for(port))
+        assert chrome.read_port(profile) == port
+    finally:
+        process.terminate()
+        process.wait(timeout=20)
+    assert process.poll() is not None
+    assert not chrome.alive(chrome.url_for(port), timeout=1.0)
