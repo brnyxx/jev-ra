@@ -1,9 +1,9 @@
-"""The README's command table, checked against the parser that defines the commands."""
+"""The README's tables, checked against the code they describe."""
 
 import re
 from pathlib import Path
 
-from jev_ra import cli
+from jev_ra import cli, config
 
 ROOT = Path(__file__).resolve().parents[1]
 README = ROOT / "README.md"
@@ -34,3 +34,26 @@ def readme_commands():
 
 def test_the_readme_lists_every_cli_command_with_its_help():
     assert readme_commands() == parser_commands()
+
+
+def readme_environment_names():
+    names = set()
+    for line in section(README.read_text(), "Configuration").splitlines():
+        cells = re.split(r"(?<!\\)\|", line)
+        if len(cells) >= 3:
+            names |= set(re.findall(r"`([A-Z][A-Z0-9_]*)`", cells[1]))
+    return names
+
+
+def source_environment_names():
+    names = set()
+    for path in (ROOT / "jev_ra").rglob("*.py"):
+        text = path.read_text()
+        names |= set(re.findall(r"\bJEV_RA_[A-Z_]+\b", text))
+        names |= set(re.findall(r"\bBU_CDP_URL\b", text))
+    return names
+
+
+def test_the_readme_environment_table_matches_the_config():
+    assert readme_environment_names() == set(config.ENV_VARIABLES)
+    assert source_environment_names() <= set(config.ENV_VARIABLES)
