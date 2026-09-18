@@ -341,7 +341,7 @@ class _Run:
         """The page text and element table the caller gets back."""
         space = self.agent.space(page)
         return {
-            "text": page.get("doc_text") or page.get("text", ""),
+            "text": page_text(page),
             "elements": [actions.element_view(element) for element in space.elements],
             "omitted": space.omitted,
         }
@@ -390,6 +390,18 @@ def unsupplied_field(decision, space, binder, goal):
     if action is None:
         return None
     return NeedsValue(action, goal, "the page needs a value that was not supplied").detail
+
+
+def page_text(page):
+    """What the page says: the part a reader can see, then whatever the document holds below it."""
+    seen = page.get("text") or ""
+    whole = page.get("doc_text") or ""
+    if not whole:
+        return seen
+    if not seen:
+        return whole
+    shown = set(seen.split("\n"))
+    return "\n".join([seen, *(line for line in whole.split("\n") if line not in shown)])
 
 
 def verification(before, after):

@@ -38,6 +38,20 @@ def test_the_page_a_run_reports_is_the_document_not_the_viewport(session, fixtur
         return Reply(answers=answers, model="scripted", latency_ms=1, usage={"cost": 0.0})
 
     agent = Agent(session=session, decide=done)
+    page = session.open(fixture_server + FIXTURE)
     result = agent.run("Read this story.", url=fixture_server + FIXTURE)
     assert result.status == "done"
-    assert STORY in result.final_page["text"]
+    reported = result.final_page["text"]
+    assert STORY in reported
+    assert reported.startswith(page["text"])
+
+
+def test_what_the_reader_can_see_is_never_dropped_for_what_is_below_it():
+    from jev_ra.agent import page_text
+
+    merged = page_text({"text": "Theme\nDark", "doc_text": "Skip to content\nArticle body\nTheme"})
+    assert merged.startswith("Theme\nDark")
+    assert "Article body" in merged
+    assert merged.count("Theme") == 1
+    assert page_text({"text": "only visible"}) == "only visible"
+    assert page_text({"doc_text": "only document"}) == "only document"
