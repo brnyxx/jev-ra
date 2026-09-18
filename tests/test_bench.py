@@ -3,6 +3,7 @@ import json
 import pytest
 
 from jev_ra import bench, cli, config
+from tests.conftest import require_browser
 
 pytestmark = []
 
@@ -100,6 +101,7 @@ def test_offline_bench_runs_every_fixture_task(session):
 
 @pytest.mark.browser
 def test_the_bench_command_prints_ms_and_steps(capsys, monkeypatch):
+    require_browser()
     monkeypatch.delenv("JEV_RA_API_KEY", raising=False)
     assert cli.main(["bench", "--runs", "2"]) == 0
     out = capsys.readouterr().out
@@ -111,6 +113,7 @@ def test_the_bench_command_prints_ms_and_steps(capsys, monkeypatch):
 
 @pytest.mark.browser
 def test_the_bench_command_json_carries_the_recorded_baseline(capsys):
+    require_browser()
     assert cli.main(["bench", "--json", "--runs", "1"]) == 0
     payload = json.loads(capsys.readouterr().out)
     assert payload["baseline_flash_ms"]["wikipedia"] == 23058
@@ -125,3 +128,134 @@ def test_live_bench_is_gated_on_a_key_in_the_command(capsys, monkeypatch, tmp_pa
     monkeypatch.setattr(bench, "run_offline", lambda *_a, **_k: [])
     assert cli.main(["bench", "--live"]) == 1
     assert "needs a Jev key" in capsys.readouterr().err
+
+
+def offline_rows():
+    return [
+        {
+            "task": "form_fill",
+            "ok": True,
+            "elapsed_ms": 100,
+            "steps": 2,
+            "decisions": 4,
+            "cost": 0.0004,
+            "text_calls": 0,
+            "status": "done",
+            "reason": "",
+            "profile": [],
+        }
+    ]
+
+
+def summary_rows():
+    return [
+        {
+            "task": "form_fill",
+            "runs": 1,
+            "successes": 1,
+            "success_rate": 1.0,
+            "median_ms": 100,
+            "p90_ms": 100,
+            "median_steps": 2,
+            "median_decisions": 4,
+            "median_cost": 0.0004,
+            "text_calls": 0,
+            "failures": [],
+        }
+    ]
+
+
+def ratio_table():
+    return [
+        {
+            "task": "form_fill",
+            "jev_ra_ms": 100,
+            "flash_mode_ms": 1000,
+            "ratio": 10.0,
+            "success_rate": 1.0,
+            "runs": 1,
+            "decisions": 4,
+            "cost": 0.0004,
+            "passed": True,
+        }
+    ]
+
+
+def test_summary_line_reports_a_task_with_no_successful_run():
+    line = cli.summary_line(
+        {
+            "task": "flights",
+            "runs": 5,
+            "successes": 0,
+            "median_ms": None,
+            "median_decisions": None,
+            "text_calls": 0,
+            "failures": ["stale", "stuck_loop"],
+        }
+    )
+    assert line == "  flights: 0/5 verified; stale, stuck_loop"
+
+
+def test_summary_line_reports_the_medians():
+    line = cli.summary_line(
+        {
+            "task": "form_fill",
+            "runs": 5,
+            "successes": 5,
+            "median_ms": 916,
+            "p90_ms": 1037,
+            "median_decisions": 4,
+            "text_calls": 0,
+            "failures": [],
+        }
+    )
+    assert "5/5 verified, median 916 ms, p90 1037 ms, 4 decisions, 0 text calls" in line
+
+
+def test_ratio_line_renders_missing_values_as_text():
+    line = cli.ratio_line(
+        {
+            "task": "form_fill",
+            "jev_ra_ms": None,
+            "flash_mode_ms": None,
+            "ratio": None,
+            "success_rate": 0.5,
+            "runs": 2,
+            "passed": False,
+        }
+    )
+    assert "never verified" in line
+    assert "no baseline row" in line
+    assert "n/a" in line
+    assert "FAIL" in line
+
+
+def test_the_bench_command_prints_the_offline_profile(monkeypatch, capsys):
+    monkeypatch.setattr(bench, "run_offline", lambda *_a, **_k: offline_rows())
+    monkeypatch.setattr(bench, "summarise", lambda _runs: summary_rows())
+    monkeypatch.setattr(bench, "profile_rows", lambda _runs: [{"category": "wait", "ms": 12, "share": 0.5}])
+    monkeypatch.setattr(bench, "profile_table", lambda _runs: "| category | ms | share |")
+    assert cli.main(["bench", "--profile", "--runs", "1"]) == 0
+    assert "where the time goes (offline):" in capsys.readouterr().out
+
+
+def test_the_bench_command_can_re_run_the_recorded_browser_use_script(monkeypatch, capsys):
+    monkeypatch.setattr(bench, "run_offline", lambda *_a, **_k: offline_rows())
+    monkeypatch.setattr(bench, "summarise", lambda _runs: summary_rows())
+    monkeypatch.setattr(bench, "run_baseline", lambda _runs: [{"returncode": 0, "stdout": "", "stderr": ""}])
+    assert cli.main(["bench", "--baseline", "--runs", "1"]) == 0
+    assert "browser-use baseline re-run 1 time(s)" in capsys.readouterr().out
+
+
+def test_the_live_bench_command_prints_the_ratio_table(monkeypatch, capsys):
+    monkeypatch.setattr(bench, "run_offline", lambda *_a, **_k: offline_rows())
+    monkeypatch.setattr(bench, "run_live", lambda *_a, **_k: offline_rows())
+    monkeypatch.setattr(bench, "summarise", lambda _runs: summary_rows())
+    monkeypatch.setattr(bench, "ratio_rows", lambda _live: ratio_table())
+    monkeypatch.setattr(bench, "profile_rows", lambda _runs: [{"category": "wait", "ms": 12, "share": 0.5}])
+    monkeypatch.setattr(bench, "profile_table", lambda _runs: "| category | ms | share |")
+    assert cli.main(["bench", "--live", "--profile", "--runs", "1"]) == 0
+    out = capsys.readouterr().out
+    assert "where the time goes:" in out
+    assert "PASS: every task clears the bar" in out
+    assert cli.main(["bench", "--live", "--runs", "1"]) == 0

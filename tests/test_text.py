@@ -4,7 +4,7 @@ import httpx
 import pytest
 
 from jev_ra import config
-from jev_ra.text import NeedsValue, TextHelperError, ValueBinder
+from jev_ra.text import NeedsValue, TextHelperError, Value, ValueBinder
 
 FIELD = {"id": "e1", "label": "City", "role": "textbox", "value": "Zurich", "kind": "fill"}
 HELPER_ENV = {"JEV_RA_TEXT_MODEL": "writer-mini", "JEV_RA_TEXT_BASE_URL": "https://writer.test/v1"}
@@ -104,3 +104,26 @@ def test_an_unreachable_helper_escalates_as_needs_value():
 
     with pytest.raises(NeedsValue, match="unreachable"):
         binder({}, env=HELPER_ENV, handler=handler).bind(None, FIELD, "goal")
+
+
+def test_spending_a_helper_value_marks_nothing_used():
+    bound = binder({}, env=HELPER_ENV)
+    bound.spend(Value(text="helped", source="helper", model="writer-mini"))
+    assert bound.used == []
+
+
+def test_spending_the_same_host_value_twice_marks_it_once():
+    bound = binder({"city": "London"})
+    value = bound.bind("city", FIELD, "goal")
+    bound.spend(value)
+    bound.spend(value)
+    assert bound.used == ["city"]
+
+
+def test_the_helper_client_is_created_once_and_closed():
+    bound = binder({}, env=HELPER_ENV)
+    bound.close()
+    client = bound.client()
+    assert bound.client() is client
+    bound.close()
+    assert bound._client is None

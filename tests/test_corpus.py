@@ -115,6 +115,11 @@ def test_label_and_active_predicates():
     assert ok is False and "not marked active" in why
 
 
+def test_a_missing_text_needle_is_reported():
+    ok, why = corpus.check({"text_contains": ["zebra"]}, page(text="horses are mammals"))
+    assert ok is False and "zebra" in why
+
+
 def test_a_done_task_passes_only_when_the_page_proves_it():
     spec = task(verify={"url_contains": ["prdSort=02"]})
     assert corpus.classify(spec, {"status": "done", "url": "x?prdSort=02"}) == (True, "")
@@ -171,6 +176,27 @@ def test_selection_by_family_and_by_name(stub, monkeypatch):
 def test_the_live_corpus_refuses_to_start_without_a_key():
     with pytest.raises(JevRaError, match="needs a Jev key"):
         corpus.run([task()], config=type("C", (), {"api_key": ""})())
+
+
+def test_the_corpus_owns_and_closes_a_decision_client_when_none_is_given(stub, monkeypatch):
+    stub(Result(status="done", final_page=page()))
+    clients = []
+
+    class Client:
+        def __init__(self, _config):
+            clients.append(self)
+            self.closed = False
+
+        def decide(self, _state, _questions):
+            raise AssertionError("the fake agent never decides")
+
+        def close(self):
+            self.closed = True
+
+    monkeypatch.setattr(corpus, "DecisionClient", Client)
+    rows = corpus.run([task(verify={"text_contains": ["hello"]})], config=type("C", (), {"api_key": "k"})(), runs=1)
+    assert rows[0]["passed"] is True
+    assert clients[0].closed is True
 
 
 def test_the_summary_reports_pass_rate_median_and_the_reasons():

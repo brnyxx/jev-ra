@@ -251,6 +251,149 @@ def test_max_steps_ends_the_run_on_budget():
     assert len(result.steps) == 2
 
 
+def test_open_and_observe_delegate_to_the_session():
+    agent = agent_with(decider([DONE]))
+    assert agent.open("http://127.0.0.1/form.html")["title"] == "Booking form"
+    assert agent.observe()["url"] == "http://127.0.0.1/form.html"
+
+
+def test_act_runs_one_decided_step():
+    result = agent_with(decider([DONE])).act("confirm the page")
+    assert (result.status, result.reason) == ("done", "goal_achieved")
+
+
+def test_select_picks_the_option_by_its_label():
+    option = {
+        "id": "e3",
+        "node": 3,
+        "role": "combobox",
+        "kind": "select",
+        "label": "Shipping → Express",
+        "value": "express",
+    }
+    session = FakeSession(pages=[{**page(0), "actions": [option]}])
+    agent = agent_with(decider([DONE]), session=session)
+    agent.select("e3", "Express")
+    assert session.acted == [("e3", "select", None)]
+
+
+class PressSession(FakeSession):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.pressed = []
+
+    def press(self, key):
+        self.pressed.append(key)
+
+
+def test_press_sends_the_key_and_reads_the_page_again():
+    session = PressSession()
+    agent = agent_with(decider([DONE]), session=session)
+    assert agent.press("Enter")["title"] == "Booking form"
+    assert session.pressed == ["Enter"]
+
+
+def test_close_closes_the_decision_client_it_owns():
+    closed = []
+
+    class Client:
+        def decide(self, _state, _questions):
+            raise AssertionError("no decision expected")
+
+        def close(self):
+            closed.append(True)
+
+    agent = Agent(session=FakeSession(), config=config.load({}), client=Client())
+    agent.close()
+    assert closed == [True]
+
+
+def test_the_agent_is_a_context_manager_that_closes_its_session():
+    session = FakeSession()
+    with agent_with(decider([DONE]), session=session) as agent:
+        assert agent.session is session
+    assert session.closed is True
+
+
+def test_the_time_budget_also_ends_the_run():
+    seen = []
+
+    def alternate(_state, _questions):
+        target = "e1" if len(seen) % 2 == 0 else "e2"
+        seen.append(target)
+        return Reply(
+            answers={"operation": answer("CLICK"), "click_target": answer(target), "goal_achieved": {"noul": 0.1}},
+            latency_ms=1,
+        )
+
+    result = agent_with(alternate, env={"JEV_RA_TIMEOUT_S": "0.001"}).run("find flights")
+    assert result.status == "budget"
+    assert "timeout_s" in result.reason
+
+
+def test_a_second_unofferable_choice_escalates():
+    def always_bad(_state, _questions):
+        return Reply(
+            answers={
+                "operation": answer("CLICK"),
+                "click_target": {"choice": "e9", "confidence": 0.5, "probabilities": {"e9": 1.0}},
+                "goal_achieved": {"noul": 0.1},
+            },
+            latency_ms=1,
+        )
+
+    result = agent_with(always_bad).run("find flights")
+    assert (result.status, result.reason) == ("escalate", "invalid_decision")
+    assert result.decisions == 2
+
+
+class MovesWhileLooking(FakeSession):
+    """The scroll lands; every read after it goes stale."""
+
+    def observe(self, timer=None):
+        if self.acted:
+            raise StalePage("Page did not settle while it was looked at")
+        return super().observe(timer)
+
+
+def test_a_page_that_never_settles_while_being_looked_at_escalates_stale():
+    weak_done = {"operation": answer("DONE"), "goal_achieved": {"noul": 0.2}}
+    session = MovesWhileLooking(scrollable())
+    result = agent_with(decider([weak_done]), session=session).run("find flights")
+    assert (result.status, result.reason) == ("escalate", "stale")
+    assert "while it was looked at" in result.detail["error"]
+
+
+class MovesAfterActing(FakeSession):
+    """The action lands; the observation that would verify it never settles."""
+
+    def observe(self, timer=None):
+        if self.acted:
+            raise StalePage("Page did not settle after that action")
+        return super().observe(timer)
+
+
+def test_a_page_that_never_settles_after_acting_escalates_stale():
+    session = MovesAfterActing()
+    result = agent_with(decider([CLICK_SUBMIT]), session=session).run("find flights")
+    assert (result.status, result.reason) == ("escalate", "stale")
+    assert "after that action" in result.detail["error"]
+
+
+BLOCKED_OVER_AN_ABSENT_FIELD = {
+    "operation": answer("BLOCKED", {"BLOCKED": 0.7, "TYPE_TEXT": 0.3}),
+    "click_target": answer("e2", {"e2": 1.0}),
+    "goal_achieved": {"noul": 0.0},
+}
+
+
+def test_blocked_stays_blocked_when_the_typing_runner_up_has_no_field():
+    button_only = {**page(0), "actions": [FORM_ACTIONS[2]], "elements": [FORM_ELEMENTS[1]]}
+    agent = agent_with(decider([BLOCKED_OVER_AN_ABSENT_FIELD]), session=FakeSession(pages=[button_only]))
+    result = agent.run("sign in")
+    assert (result.status, result.reason) == ("blocked", "blocked")
+
+
 def test_the_decision_budget_also_ends_the_run():
     result = agent_with(decider([CLICK_SUBMIT]), env={"JEV_RA_MAX_DECISIONS": "2"}).run("g", max_steps=40)
     assert result.status == "budget"

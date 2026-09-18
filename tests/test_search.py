@@ -1,3 +1,5 @@
+import re
+
 import pytest
 
 from jev_ra import config, search
@@ -140,3 +142,146 @@ def test_search_reads_pages_in_separate_tabs_with_resources_blocked(session, fix
     )
     assert payload["results"][0]["blocked"] == list(search.BLOCKED_URLS)
     assert session.observe()["url"].startswith(fixture_server)
+
+
+SERP_PAGE = {
+    "url": "https://engine.test/serp?q=godel",
+    "title": "godel at the engine",
+    "text": "results",
+    "elements": [
+        {"ref": "e1", "node": 1, "role": "link", "label": "First result", "value": ""},
+        {"ref": "e2", "node": 2, "role": "link", "label": "Second result", "value": ""},
+    ],
+    "actions": [
+        {"id": "e1", "node": 1, "role": "link", "kind": "click", "label": "First result"},
+        {"id": "e2", "node": 2, "role": "link", "kind": "click", "label": "Second result"},
+    ],
+    "marker": "serp",
+    "page_key": [],
+    "guards": {},
+    "omitted": 0,
+}
+
+CONTENT_PAGE = {
+    "url": "",
+    "title": "A page",
+    "text": "",
+    "elements": [],
+    "actions": [],
+    "marker": "page",
+    "page_key": [],
+    "guards": {},
+    "omitted": 0,
+}
+
+
+class FakeTab:
+    """A session that answers from dicts: no CDP, no network, no browser."""
+
+    def __init__(self, page=None, hrefs=None, fail_on_open=False):
+        self.max_elements = 250
+        self.page = page or CONTENT_PAGE
+        self.hrefs = hrefs or {}
+        self.fail_on_open = fail_on_open
+        self.calls = []
+        self.closed = False
+
+    def call(self, method, **params):
+        self.calls.append((method, params))
+
+    def open(self, url):
+        if self.fail_on_open:
+            raise RuntimeError("this tab will not open")
+        return {**self.page, "url": url}
+
+    def observe(self, timer=None):
+        return self.open(self.page.get("url", ""))
+
+    def evaluate(self, expression):
+        match = re.search(r"nodes\.get\((\d+)\)", expression)
+        if match:
+            return self.hrefs.get(int(match.group(1)))
+        return {"text": "page body"}
+
+    def close(self):
+        self.closed = True
+
+
+def greedy_decide(_state, questions):
+    if "result" in questions:
+        return Reply(
+            answers={"result": {"choice": "e1", "confidence": 0.9, "probabilities": {"e1": 0.8, "e2": 0.2}}},
+            latency_ms=3,
+            usage={"cost": 0.0002},
+        )
+    return Reply(answers={"answers_goal": {"noul": 0.9}}, latency_ms=1, usage={"cost": 0.0001})
+
+
+def test_search_ranks_and_reads_the_picked_pages_without_a_browser():
+    engine = FakeTab(page=SERP_PAGE, hrefs={1: "https://one.test/", 2: "https://two.test/"})
+    tabs = []
+
+    def factory():
+        tab = FakeTab(page=CONTENT_PAGE)
+        tabs.append(tab)
+        return tab
+
+    payload = search.search(
+        "godel",
+        "explain the incompleteness theorems",
+        max_pages=2,
+        config=config.load({}),
+        decide=greedy_decide,
+        session=engine,
+        session_factory=factory,
+        engine="https://engine.test/serp?q={query}",
+    )
+    assert [item["rank"] for item in payload["results"]] == [1, 2]
+    assert [item["url"] for item in payload["results"]] == ["https://one.test/", "https://two.test/"]
+    assert payload["results"][0]["answers_goal"] == 0.9
+    assert payload["decisions"] == 3
+    assert payload["cost"] == pytest.approx(0.0004)
+    assert payload["blocked"] == list(search.BLOCKED_URLS)
+    assert engine.closed is False
+    assert len(tabs) == 2 and all(tab.closed for tab in tabs)
+    assert [method for method, _ in engine.calls] == ["Network.enable", "Network.setBlockedURLs"]
+
+
+def test_a_tab_that_will_not_open_is_recorded_as_an_error():
+    engine = FakeTab(page=SERP_PAGE, hrefs={1: "https://one.test/", 2: "https://two.test/"})
+    tabs = []
+
+    def factory():
+        tab = FakeTab(page=CONTENT_PAGE, fail_on_open=not tabs)
+        tabs.append(tab)
+        return tab
+
+    payload = search.search(
+        "godel",
+        max_pages=2,
+        config=config.load({}),
+        decide=greedy_decide,
+        session=engine,
+        session_factory=factory,
+        engine="https://engine.test/serp?q={query}",
+    )
+    failed = [item for item in payload["results"] if item.get("error")]
+    assert len(failed) == 1
+    assert "will not open" in failed[0]["error"]
+    assert payload["results"][0]["url"] == "https://two.test/"
+    assert payload["results"][0]["answers_goal"] == 0.9
+
+
+def test_search_owns_and_closes_the_session_and_skips_links_without_an_href(monkeypatch):
+    engine = FakeTab(page=SERP_PAGE, hrefs={1: None, 2: "https://two.test/"})
+    monkeypatch.setattr(search, "Session", lambda _config: engine)
+    payload = search.search(
+        "godel",
+        max_pages=2,
+        config=config.load({}),
+        decide=greedy_decide,
+        engine="https://engine.test/serp?q={query}",
+    )
+    assert [item["url"] for item in payload["results"]] == ["https://two.test/"]
+    assert payload["decisions"] == 2
+    assert engine.closed is True
