@@ -8,7 +8,9 @@ import pytest
 
 from tests.conftest import chrome_url, require_browser
 
-WORKFLOW = Path(__file__).resolve().parents[1] / ".github" / "workflows" / "ci.yml"
+WORKFLOWS = Path(__file__).resolve().parents[1] / ".github" / "workflows"
+WORKFLOW = WORKFLOWS / "ci.yml"
+RELEASE = WORKFLOWS / "release.yml"
 
 
 def blocks(text):
@@ -27,6 +29,38 @@ def test_the_workflow_is_well_formed():
     assert text.startswith("name: ci\n")
     assert re.search(r"^jobs:$", text, re.MULTILINE)
     assert text.count("steps:") == 1
+
+
+def test_the_release_workflow_is_well_formed():
+    text = RELEASE.read_text()
+    blocks(text)
+    assert text.startswith("name: release\n")
+    assert re.search(r"^jobs:$", text, re.MULTILINE)
+    assert text.count("steps:") == 2
+
+
+def test_the_release_workflow_builds_and_uploads_on_tags():
+    text = RELEASE.read_text()
+    assert 'tags: ["v*"]' in text
+    assert "run: uv build" in text
+    assert "actions/upload-artifact@v4" in text
+    assert "jev-ra --version" in text
+
+
+def test_publishing_is_gated_on_trusted_publishing_being_configured():
+    text = RELEASE.read_text()
+    assert "vars.PYPI_TRUSTED == 'true'" in text
+    assert "id-token: write" in text
+    assert "pypa/gh-action-pypi-publish@release/v1" in text
+    # Nothing may fall back to a long-lived token.
+    assert "PYPI_API_TOKEN" not in text
+    assert "secrets.PYPI" not in text
+
+
+def test_the_release_workflow_refuses_a_tag_that_does_not_match_the_version():
+    text = RELEASE.read_text()
+    assert "does not match project version" in text
+    assert 'tagged="${GITHUB_REF_NAME#v}"' in text
 
 
 def test_the_matrix_covers_python_3_12_to_3_14():
