@@ -55,3 +55,12 @@ Definition of done for the whole project: a stranger with an OpenRouter key runs
 | 31 | `docs: launch README with brand assets` | `README.md` uses `assets/logo.svg`, `assets/hero.png`, tech-stack chips, the ratio table, the GIF; `README.ko.md` in sync; `docs/index.html` (GitHub Pages landing: hero, video, three numbers, install one-liner, links) built from the same assets; `.github/workflows/pages.yml` | Pages workflow parses; every link in README resolves inside the repo; assets exist |
 
 The brand assets under `assets/` (logo, hero, chips) are authored by the maintainer, not by this plan; use them as they land in the tree. If they are not there when you reach 31, stop at 30 and report.
+
+## Phase 4: distribution (after 31)
+
+| # | message | files | tests / verification |
+|---|---|---|---|
+| 32 | `feat: npm launcher package so npx jev-ra works without Python setup` | `npm/` (package `jev-ra`: `package.json` with `bin`, `bin/jev-ra.js`: find `uv` on PATH, else offer to install it with the official installer (prompt; `--yes` skips), then `execFileSync("uvx", ["jev-ra@<pinned>", ...args], {stdio: "inherit"})`; `README.md` for npm; no runtime deps), `README.md` install section gains the npm line, `install` command offers `npx -y jev-ra mcp` as the MCP command when npm is present and uv is not | `npm/test/launcher.test.mjs` (node:test): argv passthrough; missing uv path prints the install hint and exits 2 with `--no-install`; version pin matches `pyproject.toml` (a script checks) |
+| 33 | `ci: publish to PyPI and npm on tags` | `.github/workflows/release.yml` (job 1: `uv build` + PyPI trusted publishing; job 2: `npm publish --provenance` with `NPM_TOKEN`; both gated on the tag matching `pyproject.toml` and `npm/package.json` versions), `scripts/check_versions.py` | workflow parses; `scripts/check_versions.py` passes; dry-run `npm pack` in CI |
+
+Stop after 33. Final report as before, plus: `npm pack` output and `node npm/bin/jev-ra.js --version` output.
