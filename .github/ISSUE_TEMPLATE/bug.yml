@@ -9,11 +9,17 @@ body:
       description: What you asked for, and what jev-ra did instead.
     validations:
       required: true
+  - type: input
+    id: site
+    attributes:
+      label: Site
+      description: The URL, if it is public. A site nobody else can open is very hard to fix.
+      placeholder: https://example.com/checkout
   - type: textarea
     id: repro
     attributes:
       label: How to reproduce
-      description: The exact command, and the URL if it is public.
+      description: The exact command or tool call, including any values you supplied.
       placeholder: jev-ra run https://example.com "…" --value name=…
       render: shell
     validations:
@@ -26,16 +32,47 @@ body:
       render: shell
     validations:
       required: true
+  - type: dropdown
+    id: reason
+    attributes:
+      label: How did it end
+      options:
+        - done, but the wrong thing happened
+        - escalate: needs_value
+        - escalate: stuck_loop
+        - escalate: unverified_done
+        - escalate: stale
+        - escalate: invalid_decision
+        - escalate: too_many_controls
+        - blocked
+        - budget
+        - it crashed
+    validations:
+      required: true
   - type: textarea
     id: result
     attributes:
       label: Result JSON
       description: Add `--json` to the command and paste the result. Redact anything private.
       render: json
+  - type: dropdown
+    id: agent
+    attributes:
+      label: How are you driving it
+      options:
+        - Claude Code
+        - Codex
+        - Cursor
+        - Cline
+        - another MCP client
+        - the CLI
+        - the Python API
+    validations:
+      required: true
   - type: input
     id: version
     attributes:
-      label: Version
-      placeholder: jev-ra 0.1.0, Python 3.13, macOS 15
+      label: Version and OS
+      placeholder: jev-ra 0.1.0, Python 3.13, macOS 15, Chrome 153
     validations:
       required: true

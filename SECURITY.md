@@ -1,9 +1,22 @@
 # Security
 
-## Reporting
+## Reporting a vulnerability
 
-Please report a vulnerability through GitHub's private advisory form on this repository rather than
-a public issue. A first response should take a few days.
+Report it through a [private security advisory](https://github.com/brnyxx/jev-ra/security/advisories/new)
+on this repository. Please do not open a public issue.
+
+A first response should arrive within **7 days**. If a fix is needed, the advisory stays private until
+a release carries it, and you will be credited unless you ask otherwise.
+
+## In scope
+
+- The MCP server (`jev-ra mcp`) and every `browser_*` tool
+- The CLI, including `install` and the session state it writes
+- The Chrome launcher and the profile it creates
+- The snapshot, the act-time guards, and anything that decides what gets clicked or typed
+
+Out of scope: vulnerabilities in Chrome itself, in browser-harness, or in the sites you point jev-ra
+at; and anything that requires an attacker to already control your machine.
 
 ## What jev-ra is and is not
 
