@@ -71,7 +71,8 @@ def test_publishing_is_gated_on_trusted_publishing_being_configured():
 
 def test_the_release_workflow_refuses_a_tag_that_does_not_match_the_version():
     text = RELEASE.read_text()
-    assert 'scripts/check_versions.py --tag "$GITHUB_REF_NAME"' in text
+    assert "scripts/check_versions.py" in text
+    assert '--tag "$GITHUB_REF_NAME"' in text
 
 
 def test_the_release_workflow_publishes_the_npm_launcher_with_provenance():
@@ -119,6 +120,20 @@ def test_ci_runs_lint_and_the_browser_tests_without_skipping_them():
 
 def test_ci_also_type_checks():
     assert "uv run ty check" in WORKFLOW.read_text()
+
+
+def test_ci_also_checks_the_format():
+    assert "uv run ruff format --check ." in WORKFLOW.read_text()
+
+
+def test_ci_fails_when_a_version_disagrees():
+    assert "scripts/check_versions.py" in WORKFLOW.read_text()
+
+
+def test_the_npm_publish_job_can_read_the_repository():
+    npm_job = RELEASE.read_text().split("  npm:", 1)[1]
+    assert "contents: read" in npm_job
+    assert "id-token: write" in npm_job
 
 
 def test_ci_fails_when_the_generated_usage_guide_drifts():

@@ -57,8 +57,14 @@ jobs:
       - name: Lint
         run: uv run ruff check .
 
+      - name: Format
+        run: uv run ruff format --check .
+
       - name: Type check
         run: uv run ty check
+
+      - name: Versions agree
+        run: uv run python scripts/check_versions.py
 
       - name: Usage guide is in sync
         run: uv run python scripts/gen_usage.py --check

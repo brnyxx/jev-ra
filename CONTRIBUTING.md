@@ -18,10 +18,11 @@ Browser tests need a Chrome with remote debugging on its own profile:
 export BU_CDP_URL=http://127.0.0.1:9222
 ```
 
-Then the three gates, which are the same ones CI runs:
+Then the gates, which are the same ones CI runs:
 
 ```sh
 uv run ruff check .
+uv run ruff format --check .
 uv run ty check
 uv run pytest -q          # coverage must stay at or above 85 %
 ```

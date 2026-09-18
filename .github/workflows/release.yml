@@ -27,7 +27,8 @@ jobs:
       - name: Every version agrees with the tag
         run: |
           if [ "${{ github.ref_type }}" = "tag" ]; then
-            uv run --no-project python scripts/check_versions.py --tag "$GITHUB_REF_NAME"
+            uv run --no-project python scripts/check_versions.py \
+              --tag "$GITHUB_REF_NAME"
           else
             uv run --no-project python scripts/check_versions.py
           fi
@@ -73,6 +74,7 @@ jobs:
     runs-on: ubuntu-latest
     environment: npm
     permissions:
+      contents: read
       id-token: write
     steps:
       - uses: actions/checkout@v4
