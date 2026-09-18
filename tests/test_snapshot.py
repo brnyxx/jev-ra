@@ -66,6 +66,15 @@ def test_select_offers_one_action_per_available_option(fixture_server, cdp_targe
     assert options[0]["current_value"] == "Economy"
 
 
+def test_an_unlabelled_select_is_named_by_its_selection_not_its_option_list(fixture_server, cdp_target):
+    page = load(cdp_target, f"{fixture_server}/sites/select-options.html")
+    select = by_label(page, "Select a country")
+    assert select["value"] == "Select a country"
+    options = [action for action in page["actions"] if action["kind"] == "select"]
+    assert options[0]["label"] == "Select a country → Argentina"
+    assert all(len(action["label"]) < 60 for action in options)
+
+
 def test_links_are_observed_with_their_text(fixture_server, cdp_target):
     page = load(cdp_target, f"{fixture_server}/list.html")
     links = [element for element in page["elements"] if element["role"] == "link"]
