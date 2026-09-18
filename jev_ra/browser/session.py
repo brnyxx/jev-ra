@@ -10,7 +10,7 @@ from browser_harness.admin import ensure_daemon
 from browser_harness.helpers import cdp
 
 from ..config import load
-from ..errors import StalePage
+from ..errors import ChromeError, StalePage
 from ..profile import NullTimer
 from . import MAX_ELEMENTS, guard_expression, marker_expression, snapshot_expression
 from .chrome import ensure as ensure_chrome
@@ -18,6 +18,12 @@ from .chrome import ensure as ensure_chrome
 logger = logging.getLogger(__name__)
 
 LOAD_TIMEOUT_S = 15.0
+# The daemon's own default budget is 5 s, which a plain call never needs and the snapshot of a
+# large page routinely exceeds: oliveyoung.co.kr evaluates for longer than that, and the timeout
+# arrived as a transport exception from inside browser_harness rather than as anything a caller
+# could handle. Give the evaluating calls room, and turn what is left into ChromeError.
+CALL_TIMEOUT_S = 5.0
+EVALUATE_TIMEOUT_S = 30.0
 WAIT_SLEEP_S = 0.1
 SETTLE_ATTEMPTS = 10
 # After input, keep reading the marker until two readings agree. A single-page app re-renders
@@ -134,13 +140,17 @@ class Session:
         """Drop everything cached for the current page."""
         self.cache.clear()
 
-    def call(self, method, **params):
-        """One CDP call on this target's session."""
-        return cdp(method, session_id=self.session_id, **params)
+    def call(self, method, timeout=CALL_TIMEOUT_S, **params):
+        """One CDP call on this target's session, with a budget the caller can widen."""
+        try:
+            return cdp(method, session_id=self.session_id, _response_timeout=timeout, **params)
+        except (TimeoutError, OSError) as error:
+            raise ChromeError(f"Chrome stopped answering during {method}: {error}") from error
 
     def evaluate(self, expression, await_promise=False):
         """Evaluate an expression in the page, refusing a document that moved under it."""
-        response = self.call("Runtime.evaluate", expression=expression, returnByValue=True, awaitPromise=await_promise)
+        response = self.call("Runtime.evaluate", timeout=EVALUATE_TIMEOUT_S, expression=expression,
+                             returnByValue=True, awaitPromise=await_promise)
         if response.get("exceptionDetails"):
             raise StalePage("Document changed during evaluation")
         return response.get("result", {}).get("value")
@@ -306,7 +316,8 @@ class Session:
 
     def screenshot(self):
         """The current viewport as JPEG bytes."""
-        return base64.b64decode(self.call("Page.captureScreenshot", format="jpeg", quality=72)["data"])
+        shot = self.call("Page.captureScreenshot", timeout=EVALUATE_TIMEOUT_S, format="jpeg", quality=72)
+        return base64.b64decode(shot["data"])
 
     def close(self):
         """Close the target this session owns."""
