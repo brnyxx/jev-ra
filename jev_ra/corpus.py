@@ -83,14 +83,14 @@ def families(tasks):
 
 def check(spec, row):
     """Whether the page satisfies a task's verify spec, and the first thing that failed."""
-    url = row.get("url") or ""
+    url = (row.get("url") or "").lower()
     text = row.get("text") or ""
     labels = " \n".join((element.get("label") or "") for element in row.get("elements") or [])
     for needle in spec.get("url_contains", []):
-        if needle not in url:
+        if needle.lower() not in url:
             return False, f"url does not contain {needle!r}"
     for needle in spec.get("url_not_contains", []):
-        if needle in url:
+        if needle.lower() in url:
             return False, f"url still contains {needle!r}"
     for needle in spec.get("text_contains", []):
         if needle not in text:

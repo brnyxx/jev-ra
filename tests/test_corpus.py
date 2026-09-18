@@ -236,3 +236,10 @@ def test_the_cli_passes_when_the_corpus_clears_the_bar(monkeypatch, tmp_path, ca
     payload = json.loads(capsys.readouterr().out)
     assert payload["pass_rate"] == 1.0 and payload["passed"] is True
     assert payload["tasks"][0]["task"] == "a"
+
+
+def test_a_url_check_reads_the_address_not_its_casing():
+    row = page(url="https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API")
+    assert corpus.check({"url_contains": ["fetch"]}, row) == (True, "")
+    assert corpus.check({"url_not_contains": ["fetch"]}, row)[0] is False
+    assert corpus.check({"url_contains": ["xhr"]}, row)[0] is False
