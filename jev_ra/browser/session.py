@@ -378,6 +378,11 @@ class Session:
             node = action["node"]
             current = self.evaluate(guard_expression(node))
             return current == [page["page_key"], page["guards"].get(str(node))]
+        if action is not None and action.get("kind") in {"scroll", "wait"}:
+            # These touch no element, so the words on the page cannot invalidate them - and a
+            # page still loading is exactly when a wait is wanted. The document is the freshness
+            # a scroll or a wait needs.
+            return self.evaluate("location.href") == page.get("url")
         return self.evaluate(marker_expression(self.max_elements)) == page["marker"]
 
     def act(self, action, page, text=None, timer=None):

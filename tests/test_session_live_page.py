@@ -28,6 +28,15 @@ def test_clicking_survives_it_too(session, fixture_server):
     assert "searched: Zurich" in session.observe()["text"]
 
 
+def test_scrolling_and_waiting_survive_it_too(session, fixture_server):
+    page = session.open(fixture_server + FIXTURE)
+    scroll = next(action for action in page["actions"] if action["id"] == "scroll_down")
+    session.act(scroll, page)
+    assert session.observe()["scroll"]["y"] > 0
+    page = session.observe()
+    session.act(next(action for action in page["actions"] if action["id"] == "wait"), page)
+
+
 def test_a_target_that_really_did_move_is_still_refused(session, fixture_server):
     page = session.open(fixture_server + FIXTURE)
     action = action_for(page, "Where from", "fill")
