@@ -11,7 +11,7 @@
   <a href="LICENSE"><img alt="License" src="https://img.shields.io/badge/license-MIT-green"></a>
 </p>
 
-[![jev-ra: browser use for coding agents, 3-5x faster than browser-use](assets/hero.png)](docs/BENCHMARKS.md)
+[![jev-ra: browser use for coding agents, 3-5× faster than browser-use](assets/hero.png)](docs/BENCHMARKS.md)
 
 **English** · [한국어](docs/i18n/README.ko.md) · [日本語](docs/i18n/README.ja.md) · [简体中文](docs/i18n/README.zh-CN.md)
 
@@ -26,9 +26,9 @@ page says, and takes over when jev-ra escalates. No second LLM runs inside the l
 
 | task | browser-use 0.13.10 + gemini-3-flash `flash_mode` | jev-ra | |
 |---|---|---|---|
-| Wikipedia: open the Gödel incompleteness article | 23,058 ms | **2,714 ms** | **8.5×** |
-| Google Flights ZRH→LON one-way, results on screen | 66,414 ms | **8,888 ms** | **7.5×** |
-| Olive Young category: sort by 신상품순 | 15,071 ms | **3,806 ms** | **4.0×** |
+| Wikipedia: open the Gödel incompleteness article | 23,058 ms | **2,714 ms** | **8.50×** |
+| Google Flights ZRH→LON one-way, results on screen | 66,414 ms | **8,888 ms** | **7.47×** |
+| Olive Young category: sort by 신상품순 | 15,071 ms | **3,806 ms** | **3.96×** |
 
 Medians over 5 runs each, 2026-09-18, same machine, same dedicated Chrome, both through OpenRouter.
 Every run was checked against the page it left behind, and 25 of 25 passed with zero text-model
@@ -171,6 +171,9 @@ Five tasks, five runs each, every run verified against the page it left behind:
 
 Ratios are against browser-use 0.13.10 + gemini-3-flash `flash_mode` on the same machine and the
 same Chrome: 23,058 ms, 66,414 ms and 15,071 ms respectively. Text-model calls across all 25 runs: 0.
+A same-harness re-run of browser-use, five runs per task, was slower still: 9.07×, 8.31× and 7.26×.
+Even the harshest pairing - our median against browser-use's fastest single run of each task
+(15,759 ms, 49,914 ms, 17,647 ms) - is 5.8×, 5.6× and 4.6×, which is why the headline stays 3-5×.
 `jev-ra bench --live --runs 5` reproduces this table and prints PASS/FAIL against the v0.1 bar of
 ≥ 3× on every task with a baseline. [Method, the browser-use rows, and how to reproduce
 them](docs/BENCHMARKS.md).

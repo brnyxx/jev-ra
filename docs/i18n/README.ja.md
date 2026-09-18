@@ -11,7 +11,7 @@
   <a href="../../LICENSE"><img alt="License" src="https://img.shields.io/badge/license-MIT-green"></a>
 </p>
 
-[![jev-ra: コーディングエージェントのためのブラウザ操作、browser-use より 3-5 倍速い](../../assets/hero.png)](../BENCHMARKS.md)
+[![jev-ra: コーディングエージェントのためのブラウザ操作、browser-use より 3-5× 速い](../../assets/hero.png)](../BENCHMARKS.md)
 
 [English](../../README.md) · [한국어](README.ko.md) · **日本語** · [简体中文](README.zh-CN.md)
 
@@ -27,9 +27,9 @@
 
 | タスク | browser-use 0.13.10 + gemini-3-flash `flash_mode` | jev-ra | |
 |---|---|---|---|
-| Wikipedia: ゲーデルの不完全性定理の記事を開く | 23,058 ms | **2,714 ms** | **8.5×** |
-| Google Flights ZRH→LON 片道、結果が表示されるまで | 66,414 ms | **8,888 ms** | **7.5×** |
-| Olive Young カテゴリ: 신상품순 で並べ替え | 15,071 ms | **3,806 ms** | **4.0×** |
+| Wikipedia: ゲーデルの不完全性定理の記事を開く | 23,058 ms | **2,714 ms** | **8.50×** |
+| Google Flights ZRH→LON 片道、結果が表示されるまで | 66,414 ms | **8,888 ms** | **7.47×** |
+| Olive Young カテゴリ: 신상품순 で並べ替え | 15,071 ms | **3,806 ms** | **3.96×** |
 
 各 5 回実行の中央値。2026-09-18、同じマシン、同じ専用 Chrome、どちらも OpenRouter 経由。すべての
 実行は残されたページに対して検証し、25 回中 25 回が成功、テキストモデルの呼び出しは 0 回だった。
@@ -171,7 +171,10 @@ Jev が*あなたが渡した*値のどれがそのフィールドに入るか�
 
 比率は同じマシン、同じ Chrome で動かした browser-use 0.13.10 + gemini-3-flash `flash_mode` に対する
 もの(それぞれ 23,058 ms、66,414 ms、15,071 ms)。25 回全体でテキストモデルの呼び出しは 0。
-`jev-ra bench --live --runs 5` でこの表を再現でき、基準のあるすべてのタスクについて 3 倍以上という
+同じハーネスで browser-use をタスクごとに 5 回再実行すると、さらに遅かった: 9.07×、8.31×、7.26×。
+最も不利な比較 - われわれの中央値 対 browser-use のタスク別最速記録(15,759 ms、49,914 ms、17,647 ms) -
+でも 5.8×、5.6×、4.6×であり、だからこそ見出しは 3-5× のままだ。
+`jev-ra bench --live --runs 5` でこの表を再現でき、基準のあるすべてのタスクについて 3× 以上という
 v0.1 の基準に対する PASS/FAIL を表示する。
 [測定方法、browser-use の生データ、再現手順](../BENCHMARKS.md)。
 

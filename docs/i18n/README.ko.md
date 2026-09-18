@@ -11,7 +11,7 @@
   <a href="LICENSE"><img alt="License" src="https://img.shields.io/badge/license-MIT-green""></a>
 </p>
 
-[![jev-ra: 코딩 에이전트를 위한 브라우저 조작, browser-use보다 3-5배 빠르다](../../assets/hero.png)](../BENCHMARKS.md)
+[![jev-ra: 코딩 에이전트를 위한 브라우저 조작, browser-use보다 3-5× 빠르다](../../assets/hero.png)](../BENCHMARKS.md)
 
 [English](../../README.md) · **한국어** · [日本語](README.ja.md) · [简体中文](README.zh-CN.md)
 
@@ -26,9 +26,9 @@ jev-ra에 목표를 넘긴다. System One 결정 모델인 TypeSafe Jev가 한 �
 
 | 과제 | browser-use 0.13.10 + gemini-3-flash `flash_mode` | jev-ra | |
 |---|---|---|---|
-| Wikipedia: 괴델 불완전성 정리 문서 열기 | 23,058 ms | **2,714 ms** | **8.5×** |
-| Google Flights ZRH→LON 편도, 결과 표시까지 | 66,414 ms | **8,888 ms** | **7.5×** |
-| 올리브영 카테고리: 신상품순 정렬 | 15,071 ms | **3,806 ms** | **4.0×** |
+| Wikipedia: 괴델 불완전성 정리 문서 열기 | 23,058 ms | **2,714 ms** | **8.50×** |
+| Google Flights ZRH→LON 편도, 결과 표시까지 | 66,414 ms | **8,888 ms** | **7.47×** |
+| 올리브영 카테고리: 신상품순 정렬 | 15,071 ms | **3,806 ms** | **3.96×** |
 
 각 5회 실행의 중앙값. 2026-09-18, 같은 머신, 같은 전용 Chrome, 양쪽 모두 OpenRouter 경유.
 모든 실행은 남긴 페이지를 기준으로 검증했고 25번 중 25번 통과했으며 텍스트 모델 호출은 0이었다.
@@ -170,7 +170,10 @@ Jev가 *당신이 준* 값 중 어느 것이 그 필드에 들어갈지 고른�
 
 비율은 같은 머신, 같은 Chrome에서 돌린 browser-use 0.13.10 + gemini-3-flash `flash_mode`
 기준이다(각각 23,058 ms, 66,414 ms, 15,071 ms). 25회 전체에서 텍스트 모델 호출은 0.
-`jev-ra bench --live --runs 5`로 이 표를 재현할 수 있고, 기준선이 있는 모든 과제에 대해 3배
+같은 하네스로 browser-use를 과제당 5회 다시 돌린 결과는 더 느렸다: 9.07×, 8.31×, 7.26×.
+가장 불리한 비교 - 우리 중앙값 대 browser-use의 과제별 최고 기록(15,759 ms, 49,914 ms, 17,647 ms) -
+조차 5.8×, 5.6×, 4.6×이므로 헤드라인은 3-5×에 머문다.
+`jev-ra bench --live --runs 5`로 이 표를 재현할 수 있고, 기준선이 있는 모든 과제에 대해 3×
 이상이라는 v0.1 기준의 PASS/FAIL을 찍는다.
 [측정 방법, browser-use 원본 기록, 재현 방법](../BENCHMARKS.md).
 

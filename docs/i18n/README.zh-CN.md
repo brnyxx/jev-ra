@@ -11,7 +11,7 @@
   <a href="../../LICENSE"><img alt="License" src="https://img.shields.io/badge/license-MIT-green"></a>
 </p>
 
-[![jev-ra：面向编码智能体的浏览器操作，比 browser-use 快 3-5 倍](../../assets/hero.png)](../BENCHMARKS.md)
+[![jev-ra：面向编码智能体的浏览器操作，比 browser-use 快 3-5×](../../assets/hero.png)](../BENCHMARKS.md)
 
 [English](../../README.md) · [한국어](README.ko.md) · [日本語](README.ja.md) · **简体中文**
 
@@ -26,9 +26,9 @@ jev-ra。System One 决策模型 TypeSafe Jev 在一次往返中同时选出每�
 
 | 任务 | browser-use 0.13.10 + gemini-3-flash `flash_mode` | jev-ra | |
 |---|---|---|---|
-| Wikipedia：打开哥德尔不完备定理条目 | 23,058 ms | **2,714 ms** | **8.5×** |
-| Google Flights ZRH→LON 单程，直到结果出现 | 66,414 ms | **8,888 ms** | **7.5×** |
-| Olive Young 分类页：按 신상품순 排序 | 15,071 ms | **3,806 ms** | **4.0×** |
+| Wikipedia：打开哥德尔不完备定理条目 | 23,058 ms | **2,714 ms** | **8.50×** |
+| Google Flights ZRH→LON 单程，直到结果出现 | 66,414 ms | **8,888 ms** | **7.47×** |
+| Olive Young 分类页：按 신상품순 排序 | 15,071 ms | **3,806 ms** | **3.96×** |
 
 各跑 5 次的中位数。2026-09-18，同一台机器、同一个专用 Chrome，两边都经由 OpenRouter。每一次运行都
 对照它留下的页面做了校验，25 次全部通过，文本模型调用为 0 次。
@@ -166,7 +166,10 @@ marker，而不是模型的意见。
 
 倍率是相对同一台机器、同一个 Chrome 上运行的 browser-use 0.13.10 + gemini-3-flash `flash_mode`
 (分别为 23,058 ms、66,414 ms、15,071 ms)。25 次运行的文本模型调用总数为 0。
-`jev-ra bench --live --runs 5` 可以复现这张表，并对每个有基线的任务给出 v0.1 的 3 倍门槛的
+同一套测试框架下让 browser-use 每个任务重跑 5 次，结果更慢：9.07×、8.31×、7.26×。
+即便按最不利的配对 - 我们的中位数对比 browser-use 每个任务的最快一次(15,759 ms、49,914 ms、17,647 ms) -
+仍有 5.8×、5.6×、4.6×，所以标题保持 3-5×。
+`jev-ra bench --live --runs 5` 可以复现这张表，并对每个有基线的任务给出 v0.1 的 3× 门槛的
 PASS/FAIL。[方法、browser-use 原始数据与复现步骤](../BENCHMARKS.md)。
 
 左边是 jev-ra，右边是 browser-use `flash_mode`。同一任务、同一个 Chrome、实时：

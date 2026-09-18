@@ -48,6 +48,7 @@ console.log(JSON.stringify({ keys: keys.length, missing }));
 # Thousands separators, dollar amounts, and ratios written with the multiplication sign.
 TIMES = "\u00d7"
 NUMBER = re.compile(rf"\b\d{{1,3}}(?:,\d{{3}})+|\$\d+\.\d{{4,}}|\b\d+\.\d{{1,2}}{TIMES}")
+MEASUREMENT = re.compile(rf"\d[\d,.]*\s?(?:ms|s|x|{TIMES}|%)(?![A-Za-z0-9])")
 
 
 def headings(text):
@@ -66,7 +67,7 @@ def commands(text):
 
 
 def numbers(text):
-    return sorted(set(NUMBER.findall(text)))
+    return sorted(set(NUMBER.findall(text)) | set(MEASUREMENT.findall(text)))
 
 
 def compare(english, other):
