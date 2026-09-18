@@ -2,8 +2,12 @@
 
 import re
 
-DURATION = re.compile(r"\b\d{1,2}\s*hr\b|\b\d{1,2}\s*h\s*\d{1,2}\b", re.IGNORECASE)
+# Google Flights answers in the browser's locale, so every signal has to be language-agnostic.
+DURATION = re.compile(r"\b\d{1,2}\s*hr\b|\b\d{1,2}\s*h\s*\d{1,2}\b|\d{1,2}\s*시간", re.IGNORECASE)
 PRICE = re.compile(r"[$€£₩]\s?\d|\d[\d,]*\s?(?:USD|EUR|CHF|GBP|KRW|원)")
+ORIGIN = re.compile(r"\bZRH\b|Z(?:u|ü)rich|취리히", re.IGNORECASE)
+DESTINATION = re.compile(r"\b(?:LON|LHR|LGW|STN|LTN|LCY)\b|London|런던", re.IGNORECASE)
+DEPARTURE = re.compile(r"2026-09-20|\b(?:Sep(?:tember)?)\s*20\b|9월\s*20일")
 ACTIVE = {"true", "page", "step", "location", "date", "time", "on"}
 
 
@@ -29,10 +33,9 @@ def flights(row):
     text = text_of(row)
     if "travel/flights" not in url or "tfs=" not in url:
         return False
-    origin = "Zurich" in text or "ZRH" in text
-    destination = "London" in text or "LON" in text or "LHR" in text or "LGW" in text
-    dated = bool(re.search(r"\b(20|Sep|September)[^\n]{0,12}2026\b|2026-09-20", text))
-    return origin and destination and dated and bool(DURATION.search(text)) and bool(PRICE.search(text))
+    return all(
+        pattern.search(text) for pattern in (ORIGIN, DESTINATION, DEPARTURE, DURATION, PRICE)
+    )
 
 
 def oliveyoung_sort(row):

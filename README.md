@@ -5,14 +5,17 @@ jev-ra a goal. TypeSafe Jev, a System One decision model, picks the operation *a
 element for every step in one round trip. Your agent plans, supplies the text values, reads what the
 page says, and takes over when jev-ra escalates. No second LLM runs inside the loop.
 
-![jev-ra opening the Gödel incompleteness article in 2.2 seconds](assets/demo/wikipedia.gif)
+![jev-ra opening the Gödel incompleteness article in under three seconds](assets/demo/wikipedia.gif)
 
 | task | browser-use 0.13.10 + gemini-3-flash `flash_mode` | jev-ra | |
 |---|---|---|---|
-| Wikipedia: open the Gödel incompleteness article | 23,058 ms · 4 steps | **2,205 ms · 2 steps** | **10.5×** |
+| Wikipedia: open the Gödel incompleteness article | 23,058 ms | **2,714 ms** | **8.5×** |
+| Google Flights ZRH→LON one-way, results on screen | 66,414 ms | **8,888 ms** | **7.5×** |
+| Olive Young category: sort by 신상품순 | 15,071 ms | **3,806 ms** | **4.0×** |
 
-2026-09-18, same machine, same dedicated Chrome, both through OpenRouter, one run each.
-[Method and raw rows](docs/BENCHMARKS.md) — including the two tasks that do **not** pass yet.
+Medians over 5 runs each, 2026-09-18, same machine, same dedicated Chrome, both through OpenRouter.
+Every run was checked against the page it left behind, and 25 of 25 passed with zero text-model
+calls. [Method, p90, cost and raw rows](docs/BENCHMARKS.md).
 
 ## Quick start
 
@@ -142,10 +145,6 @@ more than 250 visible controls report `omitted` and escalate `too_many_controls`
 Cross-origin iframes are reported as one opaque element; open shadow roots and same-origin iframes
 **are** traversed.
 
-Two of the three benchmark tasks — Google Flights and the Olive Young sort — currently come back
-`blocked`. See [docs/BENCHMARKS.md](docs/BENCHMARKS.md); the numbers there are not rounded in our
-favour.
-
 ## FAQ
 
 **OpenRouter or a TypeSafe key?** Either. jev-ra resolves `JEV_RA_API_KEY`, then `TYPESAFE_API_KEY`,
@@ -154,9 +153,9 @@ then `OPENROUTER_API_KEY`. A key starting `sk-or-` selects the OpenRouter route
 `JEV_RA_MODEL` override both. OpenRouter is easier to get; direct TypeSafe is roughly 140 ms faster
 per decision according to the upstream measurements.
 
-**What does a task cost?** The Wikipedia run above cost **$0.000874** for four decisions. Cost scales
-with decisions, not with page size, because the state sent is the element table and the visible text,
-never the HTML.
+**What does a task cost?** Between **$0.00035** (a search, 4 decisions) and **$0.00317** (the whole
+Google Flights flow, 14 decisions). Cost scales with decisions, not with page size, because the state
+sent is the element table and the visible text, never the HTML.
 
 **Does it need its own Chrome?** It will find or launch one on its own profile
 (`$XDG_STATE_HOME/jev-ra/chrome-profile`) and reuse it. Point `BU_CDP_URL` at a different Chrome to

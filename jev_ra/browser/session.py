@@ -19,6 +19,10 @@ logger = logging.getLogger(__name__)
 LOAD_TIMEOUT_S = 15.0
 WAIT_SLEEP_S = 0.1
 SETTLE_ATTEMPTS = 10
+# After input, keep reading the marker until two readings agree. A single-page app re-renders
+# well after its two frames are up, and a half-rendered page reads as one with nothing to do.
+QUIET_INTERVAL_S = 0.06
+QUIET_BUDGET_S = 0.6
 # Fonts and media cost bytes and answer nothing. Images are deliberately NOT here: blocking
 # them on en.wikipedia.org drops the observed controls from 62 to 34, because real layouts
 # size themselves around their images and half the page then falls outside the viewport.
@@ -170,6 +174,25 @@ class Session:
             )
         except RuntimeError:
             logger.debug("Post-input settle was interrupted")
+        self.quiesce()
+
+    def quiesce(self):
+        """Wait, briefly, until two readings of the page marker agree."""
+        deadline = time.monotonic() + QUIET_BUDGET_S
+        expression = marker_expression(self.max_elements)
+        try:
+            previous = self.evaluate(expression)
+        except StalePage:
+            return
+        while time.monotonic() < deadline:
+            time.sleep(QUIET_INTERVAL_S)
+            try:
+                current = self.evaluate(expression)
+            except StalePage:
+                continue
+            if current == previous:
+                return
+            previous = current
 
     def observe(self):
         """One atomic reading of the page: text, elements, actions, guards and marker."""

@@ -5,14 +5,17 @@ jev-ra에 목표를 넘긴다. System One 결정 모델인 TypeSafe Jev가 한 �
 대상 요소를 함께 고른다. 계획을 세우고, 입력할 값을 주고, 페이지를 읽고, jev-ra가 escalate하면
 넘겨받는 것은 호출한 에이전트의 몫이다. 루프 안에서 두 번째 LLM이 도는 일은 없다.
 
-![jev-ra가 2.2초 만에 괴델 불완전성 정리 문서를 여는 모습](assets/demo/wikipedia.gif)
+![jev-ra가 3초 안에 괴델 불완전성 정리 문서를 여는 모습](assets/demo/wikipedia.gif)
 
 | 과제 | browser-use 0.13.10 + gemini-3-flash `flash_mode` | jev-ra | |
 |---|---|---|---|
-| Wikipedia: 괴델 불완전성 정리 문서 열기 | 23,058 ms · 4 steps | **2,205 ms · 2 steps** | **10.5배** |
+| Wikipedia: 괴델 불완전성 정리 문서 열기 | 23,058 ms | **2,714 ms** | **8.5배** |
+| Google Flights ZRH→LON 편도, 결과 표시까지 | 66,414 ms | **8,888 ms** | **7.5배** |
+| 올리브영 카테고리: 신상품순 정렬 | 15,071 ms | **3,806 ms** | **4.0배** |
 
-2026-09-18, 같은 머신, 같은 전용 Chrome, 양쪽 모두 OpenRouter 경유, 각 1회 실행.
-[측정 방법과 원본 기록](docs/BENCHMARKS.md) — 아직 통과하지 못하는 두 과제도 그곳에 있다.
+각 5회 실행의 중앙값. 2026-09-18, 같은 머신, 같은 전용 Chrome, 양쪽 모두 OpenRouter 경유.
+모든 실행은 남긴 페이지를 기준으로 검증했고 25번 중 25번 통과했으며 텍스트 모델 호출은 0이었다.
+[측정 방법, p90, 비용, 원본 기록](docs/BENCHMARKS.md).
 
 ## 빠른 시작
 
@@ -140,9 +143,6 @@ Canvas, 파일 업로드, 팝업 창, 다중 탭 워크플로, 인증 플로, CA
 교차 출처 iframe은 하나의 불투명한 요소로 보고하며, 열린 shadow root와 동일 출처 iframe은
 **훑는다**.
 
-세 벤치마크 과제 중 둘 — Google Flights와 올리브영 정렬 — 은 현재 `blocked`로 돌아온다.
-[docs/BENCHMARKS.md](docs/BENCHMARKS.md)를 보라. 그곳의 수치는 우리에게 유리하게 반올림되지 않았다.
-
 ## FAQ
 
 **OpenRouter인가 TypeSafe 키인가?** 둘 다 된다. jev-ra는 `JEV_RA_API_KEY`, `TYPESAFE_API_KEY`,
@@ -151,8 +151,9 @@ Canvas, 파일 업로드, 팝업 창, 다중 탭 워크플로, 인증 플로, CA
 `JEV_RA_MODEL`이 둘 다 덮어쓴다. OpenRouter가 구하기 쉽고, 상류 측정에 따르면 직접 호출이 결정당
 약 140 ms 빠르다.
 
-**한 과제에 얼마가 드나?** 위 Wikipedia 실행은 결정 4번에 **$0.000874**였다. 비용은 페이지 크기가
-아니라 결정 횟수에 비례한다. 보내는 상태가 HTML이 아니라 요소 표와 보이는 텍스트이기 때문이다.
+**한 과제에 얼마가 드나?** **$0.00035**(검색, 결정 4번)에서 **$0.00317**(Google Flights 전체 흐름,
+결정 14번) 사이다. 비용은 페이지 크기가 아니라 결정 횟수에 비례한다. 보내는 상태가 HTML이 아니라
+요소 표와 보이는 텍스트이기 때문이다.
 
 **전용 Chrome이 필요한가?** 직접 찾거나 자체 프로필(`$XDG_STATE_HOME/jev-ra/chrome-profile`)로
 띄워서 재사용한다. `BU_CDP_URL`로 다른 Chrome을 가리킬 수 있다. 에이전트에게 맡기고 싶지 않은

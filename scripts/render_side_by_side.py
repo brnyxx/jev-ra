@@ -18,6 +18,7 @@ logger = logging.getLogger("render_side_by_side")
 
 DEFAULT_FPS = 10
 COLUMN_WIDTH = 640
+GIF_COLOURS = 64
 GUTTER = 8
 HEADER = 44
 INK = (17, 18, 20)
@@ -83,7 +84,10 @@ def render(manifest_paths, out_stem, fps=DEFAULT_FPS, column=COLUMN_WIDTH, heigh
     out_stem = Path(out_stem)
     out_stem.parent.mkdir(parents=True, exist_ok=True)
     gif = out_stem.with_suffix(".gif")
-    frames[0].save(gif, save_all=True, append_images=frames[1:], duration=step, loop=0, optimize=True)
+    # A full-colour screen recording is megabytes per second as a GIF; one shared palette is not.
+    palette = frames[0].quantize(colors=GIF_COLOURS, method=Image.MEDIANCUT)
+    flattened = [frame.quantize(palette=palette, dither=Image.FLOYDSTEINBERG) for frame in frames]
+    flattened[0].save(gif, save_all=True, append_images=flattened[1:], duration=step, loop=0, optimize=True)
     written = [gif]
     mp4 = encode_mp4(frames, out_stem, fps)
     if mp4:
@@ -119,9 +123,11 @@ def main(argv=None):
     parser.add_argument("manifests", nargs="+", help="recording directories or manifest.json paths")
     parser.add_argument("--out", required=True, help="output path without extension")
     parser.add_argument("--fps", type=int, default=DEFAULT_FPS)
+    parser.add_argument("--width", type=int, default=COLUMN_WIDTH, help="width of one column in pixels")
     args = parser.parse_args(argv)
     logging.basicConfig(level=logging.INFO, format="%(message)s")
-    for path in render(args.manifests, args.out, args.fps):
+    height = round(args.width * 450 / COLUMN_WIDTH)
+    for path in render(args.manifests, args.out, args.fps, column=args.width, height=height):
         logger.info("wrote %s", path)
     return 0
 

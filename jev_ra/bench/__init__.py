@@ -4,15 +4,17 @@ import contextlib
 import functools
 import json
 import logging
+import shutil
 import statistics
 import subprocess
-import sys
 import threading
 import time
 from dataclasses import dataclass, field
+from datetime import date
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
+from .. import __version__
 from ..agent import Agent
 from ..browser.session import Session
 from ..config import load
@@ -382,17 +384,36 @@ def markdown_table(rows, columns=None):
     return "\n".join(lines)
 
 
-def run_baseline(runs=1, model=FLASH_MODEL, flash=True, directory=None):
-    """Re-run the recorded browser-use script in its own environment, `runs` times."""
+BROWSER_USE_PIN = "browser-use==0.13.10"
+
+
+def uv_command():
+    """The uv executable, which is what knows how to make a browser-use environment."""
+    found = shutil.which("uv")
+    if not found:
+        raise RuntimeError("uv is not on PATH; the browser-use baseline needs it to build its environment.")
+    return found
+
+
+def run_baseline(runs=1, model=FLASH_MODEL, flash=True, directory=None, out_dir=None):
+    """Re-run the recorded browser-use script in its own environment, `runs` times.
+
+    The script writes its rows next to itself, so it is copied into `out_dir` first: the recorded
+    baseline is a historical record and must not gain rows from a later run.
+    """
     directory = Path(directory or baseline_dir() or "")
     script = directory / "bench.py"
     if not script.exists():
         raise RuntimeError(f"No browser-use bench script at {script}")
+    out_dir = Path(out_dir or directory.parent / f"{date.today().isoformat()}-v{__version__}")
+    out_dir.mkdir(parents=True, exist_ok=True)
+    copy = out_dir / "bench.py"
+    copy.write_text(script.read_text())
     completed = []
     for attempt in range(runs):
         logger.info("browser-use baseline run %s/%s", attempt + 1, runs)
         finished = subprocess.run(
-            [sys.executable, "-m", "uv", "run", "--with", "browser-use==0.13.10", "python", str(script),
+            [uv_command(), "run", "--no-project", "--with", BROWSER_USE_PIN, "python", str(copy),
              model, "flash" if flash else "default"],
             capture_output=True,
             text=True,

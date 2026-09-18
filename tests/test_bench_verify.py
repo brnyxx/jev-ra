@@ -11,6 +11,10 @@ FLIGHT_TEXT = (
     "9:30 AM - 10:40 AM\nBritish Airways\n1 hr 40 min\nNonstop\n$204"
 )
 FLIGHT_URL = "https://www.google.com/travel/flights/search?tfs=CBwQAhooEgoyMDI2LTA5LTIw"
+KOREAN_FLIGHT_TEXT = (
+    "영국항공\n1시간 45분\n직항\n₩316,695\n"
+    "2026-09-20 취리히에서 출발하여 런던에 도착하는 항공편 가격 추적"
+)
 
 
 def test_wikipedia_wants_the_article_not_a_search_result():
@@ -18,6 +22,12 @@ def test_wikipedia_wants_the_article_not_a_search_result():
     assert not verify.wikipedia({"url": "https://en.wikipedia.org/wiki/Main_Page"})
     assert not verify.wikipedia({"url": "https://en.wikipedia.org/w/index.php?search=incompleteness"})
     assert not verify.wikipedia({})
+
+
+def test_flights_reads_the_page_in_whatever_language_it_came_back_in():
+    assert verify.flights({"url": FLIGHT_URL, "text": KOREAN_FLIGHT_TEXT})
+    assert not verify.flights({"url": FLIGHT_URL, "text": KOREAN_FLIGHT_TEXT.replace("런던", "리스본")})
+    assert not verify.flights({"url": FLIGHT_URL, "text": KOREAN_FLIGHT_TEXT.replace("₩316,695", "")})
 
 
 def test_flights_wants_the_search_the_cities_the_date_and_a_result_card():
