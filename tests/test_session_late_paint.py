@@ -16,3 +16,8 @@ def test_a_page_with_genuinely_nothing_on_it_still_returns(session, fixture_serv
     page = session.open(fixture_server + "/sites/empty.html")
     assert page["elements"] == []
     assert page["url"].endswith("/sites/empty.html")
+
+
+def test_open_waits_for_a_loading_cover_to_lift(session, fixture_server):
+    page = session.open(fixture_server + "/sites/loading-cover.html")
+    assert [element["label"] for element in page["elements"]] == ["Search services", "Search"]

@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Portal</title>
+<style>
+  body { font: 14px/1.5 system-ui; margin: 0; padding: 16px; }
+  #cover { position: fixed; inset: 0; background: rgba(255,255,255,.95); z-index: 10; }
+</style>
+</head>
+<body>
+<!-- The controls exist from the first paint, but a loading screen covers every one of them.
+     A snapshot of this page observes nothing at all until the cover lifts. -->
+<div id="cover"><p>잠시만 기다려 주세요</p></div>
+<main>
+  <form onsubmit="event.preventDefault(); out.textContent = 'searched ' + q.value;">
+    <input id="q" aria-label="Search services" type="search">
+    <button type="submit">Search</button>
+  </form>
+  <p id="out"></p>
+</main>
+<script>setTimeout(() => document.getElementById('cover').remove(), 600);</script>
+</body>
+</html>
