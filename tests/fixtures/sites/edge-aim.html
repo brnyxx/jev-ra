@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Offers</title>
+<style>
+  body { font: 14px/1.5 system-ui; margin: 0; padding: 16px; }
+  .row { position: relative; width: 400px; height: 60px; margin-bottom: 20px; border: 1px solid #ccc; }
+  .row a { position: absolute; left: 0; top: 0; width: 400px; height: 60px; }
+  .cover { position: absolute; left: 100px; top: 0; width: 200px; height: 60px; background: #eee; }
+  .hot { position: absolute; right: 0; top: 0; width: 60px; height: 60px; pointer-events: auto; }
+</style>
+</head>
+<body>
+<h1>Offers</h1>
+<!-- Both links have their middle covered by a panel, so the centre is not where either can be
+     pressed. The first paints nothing of its own anywhere else, so every other point on it
+     belongs to the row behind it; the second keeps a live corner of its own. -->
+<div class="row" id="row-a" onclick="log('row-a')">
+  <a href="#a" style="pointer-events:none" onclick="event.stopPropagation(); log('link-a')">Free delivery</a>
+  <div class="cover"></div>
+</div>
+<div class="row" id="row-b" onclick="log('row-b')">
+  <a href="#b" style="pointer-events:none" onclick="event.stopPropagation(); log('link-b')">Gift wrap<span class="hot"></span></a>
+  <div class="cover"></div>
+</div>
+<p id="out">nothing</p>
+<script>
+  function log(what) { document.getElementById('out').textContent = what; }
+</script>
+</body>
+</html>

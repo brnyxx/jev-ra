@@ -65,10 +65,17 @@
     const tries=[[midX,midY],
       [r.x+inset(r.width,40),midY], [r.right-inset(r.width,40),midY],
       [midX,r.y+inset(r.height,12)], [midX,r.bottom-inset(r.height,12)]];
-    for (const [x,y] of tries) {
+    for (let i=0; i<tries.length; i++) {
+      const [x,y]=tries[i];
       if (x<0 || y<0 || x+dx<0 || y+dy<0 || x+dx>=innerWidth || y+dy>=innerHeight) continue;
       const top=cache.deepest(e.ownerDocument,x,y);
-      if (cache.reaches(e,top)) return {x,y,top};
+      // The centre is where a person aims, and an ancestor taking the pointer there is the
+      // ordinary way a card carries the click for the link it wraps. Away from the centre that
+      // reasoning does not hold: a point the element does not paint belongs to whatever is behind
+      // it, and pressing there runs the row's handler rather than the link's. Off-centre, the
+      // pointer has to land on the element itself or on something inside it.
+      const reached = i===0 ? cache.reaches(e,top) : !!top && (top===e || e.contains(top));
+      if (reached) return {x,y,top};
     }
     return null;
   };
