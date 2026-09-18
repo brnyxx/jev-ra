@@ -53,6 +53,7 @@ PAINTED_JS = """(() => {
 # arrived as a transport exception from inside browser_harness rather than as anything a caller
 # could handle. Give the evaluating calls room, and turn what is left into ChromeError.
 CALL_TIMEOUT_S = 5.0
+CALL_ATTEMPTS = 2
 EVALUATE_TIMEOUT_S = 30.0
 WAIT_SLEEP_S = 0.1
 SETTLE_ATTEMPTS = 10
@@ -192,14 +193,20 @@ class Session:
 
     def call(self, method, timeout=CALL_TIMEOUT_S, **params):
         """One CDP call on this target's session, with a budget the caller can widen."""
-        try:
-            return cdp(method, session_id=self.session_id, _response_timeout=timeout, **params)
-        except (TimeoutError, OSError) as error:
-            raise ChromeError(f"Chrome stopped answering during {method}: {error}") from error
-        except RuntimeError as error:
-            if any(phrase in str(error).lower() for phrase in MOVED):
-                raise StalePage(f"The page moved during {method}. Observe again.") from error
-            raise ChromeError(f"Chrome refused {method}: {error}") from error
+        for attempt in range(CALL_ATTEMPTS):
+            try:
+                return cdp(method, session_id=self.session_id, _response_timeout=timeout, **params)
+            except (TimeoutError, OSError) as error:
+                # A browser with thirty tabs open answers late now and then. One slow answer is
+                # not a browser that has gone away, and ending the run over it loses the work.
+                if attempt == CALL_ATTEMPTS - 1:
+                    raise ChromeError(f"Chrome stopped answering during {method}: {error}") from error
+                logger.info("Chrome was slow to answer %s; asking once more", method)
+            except RuntimeError as error:
+                if any(phrase in str(error).lower() for phrase in MOVED):
+                    raise StalePage(f"The page moved during {method}. Observe again.") from error
+                raise ChromeError(f"Chrome refused {method}: {error}") from error
+        raise ChromeError(f"Chrome stopped answering during {method}")
 
     def evaluate(self, expression, await_promise=False):
         """Evaluate an expression in the page, refusing a document that moved under it."""

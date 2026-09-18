@@ -100,3 +100,30 @@ def test_any_other_refusal_is_still_a_chrome_error(bare, monkeypatch):
     monkeypatch.setattr(session_module, "cdp", refused)
     with pytest.raises(ChromeError):
         bare.call("Fake.method")
+
+
+def test_one_slow_answer_is_waited_out_rather_than_ending_the_run(bare, monkeypatch):
+    calls = []
+
+    def slow_once(method, session_id=None, _response_timeout=None, **params):
+        calls.append(method)
+        if len(calls) == 1:
+            raise TimeoutError(f"{method} timed out after 5s waiting for the daemon")
+        return {"result": {"value": "ok"}}
+
+    monkeypatch.setattr(session_module, "cdp", slow_once)
+    assert bare.call("Emulation.setDeviceMetricsOverride", width=1280) == {"result": {"value": "ok"}}
+    assert calls == ["Emulation.setDeviceMetricsOverride"] * 2
+
+
+def test_a_daemon_that_keeps_timing_out_still_gives_up(bare, monkeypatch):
+    calls = []
+
+    def always(method, **_kwargs):
+        calls.append(method)
+        raise TimeoutError("timed out after 5s waiting for the daemon")
+
+    monkeypatch.setattr(session_module, "cdp", always)
+    with pytest.raises(ChromeError):
+        bare.call("Page.navigate", url="https://example.com")
+    assert len(calls) == 2
