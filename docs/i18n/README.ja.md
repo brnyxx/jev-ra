@@ -62,7 +62,8 @@ uvx jev-ra run https://en.wikipedia.org/wiki/Main_Page "Open the Godel incomplet
   --value "search_query=Godel incompleteness theorems"
 ```
 
-Python を用意したくない場合は `npx -y jev-ra install claude` でも同じことができる。
+Python を用意したくない場合は、0.1.0 リリース以降なら `npx -y jev-ra install claude` でも npm
+ランチャー経由で同じことができる([Releases](https://github.com/brnyxx/jev-ra/releases))。
 
 どちらにせよインストール手順はない。`uvx` が PyPI から直接実行し、サーバーコマンドとして
 `uvx jev-ra mcp` を登録する。恒久的に入れるなら `uv tool install jev-ra`。鍵はすでに export して
