@@ -207,16 +207,21 @@
       if (editable) actions.push({...shared,kind:'click',label:'Open '+view.label,value:view.value});
     }
   });
-  const words=[]; let length=0;
+  // Two readings of one walk. `text` is what a reader can see right now, which is what one
+  // decision gets. `doc_text` is what the page says: an article whose every word sits under a
+  // full-screen hero is not a 200-character page, and a run that ends on one has to report it.
+  const words=[], whole=[]; let length=0, total=0;
   const range=document.createRange();
   for (const root of cache.roots()) {
     const host=root.body ?? root;
-    if (!host || length>=6000) continue;
+    if (!host || (length>=6000 && total>=6000)) continue;
     const walker=(root.ownerDocument ?? root).createTreeWalker(host,NodeFilter.SHOW_TEXT);
     let node;
-    while ((node=walker.nextNode()) && length<6000) {
+    while ((node=walker.nextNode()) && (length<6000 || total<6000)) {
       const value=node.textContent.trim(), parent=node.parentElement;
       if (!value || !parent || parent.closest('script,style,noscript,template') || !visible(parent)) continue;
+      if (total<6000) { whole.push(value); total+=value.length; }
+      if (length>=6000) continue;
       range.selectNodeContents(node);
       const r=range.getBoundingClientRect(), [dx,dy]=cache.offset(parent);
       const top=r.top+dy, left=r.left+dx;
@@ -225,7 +230,8 @@
       }
     }
   }
-  const text=words.join('\n').slice(0,6000), height=document.documentElement.scrollHeight;
+  const text=words.join('\n').slice(0,6000), doc_text=whole.join('\n').slice(0,6000);
+  const height=document.documentElement.scrollHeight;
   const page_key=cache.pageKey(), guards={};
   for (const element of elements) if (!(element.node in guards))
     guards[element.node]=cache.guard(cache.nodes.get(element.node));
@@ -243,6 +249,6 @@
   if (scrollY+innerHeight<height-2) actions.push({id:'scroll_down',kind:'scroll',label:'Scroll down',delta:560});
   if (scrollY>0) actions.push({id:'scroll_up',kind:'scroll',label:'Scroll up',delta:-560});
   actions.push({id:'wait',kind:'wait',label:'Wait for the page to update'});
-  return {url:location.href,title:document.title,w:innerWidth,h:innerHeight,text,
+  return {url:location.href,title:document.title,w:innerWidth,h:innerHeight,text,doc_text,
     scroll:{y:scrollY,height},elements,actions,marker,page_key,guards,omitted};
 })

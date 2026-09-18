@@ -341,7 +341,7 @@ class _Run:
         """The page text and element table the caller gets back."""
         space = self.agent.space(page)
         return {
-            "text": page.get("text", ""),
+            "text": page.get("doc_text") or page.get("text", ""),
             "elements": [actions.element_view(element) for element in space.elements],
             "omitted": space.omitted,
         }
