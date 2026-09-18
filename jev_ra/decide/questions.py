@@ -14,6 +14,8 @@ Submit populated search fields before opening a result; a populated field alone 
 The element list covers the current viewport only. When no listed control can advance the goal,
 SCROLL_DOWN to look for one before concluding BLOCKED. Scrolling is never the answer while an
 autocomplete suggestion is waiting to be selected, or while a listed control still needs setting.
+Two scrolls in the recent actions without a usable control appearing means this page does not have
+one: answer with the best listed control, or BLOCKED.
 WAIT only when the needed control is absent/disabled, or submitted results are still loading.
 If Search/Submit is visible and the required fields are ready, CLICK it immediately.
 Recent WAIT actions are not evidence of loading. Prefer a useful visible control over WAIT.
