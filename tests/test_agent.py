@@ -136,13 +136,23 @@ def test_step_records_carry_the_documented_fields():
     assert step["verified"]["text"] is False
 
 
-def test_done_without_goal_achieved_escalates_when_there_is_nowhere_left_to_look():
+def test_done_without_goal_achieved_waits_once_then_escalates():
     weak_done = {"operation": answer("DONE"), "goal_achieved": {"noul": 0.2}}
     agent = agent_with(decider([weak_done]))
     result = agent.run("find flights")
     assert (result.status, result.reason) == ("escalate", "unverified_done")
-    assert result.decisions == 1
-    assert agent.session.acted == []
+    assert result.decisions == 2
+    assert agent.session.acted == [("wait", "wait", None)]
+    assert [step["operation"] for step in result.steps] == ["WAIT"]
+
+
+def test_an_unconfident_done_reads_the_page_a_beat_later():
+    weak_done = {"operation": answer("DONE"), "goal_achieved": {"noul": 0.2}}
+    agent = agent_with(decider([weak_done, DONE]))
+    result = agent.run("find flights")
+    assert (result.status, result.reason) == ("done", "goal_achieved")
+    assert agent.session.acted == [("wait", "wait", None)]
+    assert [step["operation"] for step in result.steps] == ["WAIT"]
 
 
 def weak(score):

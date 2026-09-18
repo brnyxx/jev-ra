@@ -107,7 +107,7 @@ class Agent:
         if page is None:
             return run.escalate("stale", BLANK_PAGE, detail={"error": "The page never settled to be read."})
         exclude, stale_retries, looks, reasked = set(), 0, 0, False
-        best = 0.0
+        best, waited = 0.0, False
         while True:
             over = run.over_budget(limit, budgets, len(run.steps))
             if over:
@@ -157,15 +157,27 @@ class Agent:
                 score = decision.goal_achieved or 0.0
                 spent = looks >= MAX_LOOKS or (looks >= LOOKS and score <= best + LOOK_GAIN)
                 look = None if spent else space.controls.get("SCROLL_DOWN")
-                if look is None:
+                # A page that has not finished loading looks exactly like one with nothing more to
+                # show, and a search's results land a moment after its page does. When there was
+                # nowhere to scroll at all, wait a beat and judge the same goal again before
+                # giving up; a look that already ran has given the page the same moment.
+                wait = None if look is not None or waited or looks else space.controls.get("WAIT")
+                if look is None and wait is None:
                     return run.escalate("unverified_done", page, decision)
                 best = max(best, score)
-                looks += 1
-                logger.info("DONE at %.2f; looking below the fold (%s/%s)", score, looks, MAX_LOOKS)
+                if look is not None:
+                    looks += 1
+                    logger.info("DONE at %.2f; looking below the fold (%s/%s)", score, looks, MAX_LOOKS)
+                else:
+                    waited = True
+                    logger.info("DONE at %.2f; waiting for the page to finish loading", score)
+                chosen = look if look is not None else wait
+                if chosen is None:
+                    return run.escalate("unverified_done", page, decision)
                 try:
-                    self.session.act(look, page, timer=timer)
+                    self.session.act(chosen, page, timer=timer)
                 except StalePage:
-                    # The page moved while being looked at, which is itself the new information.
+                    # The page moved while it was being looked at, which is itself new information.
                     logger.info("The page moved before it could be looked at; reading it again")
                     page = self.read(self.session.observe, timer) or page
                     continue
@@ -176,14 +188,15 @@ class Agent:
                     )
                 before, page = page, after
                 run.record(
-                    replace(decision, operation="SCROLL_DOWN", target=look["id"], action=look),
+                    replace(decision, operation="SCROLL_DOWN" if look is not None else "WAIT",
+                            target=chosen["id"], action=chosen),
                     before,
                     page,
                     None,
                     timer,
                 )
                 continue
-            looks, best = 0, 0.0
+            looks, best, waited = 0, 0.0, False
 
             text, value = None, None
             if decision.operation == "TYPE_TEXT":
