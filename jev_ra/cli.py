@@ -470,7 +470,7 @@ def cmd_search(args):
     try:
         payload = search(
             args.query,
-            args.goal,
+            args.goal_flag or args.goal,
             args.max_pages,
             config=config,
             decide=client.decide,
@@ -695,6 +695,7 @@ def build_parser():
     search = add_json(sub.add_parser("search", help="search the web and read the best results"))
     search.add_argument("query")
     search.add_argument("goal", nargs="?", help="what the pages have to answer; defaults to the query")
+    search.add_argument("--goal", dest="goal_flag", metavar="TEXT", help="what the pages have to answer")
     search.add_argument("--max-pages", type=int, default=3)
     search.set_defaults(handler=cmd_search)
 

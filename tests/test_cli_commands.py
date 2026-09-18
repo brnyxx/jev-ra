@@ -287,3 +287,21 @@ def test_search_prints_the_ranked_pages(state_home, fake_browser, monkeypatch, c
     assert "godel — 2 pages in 12 ms" in out
     assert "1. Proof (answers_goal=0.90)" in out
     assert "2. Overview (answers_goal=0.40)" in out
+
+
+def test_search_takes_the_goal_as_a_flag_too(state_home, fake_browser, monkeypatch):
+    from jev_ra import search as search_module
+
+    seen = {}
+
+    def fake_search(query, goal=None, max_pages=3, **_kwargs):
+        seen["query"], seen["goal"], seen["max_pages"] = query, goal, max_pages
+        return {"query": query, "elapsed_ms": 1, "results": []}
+
+    monkeypatch.setattr(search_module, "search", fake_search)
+    assert cli.main(["search", "python 3.12 release date", "--goal", "the exact release date, with source"]) == 0
+    assert seen == {
+        "query": "python 3.12 release date",
+        "goal": "the exact release date, with source",
+        "max_pages": 3,
+    }
