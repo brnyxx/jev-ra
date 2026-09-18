@@ -59,6 +59,7 @@ convention = "google"
 # Tests and one-off scripts are read top to bottom; their names are their documentation.
 "tests/**" = ["D"]
 "scripts/**" = ["D103"]
+"examples/**" = ["D103"]
 
 [tool.ty.src]
 include = ["jev_ra"]
