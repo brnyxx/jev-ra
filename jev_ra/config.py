@@ -46,6 +46,7 @@ class Config:
     text_model: TextModel | None = None
     viewport: Viewport = field(default_factory=Viewport)
     budgets: Budgets = field(default_factory=Budgets)
+    block_resources: bool = True
 
     @property
     def provider(self):
@@ -80,6 +81,17 @@ def read_file(path):
         logger.warning("Ignoring config %s: expected a JSON object", path)
         return {}
     return stored
+
+
+FALSE_VALUES = {"0", "false", "no", "off"}
+
+
+def read_flag(value, default):
+    if value is None:
+        return default
+    if isinstance(value, bool):
+        return value
+    return str(value).strip().lower() not in FALSE_VALUES
 
 
 def positive_int(value, default, label):
@@ -180,4 +192,5 @@ def load(env=None, path=None):
         text_model=read_text_model(env, stored.get("text_model")),
         viewport=read_viewport(env.get("JEV_RA_VIEWPORT") or stored.get("viewport")),
         budgets=read_budgets(env, stored.get("budgets")),
+        block_resources=read_flag(env.get("JEV_RA_BLOCK_RESOURCES", stored.get("block_resources")), True),
     )

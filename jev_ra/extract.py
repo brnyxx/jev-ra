@@ -70,20 +70,28 @@ def fit(payload, max_chars):
     return payload, truncated
 
 
-def extract(session, mode="text", max_chars=MAX_CHARS):
+def extract(session, mode="text", max_chars=MAX_CHARS, use_cache=True):
     if mode not in MODES:
         raise ValueError(f"mode must be one of {', '.join(MODES)}")
     page = session.observe()
+    key = ("extract", page.get("url", ""), mode, max_chars)
+    cached = session.cache_get(key) if use_cache and hasattr(session, "cache_get") else None
+    if cached is not None:
+        return {**cached, "cached": True}
     if mode == "elements":
         space = actions.build(page, session.max_elements)
         payload = {"elements": [actions.element_view(element) for element in space.elements], "omitted": space.omitted}
     else:
         payload = session.evaluate(f"({EXTRACT_JS})({json.dumps({'mode': mode})})") or {}
     payload, truncated = fit(payload, max_chars)
-    return {
+    result = {
         "mode": mode,
         "url": page.get("url", ""),
         "title": page.get("title", ""),
         "truncated": truncated,
+        "cached": False,
         **payload,
     }
+    if use_cache and hasattr(session, "cache_put"):
+        session.cache_put(key, result)
+    return result

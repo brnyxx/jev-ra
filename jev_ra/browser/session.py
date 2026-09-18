@@ -18,6 +18,12 @@ logger = logging.getLogger(__name__)
 LOAD_TIMEOUT_S = 15.0
 WAIT_SLEEP_S = 0.1
 SETTLE_ATTEMPTS = 10
+# Pictures, fonts and media cost seconds and answer nothing; the text is what gets read.
+BLOCKED_URLS = (
+    "*.png", "*.jpg", "*.jpeg", "*.gif", "*.webp", "*.avif", "*.svg", "*.ico",
+    "*.woff", "*.woff2", "*.ttf", "*.otf", "*.eot",
+    "*.mp4", "*.webm", "*.mp3", "*.m4a", "*.avi", "*.mov",
+)
 KEYS = {
     "Enter": (13, "Enter", "\r"),
     "Escape": (27, "Escape", ""),
@@ -84,6 +90,7 @@ class Session:
         self.config = config or load()
         self.max_elements = max_elements
         self.after_input = None
+        self.cache = {}
         viewport = self.config.viewport
         self.cdp_url, self.chrome_source = ensure_chrome(viewport=(viewport.width, viewport.height))
         ensure_daemon()
@@ -101,6 +108,22 @@ class Session:
         )
         # Keep rAF and menus rendering in an owned background tab without stealing focus.
         self.call("Emulation.setFocusEmulationEnabled", enabled=True)
+        self.blocked = self.block_resources() if self.config.block_resources else []
+
+    def block_resources(self, urls=BLOCKED_URLS):
+        self.call("Network.enable")
+        self.call("Network.setBlockedURLs", urls=list(urls))
+        return list(urls)
+
+    def cache_get(self, key):
+        return self.cache.get(key)
+
+    def cache_put(self, key, value):
+        self.cache[key] = value
+        return value
+
+    def invalidate(self):
+        self.cache.clear()
 
     def call(self, method, **params):
         return cdp(method, session_id=self.session_id, **params)
@@ -113,6 +136,7 @@ class Session:
 
     def open(self, url):
         self.after_input = None
+        self.invalidate()
         self.call("Page.navigate", url=url)
         deadline = time.monotonic() + LOAD_TIMEOUT_S
         while time.monotonic() < deadline:
@@ -175,6 +199,7 @@ class Session:
         else:
             self.input(action, text)
         self.after_input = action if kind != "wait" else None
+        self.invalidate()
         return {"executed": action["id"], "kind": kind, "text": text}
 
     def input(self, action, text):
@@ -229,6 +254,7 @@ class Session:
                 **({"text": text} if text and event == "keyDown" else {}),
             )
         self.after_input = None
+        self.invalidate()
         time.sleep(WAIT_SLEEP_S)
         return {"executed": f"press:{key}", "kind": "press"}
 
