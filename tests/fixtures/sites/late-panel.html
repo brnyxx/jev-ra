@@ -5,9 +5,14 @@
 <h1>Support</h1>
 <button id="open">Open search panel</button>
 <!-- A click on a button can mount what it opens a beat later; the observation right after
-     the click has to wait for it, or the panel might as well not exist. -->
+     the click has to wait for it, or the panel might as well not exist. The link that blinks
+     in and out first is a control too, and it is not what the click opened. -->
 <script>
   document.getElementById('open').addEventListener('click', () => {
+    const blink = document.createElement('p');
+    blink.innerHTML = '<a id="blink" href="#blink">Loading</a>';
+    document.body.appendChild(blink);
+    setTimeout(() => blink.remove(), 300);
     setTimeout(() => {
       const form = document.createElement('form');
       form.innerHTML = '<input id="q" aria-label="Search help"><button type="submit">Search</button>';

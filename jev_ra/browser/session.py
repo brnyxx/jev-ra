@@ -99,6 +99,14 @@ QUIET_BUDGET_S = 0.6
 SETTLE_BUDGET_S = 2.0
 SETTLE_INTERVAL_CAP_S = 0.32
 SETTLE_BACKOFF = 1.5
+# What a click that opens a panel brings: a field, a menu item, an option. A link that blinks
+# in and out - Back to top, a scroll helper - is the page catching up, not the click's answer,
+# and accepting it would end the wait before the panel mounts.
+PANEL_ROLES = frozenset(
+    {"textbox", "searchbox", "combobox", "listbox", "option", "menuitem", "menuitemradio",
+     "menu", "dialog", "spinbutton", "tabpanel"}
+)
+OPEN_MIN_CONTROLS = 4
 # The marker, as snapshot.js builds it: origin, address, scroll, size, then the page itself.
 MARKER_ORIGIN, MARKER_URL, MARKER_CONTROLS = 0, 1, 8
 MARKER_CONTENT = slice(6, None)
@@ -342,7 +350,17 @@ class Session:
             if not marker:
                 return
             if not opened:
-                differs = (marker[MARKER_URL], control_set(marker[MARKER_CONTROLS])) != before
+                controls = control_set(marker[MARKER_CONTROLS])
+                fresh = controls - before[1]
+                # A control that changes its own state is the page answering the click, even when
+                # nothing new appears next to it; a link that blinks in has no earlier self.
+                refs = {control[0] for control in before[1]}
+                differs = (
+                    marker[MARKER_URL] != before[0]
+                    or any(control[0] in refs for control in fresh)
+                    or len(controls ^ before[1]) >= OPEN_MIN_CONTROLS
+                    or any(control[1] in PANEL_ROLES for control in fresh)
+                )
                 opened, differed = differs and differed, differs
             if opened and routed(marker, was):
                 if marker == previous:
