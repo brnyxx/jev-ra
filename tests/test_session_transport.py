@@ -3,7 +3,7 @@
 import pytest
 
 from jev_ra.browser import session as session_module
-from jev_ra.errors import ChromeError, JevRaError
+from jev_ra.errors import ChromeError, JevRaError, StalePage
 
 
 class Bare(session_module.Session):
@@ -82,3 +82,21 @@ def test_the_corpus_turns_a_dead_browser_into_a_row_not_a_crash(monkeypatch):
     task = corpus.Task(name="t", family="f", url="https://example.com", goal="do it.")
     row = corpus.run_task(task, config=None, decide=lambda *_: {})
     assert row["status"] == "error" and row["reason"] == "ChromeError"
+
+
+def test_a_document_that_moved_reads_as_stale_not_as_a_dead_browser(bare, monkeypatch):
+    def moved(*_args, **_kwargs):
+        raise RuntimeError({"code": -32000, "message": "Inspected target navigated or closed"})
+
+    monkeypatch.setattr(session_module, "cdp", moved)
+    with pytest.raises(StalePage):
+        bare.call("Runtime.evaluate", expression="1")
+
+
+def test_any_other_refusal_is_still_a_chrome_error(bare, monkeypatch):
+    def refused(*_args, **_kwargs):
+        raise RuntimeError({"code": -32601, "message": "'Fake.method' wasn't found"})
+
+    monkeypatch.setattr(session_module, "cdp", refused)
+    with pytest.raises(ChromeError):
+        bare.call("Fake.method")

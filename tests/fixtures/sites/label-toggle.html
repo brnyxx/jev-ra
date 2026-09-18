@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Article</title>
+<style>
+  body { font: 14px/1.5 system-ui; margin: 0; padding: 16px; }
+  /* The dropdown pattern Wikipedia uses: a checkbox with no pixels of its own,
+     a label that carries every one of them, and CSS that opens the menu. */
+  .dropdown input { position: absolute; opacity: 0; width: 0; height: 0; }
+  .dropdown label { display: inline-block; border: 1px solid #888; padding: 6px 10px; cursor: pointer; }
+  .dropdown .menu { display: none; border: 1px solid #ccc; padding: 8px; margin-top: 4px; }
+  .dropdown input:checked ~ .menu { display: block; }
+  form label { display: inline-block; width: 110px; }
+</style>
+</head>
+<body>
+<h1>Zebra</h1>
+
+<div class="dropdown">
+  <input type="checkbox" id="lang-btn">
+  <label for="lang-btn">153 languages</label>
+  <div class="menu">
+    <a href="/ko/Zebra">한국어</a>
+    <a href="/de/Zebra">Deutsch</a>
+  </div>
+</div>
+
+<form>
+  <label for="name">Full name</label><input id="name" type="text">
+  <label for="email">Email</label><input id="email" type="email">
+</form>
+</body>
+</html>
+<!-- The other half of the same idiom: the control keeps its box and its name, and is painted
+     transparent over the art that stands in for it. It still catches every click. -->
+<div class="dropdown" style="position:relative">
+  <input type="checkbox" id="tools-btn" aria-label="Tools"
+         style="position:absolute;left:0;top:0;width:120px;height:30px;opacity:0;margin:0">
+  <span style="display:inline-block;width:120px;height:30px;border:1px solid #888">Tools</span>
+  <div class="menu" style="display:none">Page information</div>
+</div>
+<style>#tools-btn:checked ~ .menu { display: block }</style>

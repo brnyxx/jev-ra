@@ -53,8 +53,12 @@
   // a consent wall is a sibling of what it hides, never its parent.
   cache.reaches = (e,top) => !!top &&
     (top===e || e.contains(top) || top.contains(e) || top.closest('label')?.control===e);
-  const visible = e => !e.closest('[aria-hidden="true"],[inert]') &&
-    e.checkVisibility({checkOpacity:true,checkVisibilityCSS:true});
+  // Rendered: the browser lays it out and the accessibility tree keeps it. Visible: rendered and
+  // not painted transparent. The two differ on purpose - a control drawn at opacity 0 over its own
+  // artwork is the ordinary way to style a checkbox, and it still catches every click.
+  const rendered = e => !e.closest('[aria-hidden="true"],[inert]') &&
+    e.checkVisibility({checkVisibilityCSS:true});
+  const visible = e => rendered(e) && e.checkVisibility({checkOpacity:true,checkVisibilityCSS:true});
   const name = (e,seen=new Set()) => {
     if (!e || seen.has(e)) return '';
     seen.add(e);
@@ -70,9 +74,21 @@
   };
   const roles=['button','link','checkbox','radio','switch','tab','menuitem','menuitemradio',
     'option','gridcell','combobox','textbox','searchbox','spinbutton'];
-  const selector='a[href],button,input,textarea,select,summary,iframe,[contenteditable="true"],'+
+  const selector='a[href],button,input,textarea,select,summary,iframe,label,[contenteditable="true"],'+
     roles.map(role=>'[role="'+role+'"]').join(',');
+  // A label only counts as a control of its own when the thing it labels has no pixels: a
+  // dropdown checkbox sized to nothing, a toggle drawn entirely in CSS. Where the control is
+  // there to be clicked, the label is just its name, and offering both says the same thing twice.
+  const standIn = e => {
+    if (e.tagName!=='LABEL') return null;
+    const control=e.control;
+    if (!control || !safe(control)) return null;
+    const r=control.getBoundingClientRect();
+    return (!rendered(control) || !r.width || !r.height) ? control : null;
+  };
   const role = e => {
+    const stand=standIn(e);
+    if (stand) return role(stand);
     const explicit=e.getAttribute('role');
     if (roles.includes(explicit)) return explicit;
     if (e.tagName==='BUTTON' || e.tagName==='SUMMARY') return 'button';
@@ -93,7 +109,7 @@
     .filter(safe).map(e=>[identity(e),e.value,e.checked,e.selectedIndex,e.disabled,e.readOnly]);
   cache.pageKey=()=>[performance.timeOrigin,location.href,scrollX,scrollY,innerWidth,innerHeight,cache.fields()];
   cache.guard=e=>{
-    if (!e?.isConnected || !visible(e)) return null;
+    if (!e?.isConnected || !rendered(e)) return null;
     const scope=e.closest('form,dialog,[role="dialog"],article,li,tr,[role="row"]') || e.parentElement;
     return [identity(e),role(e),name(e),e.value??null,e.checked??null,e.selectedIndex??null,
       e.readOnly??null,e.matches(':disabled'),e.getAttribute('aria-disabled'),
@@ -120,7 +136,8 @@
     for (const e of root.querySelectorAll(selector)) {
       // A frame we can read is traversed, not offered; only an opaque one is an element.
       if (e.tagName==='IFRAME' && contentOf(e)?.body) continue;
-      if (!safe(e) || !visible(e) || e.matches(':disabled') || e.closest('[aria-disabled="true"]')) continue;
+      if (e.tagName==='LABEL' && !standIn(e)) continue;
+      if (!safe(e) || !rendered(e) || e.matches(':disabled') || e.closest('[aria-disabled="true"]')) continue;
       const r=e.getBoundingClientRect(), [dx,dy]=cache.offset(e);
       const x=r.x+dx+r.width/2, y=r.y+dy+r.height/2, rname=role(e);
       if (!rname || r.width<=0 || r.height<=0 || x<0 || y<0 || x>=innerWidth || y>=innerHeight) continue;
@@ -129,6 +146,9 @@
       // unclickable in fact, and an element nobody can click is not an action.
       const top=cache.deepest(e.ownerDocument, r.x+r.width/2, r.y+r.height/2);
       if (!cache.reaches(e,top)) continue;
+      // Transparent counts only when the pointer lands on the element itself: that is a control
+      // wearing someone else's pixels. Anything else transparent is hidden, and stays hidden.
+      if (top!==e && !visible(e)) continue;
       if (rname==='gridcell' && e.querySelector('button,[role="button"]')) continue;
       const element={node:identity(e),role:rname,label:name(e)||rname,
         rect:{x:r.x+dx,y:r.y+dy,w:r.width,h:r.height}};
@@ -139,6 +159,8 @@
       }
       if (current(e)) element.current='true';
       if (['checkbox','radio'].includes(e.type)) element.checked=String(e.checked);
+      const stand=standIn(e);
+      if (stand && ['checkbox','radio'].includes(stand.type)) element.checked=String(stand.checked);
       observed.push({element:e, view:element});
     }
   }

@@ -50,6 +50,9 @@ BLOCKED_URLS = (
 # block it sits in, plus the page key. The whole-page marker carries every word on the page, so a
 # departures board or a price ticker would refuse every action on a page that is working fine.
 TARGETED = {"click", "select", "fill"}
+# The daemon reports a document that moved under a call as a protocol error. It means the same
+# thing as any other stale reading - observe again - rather than a browser that has gone away.
+MOVED = ("navigated or closed", "context was destroyed", "cannot find context", "no frame for given id")
 KEYS = {
     "Enter": (13, "Enter", "\r"),
     "Escape": (27, "Escape", ""),
@@ -60,8 +63,10 @@ KEYS = {
 RESOLVE_JS = """(action => {
   const cache=window.__jevRa;
   const e=cache?.nodes.get(action.node);
+  // Laid out and kept by the accessibility tree; transparency is settled by the hit test below,
+  // which is the same rule the snapshot used when it offered this target.
   if (!e?.isConnected || e.matches(':disabled') || e.closest('[aria-disabled="true"],[inert]') ||
-      !e.checkVisibility({checkOpacity:true,checkVisibilityCSS:true})) return null;
+      !e.checkVisibility({checkVisibilityCSS:true})) return null;
   if (action.kind==='fill' && (e.readOnly || e.getAttribute('aria-readonly')==='true')) return null;
   const r=e.getBoundingClientRect(), [dx,dy]=cache.offset(e);
   const local={x:r.x+r.width/2, y:r.y+r.height/2};
@@ -158,6 +163,10 @@ class Session:
             return cdp(method, session_id=self.session_id, _response_timeout=timeout, **params)
         except (TimeoutError, OSError) as error:
             raise ChromeError(f"Chrome stopped answering during {method}: {error}") from error
+        except RuntimeError as error:
+            if any(phrase in str(error).lower() for phrase in MOVED):
+                raise StalePage(f"The page moved during {method}. Observe again.") from error
+            raise ChromeError(f"Chrome refused {method}: {error}") from error
 
     def evaluate(self, expression, await_promise=False):
         """Evaluate an expression in the page, refusing a document that moved under it."""
@@ -181,7 +190,12 @@ class Session:
                 pass
             time.sleep(0.02)
         deadline = time.monotonic() + PAINT_BUDGET_S
-        while time.monotonic() < deadline and not self.evaluate(CONTROLS_JS):
+        while time.monotonic() < deadline:
+            try:
+                if self.evaluate(CONTROLS_JS):
+                    break
+            except StalePage:
+                logger.debug("The document changed while waiting for it to paint")
             time.sleep(WAIT_SLEEP_S)
         return self.observe()
 
@@ -227,11 +241,14 @@ class Session:
             self.settle()
         with timer.measure("snapshot"):
             for attempt in range(SETTLE_ATTEMPTS):
-                page = self.evaluate(snapshot_expression(self.max_elements))
+                try:
+                    page = self.evaluate(snapshot_expression(self.max_elements))
+                except StalePage:
+                    page = None
                 if page is not None:
                     return page
                 if attempt < SETTLE_ATTEMPTS - 1:
-                    time.sleep(0.02)
+                    time.sleep(WAIT_SLEEP_S if attempt else 0.02)
         raise StalePage("Page did not settle")
 
     def fresh(self, page, action=None):

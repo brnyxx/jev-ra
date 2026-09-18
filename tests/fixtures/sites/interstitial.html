@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>One moment</title></head>
+<body>
+<!-- An interstitial that replaces itself the moment it loads: a redirect page, a splash screen,
+     a shop that decides which storefront you get. The document can vanish under a reading. -->
+<p>Taking you to the store</p>
+<script>
+  let n = 0;
+  const churn = () => { document.body.innerHTML = '<p>Taking you to the store ' + (++n) + '</p>'; };
+  const timer = setInterval(churn, 20);
+  setTimeout(() => { clearInterval(timer); location.replace('../form.html'); }, 150);
+</script>
+</body>
+</html>
