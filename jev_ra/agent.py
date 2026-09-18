@@ -6,7 +6,7 @@ from dataclasses import asdict, dataclass, field, replace
 
 from .browser import actions
 from .browser.session import Session
-from .config import load
+from .config import load, redact
 from .decide.client import DecisionClient
 from .decide.policy import InvalidDecision, build_questions, build_state, read_answers
 from .decide.questions import CANDIDATES, GOAL_ACHIEVED_THRESHOLD
@@ -82,6 +82,16 @@ class Agent:
                 logger.info("Page went stale while reading it (%s/%s): %s", attempt + 1, STALE_RETRIES, error)
         return None
 
+    def said(self, error):
+        """What an error says, with this run's key taken out of it.
+
+        Nothing the client raises carries the response body today, so nothing carries the key.
+        A provider that echoes it back, or a decide callable a host supplies itself, would reach
+        the caller through here, and the detail of an escalation is the one place a run hands a
+        string it did not write to whoever called it.
+        """
+        return redact(str(error), self.config.api_key)
+
     def space(self, page):
         """The action space of an observed page."""
         return actions.build(page, self.session.max_elements)
@@ -113,7 +123,7 @@ class Agent:
             except JevBadResponse as error:
                 run.decisions += 1
                 if reasked:
-                    return run.escalate("invalid_decision", page, detail={"error": str(error)})
+                    return run.escalate("invalid_decision", page, detail={"error": self.said(error)})
                 logger.warning("Unusable answer set; asking once more: %s", error)
                 reasked = True
                 continue
@@ -122,7 +132,7 @@ class Agent:
                 # token budget, a dead connection - is a budget the run cannot spend. It reaches
                 # the caller as an escalation with the provider's own words, never as an escape.
                 run.decisions += 1
-                return run.escalate("budget", page, detail={"error": str(error)})
+                return run.escalate("budget", page, detail={"error": self.said(error)})
             run.decisions += 1
             run.cost += reply.cost
             try:

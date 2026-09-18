@@ -83,6 +83,13 @@ def is_openrouter(endpoint):
     return "/alpha/decisions" in endpoint
 
 
+def redact(text, secret):
+    """Text with a secret taken out of it, for anything a caller or a log will see."""
+    if not secret:
+        return text
+    return text.replace(secret, "[redacted]")
+
+
 def config_path(env=None):
     """The XDG config file jev-ra reads."""
     env = os.environ if env is None else env

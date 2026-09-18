@@ -16,7 +16,7 @@ from .agent import Agent
 from .browser import actions
 from .browser.chrome import find_browser, profile_dir
 from .browser.session import Session
-from .config import load, state_path
+from .config import load, redact, state_path
 from .decide.client import DecisionClient
 from .errors import JevError, JevRaError, render
 from .extract import MODES, extract
@@ -300,13 +300,6 @@ def install_display(argv, key_variable):
         for part in argv
     ]
     return shlex.join(shown).replace(f"'{key_variable}=${key_variable}'", f'{key_variable}="${key_variable}"')
-
-
-def redact(text, secret):
-    """Remove a secret from text a subprocess may have echoed back."""
-    if not secret:
-        return text
-    return text.replace(secret, "[redacted]")
 
 
 def cmd_install(args):

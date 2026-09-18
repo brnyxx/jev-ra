@@ -629,3 +629,32 @@ def test_a_page_that_keeps_moving_while_being_looked_at_still_ends_cleanly():
     session = FakeSession(scrollable(), stale=99)
     result = agent_with(decider([weak_done]), session=session).run("find flights")
     assert (result.status, result.reason) == ("escalate", "unverified_done")
+
+
+def test_a_provider_error_carrying_the_key_is_redacted_before_the_caller_sees_it():
+    from jev_ra.errors import JevUnavailable
+
+    key = "sk-or-v1-not-to-be-shared"
+
+    def decide(_state, _questions):
+        raise JevUnavailable(f"Could not reach the provider using {key}")
+
+    settings = config.load({"OPENROUTER_API_KEY": key})
+    result = Agent(session=FakeSession(), config=settings, decide=decide).run("find flights")
+    assert (result.status, result.reason) == ("escalate", "budget")
+    assert key not in result.detail["error"]
+    assert "[redacted]" in result.detail["error"]
+
+
+def test_an_unusable_answer_set_is_redacted_the_same_way():
+    key = "sk-or-v1-not-to-be-shared"
+    asked = []
+
+    def decide(_state, _questions):
+        asked.append(1)
+        raise JevBadResponse(f"operation: unusable answer from {key}")
+
+    settings = config.load({"OPENROUTER_API_KEY": key})
+    result = Agent(session=FakeSession(), config=settings, decide=decide).run("find flights")
+    assert result.reason == "invalid_decision"
+    assert key not in result.detail["error"]
