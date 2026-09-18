@@ -1,0 +1,64 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12", "3.13", "3.14"]
+    env:
+      BU_CDP_URL: http://127.0.0.1:9222
+      JEV_RA_REQUIRE_BROWSER: "1"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install dependencies
+        run: uv sync --locked
+
+      - name: Install Chrome
+        uses: browser-actions/setup-chrome@v1
+        with:
+          chrome-version: stable
+
+      - name: Start Chrome with remote debugging
+        run: |
+          profile="$(mktemp -d)"
+          chrome --headless=new \
+            --remote-debugging-port=9222 \
+            --remote-debugging-address=127.0.0.1 \
+            --user-data-dir="$profile" \
+            --no-first-run \
+            --no-default-browser-check \
+            --disable-gpu \
+            --window-size=1280,900 \
+            --no-sandbox \
+            about:blank &
+          for _ in $(seq 1 30); do
+            if curl -sf "$BU_CDP_URL/json/version" >/dev/null; then
+              curl -sf "$BU_CDP_URL/json/version"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "Chrome did not answer on $BU_CDP_URL" >&2
+          exit 1
+
+      - name: Lint
+        run: uv run ruff check .
+
+      - name: Test
+        run: uv run pytest -q
+
+      - name: Browser tests must have run
+        run: uv run pytest -q -m browser

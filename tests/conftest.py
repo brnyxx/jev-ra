@@ -42,11 +42,19 @@ def chrome_url():
         return None
 
 
+def require_browser():
+    """The CDP url, or skip. CI sets JEV_RA_REQUIRE_BROWSER so a missing Chrome fails instead."""
+    url = chrome_url()
+    if url:
+        return url
+    if os.environ.get("JEV_RA_REQUIRE_BROWSER"):
+        raise RuntimeError("JEV_RA_REQUIRE_BROWSER is set but no Chrome answered on BU_CDP_URL")
+    pytest.skip("No Chrome over CDP; export BU_CDP_URL to run browser tests")
+
+
 @pytest.fixture(scope="session")
 def chrome():
-    url = chrome_url()
-    if not url:
-        pytest.skip("No Chrome over CDP; export BU_CDP_URL to run browser tests")
+    url = require_browser()
     from browser_harness.admin import ensure_daemon
 
     ensure_daemon()
