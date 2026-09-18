@@ -19,17 +19,25 @@ jev-ra keeps that loop and fixes the missing pieces by leaning on the host agent
 | recover when stuck | stops `blocked` | escalation contract with candidates; host decides |
 | integrate with an agent | none | MCP stdio server + CLI + install helpers |
 
-## Measured baselines (2026-09-18, this machine, OpenRouter)
+## The bar: browser-use, measured
 
-| task | jev-ultrafast as shipped | notes |
-|---|---|---|
-| Wikipedia: open the Gödel incompleteness article | 4,274 ms, 6 steps | repo claims 2,798 ms direct |
-| Google Flights ZRH→LON one-way, verified 7 checks | 17,197 ms, ~17 decisions + 2 text calls | repo claims 7,073 ms direct |
-| Olive Young category page: scroll + click "신상품순" | 5,342 ms, 2 decisions | sort bar was below the 780 px viewport |
-| one Jev decision | median 315 ms (n=5) | +~140 ms vs direct TypeSafe |
-| one text-helper call (mercury-2.5) | 675-938 ms (n=5) | removed from the loop in jev-ra |
+The project exists to be 2-3× faster than browser-use on the same tasks. That is the acceptance test, not a slogan, so the baseline was measured here first. Everything below ran on 2026-09-18 on the same machine, the same dedicated Chrome (`BU_CDP_URL=http://127.0.0.1:9222`, 1280×900 profile), the same OpenRouter key, `use_vision=False`, one run each. Raw rows: `docs/benchmarks/2026-09-18-browser-use-baseline/`.
 
-Targets for v0.1: Wikipedia task ≤ 4 s, Flights ≤ 12 s through OpenRouter with `values` supplied, zero text-model calls in either. `jev-ra bench` reports these.
+| task | browser-use 0.13.10 + gemini-3-flash | + gemini-3-flash `flash_mode` | + gpt-5-mini | jev-ultrafast (OpenRouter) |
+|---|---|---|---|---|
+| Wikipedia: open the Gödel incompleteness article | 46,461 ms · 5 steps | 23,058 ms · 4 steps | 100,399 ms · 11 steps | **4,274 ms** · 6 steps |
+| Google Flights ZRH→LON one-way 2026-09-20, results visible | 63,565 ms · 11 steps | 66,414 ms · 11 steps | 238,045 ms · 25 steps (budget hit, result unverified) | **17,197 ms** · verified 7 checks |
+| Olive Young category: sort by 신상품순 | 17,493 ms · 3 steps | 15,071 ms · 3 steps | timeout at 240 s | **5,342 ms** · 2 steps |
+| ratio vs `flash_mode` | | 1× | | **5.4× / 3.9× / 2.8×** |
+
+Notes that matter for the design:
+- claude-sonnet-5 through OpenRouter could not drive browser-use at all (`compiled grammar is too large` on its structured-output schema); excluded.
+- The jev Olive Young number needed the goal rewritten to "scroll until the sort bar is visible, then click 신상품순"; from the plain goal it returned `blocked` in 2-4 s with zero actions because the sort bar sat below the 780 px viewport. browser-use found it from the plain goal. jev-ra fixes this with the 1280×900 viewport, the escalation contract, and `goal_achieved`/`prev_ok` in the same request.
+- jev-ultrafast's Flights run spent 2 calls (~1.5 s) on the mercury text helper. jev-ra removes those via host-supplied `values`.
+
+Per-call costs measured the same day: one Jev decision median 315 ms via OpenRouter (n=5; ~180 ms direct per the upstream repo); one mercury-2.5 text call 675-938 ms (n=5).
+
+**Acceptance for v0.1:** `jev-ra bench --live` runs these three tasks and must beat the `flash_mode` column by ≥ 3× on every task, with zero text-model calls. Targets: Wikipedia ≤ 4 s, Flights ≤ 12 s, Olive Young ≤ 4 s from the plain goal (no scroll hint). The bench prints the ratio against the recorded baseline rows.
 
 ## Dependencies
 
