@@ -250,6 +250,13 @@ def test_the_same_choice_three_times_running_is_a_loop_even_when_the_page_moves(
     assert len(result.steps) == 3
 
 
+def test_scrolling_three_times_running_is_reading_not_a_loop():
+    script = {"operation": answer("SCROLL_DOWN"), "goal_achieved": {"noul": 0.1}}
+    result = agent_with(decider([script]), session=FakeSession(scrollable())).run("find flights", max_steps=4)
+    assert result.status == "budget"
+    assert [step["operation"] for step in result.steps] == ["SCROLL_DOWN"] * 4
+
+
 def test_max_steps_ends_the_run_on_budget():
     varied = [
         dict(CLICK_SUBMIT, click_target=answer("e2")),

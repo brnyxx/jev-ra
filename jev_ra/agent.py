@@ -365,7 +365,10 @@ class _Run:
         ]
         if len(stalled) == NO_PROGRESS_STREAK:
             return "too_many_controls" if space.omitted else "stuck_loop"
-        if len({(step["operation"], step["target"]) for step in recent}) == 1:
+        recent_choices = {(step["operation"], step["target"]) for step in recent}
+        # Scrolling is how a page is read, so three scrolls in a row are progress, not a loop;
+        # a scroll that moves nothing is already caught above.
+        if len(recent_choices) == 1 and recent[-1]["operation"] not in {"SCROLL_DOWN", "SCROLL_UP"}:
             return "stuck_loop"
         return None
 
