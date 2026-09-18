@@ -191,14 +191,31 @@ def test_doctor_reports_an_unreachable_endpoint_and_exits_one(clean_env, monkeyp
     assert "decision: failed (Could not reach the endpoint)" in capsys.readouterr().out
 
 
-def test_doctor_explains_how_to_start_chrome_when_none_answers(clean_env, monkeypatch, capsys):
-    monkeypatch.setenv("OPENROUTER_API_KEY", SECRET)
-    doctor_client(monkeypatch, reply=Reply(answers={"operation": answer("DONE")}, model="m"))
-
+def unreachable_chrome(monkeypatch):
     def refuse(*_args, **_kwargs):
         raise RuntimeError("connection refused")
 
     monkeypatch.setattr(cli, "Session", refuse)
+
+
+def test_doctor_says_jev_ra_starts_its_own_chrome_when_one_is_installed(clean_env, monkeypatch, capsys):
+    monkeypatch.setenv("OPENROUTER_API_KEY", SECRET)
+    doctor_client(monkeypatch, reply=Reply(answers={"operation": answer("DONE")}, model="m"))
+    unreachable_chrome(monkeypatch)
+    monkeypatch.setattr(cli, "find_browser", lambda: "/usr/bin/chromium")
+    assert cli.main(["doctor"]) == 1
+    out = capsys.readouterr().out
+    assert "chrome: unreachable" in out
+    assert "jev-ra will launch its own on first use" in out
+    assert "/usr/bin/chromium" in out
+    assert "--remote-debugging-port=9222" not in out
+
+
+def test_doctor_explains_how_to_start_chrome_when_none_is_installed(clean_env, monkeypatch, capsys):
+    monkeypatch.setenv("OPENROUTER_API_KEY", SECRET)
+    doctor_client(monkeypatch, reply=Reply(answers={"operation": answer("DONE")}, model="m"))
+    unreachable_chrome(monkeypatch)
+    monkeypatch.setattr(cli, "find_browser", lambda: None)
     assert cli.main(["doctor"]) == 1
     out = capsys.readouterr().out
     assert "chrome: unreachable" in out

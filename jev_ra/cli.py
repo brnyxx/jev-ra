@@ -3,6 +3,7 @@
 import argparse
 import json
 import logging
+import os
 import shlex
 import shutil
 import subprocess
@@ -13,6 +14,7 @@ from pathlib import Path
 from . import __version__
 from .agent import Agent
 from .browser import actions
+from .browser.chrome import find_browser, profile_dir
 from .browser.session import Session
 from .config import load, state_path
 from .decide.client import DecisionClient
@@ -25,10 +27,20 @@ SCREENSHOT_DEFAULT = Path("screenshot.jpg")
 SUMMARY_TEXT_CHARS = 1500
 SCOPES = ("user", "project", "local")
 AGENTS = ("claude", "codex")
-CHROME_HINT = """No Chrome answered over CDP. Start a dedicated automation profile, then retry:
+MANUAL_CHROME_HINT = """No Chrome answered over CDP and none is installed where jev-ra looks.
+Install Chrome, Chromium or Edge, point JEV_RA_CHROME at the binary, or start your own:
   /Applications/Google\\ Chrome.app/Contents/MacOS/Google\\ Chrome \\
     --remote-debugging-port=9222 --user-data-dir="$HOME/.jev-ra-chrome" &
   export BU_CDP_URL=http://127.0.0.1:9222"""
+# browser_harness talks to its daemon over a unix socket named under $HOME, and the kernel caps
+# that path at ~104 characters. A long temporary HOME fails with "AF_UNIX path too long" before
+# any of this matters, and the message says nothing about HOME, so say it here.
+SOCKET_PATH_LIMIT = 80
+LONG_HOME_HINT = (
+    "HOME is {length} characters long ({home}). browser-harness names its daemon "
+    "socket under it, and a path over about {limit} characters fails with "
+    "'AF_UNIX path too long'. Use a shorter HOME, such as /tmp/jev-ra."
+)
 DOCTOR_QUESTIONS = {
     "operation": {
         "type": "choice",
@@ -330,6 +342,22 @@ SOURCE_NOTES = {
 }
 
 
+def chrome_hint(binary=None, home=None):
+    """What to tell someone whose Chrome could not be reached."""
+    home = os.environ.get("HOME", "") if home is None else home
+    lines = []
+    if len(home) > SOCKET_PATH_LIMIT:
+        lines.append(LONG_HOME_HINT.format(length=len(home), home=home, limit=SOCKET_PATH_LIMIT))
+    if binary:
+        lines.append(
+            f"No Chrome is running yet. jev-ra will launch its own on first use, using {binary} "
+            f"on the profile at {profile_dir()}. Nothing to set up; run a command and it starts."
+        )
+    else:
+        lines.append(MANUAL_CHROME_HINT)
+    return "\n".join(lines)
+
+
 def chrome_check(config):
     """Whether a Chrome can be reached, and which one it was."""
     try:
@@ -372,7 +400,7 @@ def cmd_doctor(args):
     report["chrome"] = {"ok": ok, "detail": detail, "source": source}
     lines.append(f"chrome: {'ok, ' + detail if ok else 'unreachable'}")
     if not ok:
-        lines.append(CHROME_HINT)
+        lines.append(chrome_hint(find_browser()))
     client = DecisionClient(config)
     started = time.perf_counter()
     try:

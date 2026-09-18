@@ -197,6 +197,30 @@ def wait_for_port(profile, process=None, timeout=STARTUP_TIMEOUT_S):
     raise ChromeError(said(f"Chrome did not open a debugging port on {profile} within {timeout:g}s", profile))
 
 
+READY_TIMEOUT_S = 20.0
+READY_INTERVAL_S = 0.1
+
+
+def ready(cdp=None, timeout=READY_TIMEOUT_S):
+    """Wait until a target in this Chrome evaluates something, which a published port does not prove."""
+    send = cdp
+    if send is None:
+        from browser_harness.helpers import cdp as send
+    deadline = time.monotonic() + timeout
+    last = None
+    while time.monotonic() < deadline:
+        try:
+            target = send("Target.createTarget", url="about:blank", background=True)["targetId"]
+            session = send("Target.attachToTarget", targetId=target, flatten=True)["sessionId"]
+            send("Runtime.evaluate", session_id=session, expression="1", returnByValue=True)
+            send("Target.closeTarget", targetId=target)
+            return True
+        except Exception as error:  # the daemon reports every refusal its own way
+            last = error
+            time.sleep(READY_INTERVAL_S)
+    raise ChromeError(f"Chrome did not answer a first command within {timeout:g}s: {last}")
+
+
 def ensure(env=None, viewport=(1280, 900), allow_launch=True):
     """Return (cdp_url, source) where source is 'BU_CDP_URL', 'reused' or 'launched'."""
     env = os.environ if env is None else env

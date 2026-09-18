@@ -14,10 +14,17 @@ from ..errors import ChromeError, StalePage
 from ..profile import NullTimer
 from . import MAX_ELEMENTS, guard_expression, marker_expression, snapshot_expression
 from .chrome import ensure as ensure_chrome
+from .chrome import ready as chrome_ready
 
 logger = logging.getLogger(__name__)
 
 LOAD_TIMEOUT_S = 15.0
+# Page.navigate answers when the navigation commits, and the first network navigation of a
+# freshly launched profile commits only once Chrome has brought up its network stack. Measured on
+# macOS against a profile made a second earlier: 19.5 s for a page served from loopback in the
+# same second, then 0.2 s for the next one, over the internet. That is a navigation's budget, not
+# a call's, and charging it the five second call budget ended a first run with a timeout.
+NAVIGATE_TIMEOUT_S = 45.0
 # A single-page app reports the document complete long before it paints anything, and a page with
 # nothing to act on reads as BLOCKED. Wait until the document holds a control that is reachable
 # where it sits, or that is simply outside the viewport: a listing legitimately opens a screenful
@@ -192,6 +199,10 @@ class Session:
         viewport = self.config.viewport
         self.cdp_url, self.chrome_source = ensure_chrome(viewport=(viewport.width, viewport.height))
         ensure_daemon()
+        if self.chrome_source == "launched":
+            # We started this Chrome a moment ago. A published debugging port is not a browser
+            # that will answer yet, so wait until a target evaluates something before using it.
+            chrome_ready()
         created = target_id is None
         self.target_id = (
             cdp("Target.createTarget", url="about:blank", background=True)["targetId"] if created else target_id
@@ -262,7 +273,7 @@ class Session:
         """Navigate, wait for the load to finish, and observe."""
         self.after_input = None
         self.invalidate()
-        self.call("Page.navigate", url=url)
+        self.call("Page.navigate", timeout=NAVIGATE_TIMEOUT_S, url=url)
         deadline = time.monotonic() + LOAD_TIMEOUT_S
         while time.monotonic() < deadline:
             try:
