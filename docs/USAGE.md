@@ -148,6 +148,7 @@ positional arguments:
     doctor      check the key, the endpoint, Chrome and one live decision
     search      search the web and read the best results
     bench       time the offline fixtures, and the live tasks with --live
+    corpus      run the real-site corpus
 
 options:
   -h, --help    show this help message and exit

@@ -493,6 +493,53 @@ def cmd_bench(args):
     return 0 if payload["passed"] else 1
 
 
+CORPUS_COLUMNS = ("task", "family", "runs", "passed", "pass_rate", "median_ms", "decisions", "cost", "why")
+
+
+def corpus_line(row):
+    """The human rendering of one corpus summary row."""
+    verdict = f"{row['passed']}/{row['runs']}"
+    if row["median_ms"] is None:
+        return f"  {row['task']}: {verdict} - {'; '.join(row['why'])}"
+    tail = f" - {'; '.join(row['why'])}" if row["why"] else ""
+    return f"  {row['task']}: {verdict} in {row['median_ms']} ms, {row['decisions']} decisions{tail}"
+
+
+def cmd_corpus(args):
+    """Run the real-site corpus and report what passed, what escalated and why."""
+    from .corpus import PASS_RATE, load_tasks, markdown_table, pass_rate, reasons, run, summarise, write_results
+
+    if args.list:
+        tasks = load_tasks()
+        rows = [{"name": task.name, "family": task.family, "expect": task.expect} for task in tasks]
+        return emit(args, {"tasks": rows}, [f"  {r['family']:<12} {r['name']:<28} {r['expect']}" for r in rows])
+    config = load()
+    rows = run(config=config, runs=args.runs, family=args.family, name=args.task)
+    table = summarise(rows)
+    rate = pass_rate(rows)
+    histogram = reasons(rows)
+    path = write_results(rows)
+    payload = {
+        "runs": args.runs,
+        "attempts": len(rows),
+        "pass_rate": rate,
+        "passed": rate >= PASS_RATE,
+        "tasks": table,
+        "escalations": histogram,
+        "results": str(path),
+        "markdown": markdown_table(table, CORPUS_COLUMNS),
+    }
+    lines = [f"corpus, {args.runs} run(s) each, {len(rows)} attempts:"]
+    lines += [corpus_line(row) for row in table]
+    lines += ["", f"pass rate {rate:.0%} (bar is {PASS_RATE:.0%})"]
+    if histogram:
+        lines.append("failures by reason: " + ", ".join(f"{k} x{v}" for k, v in histogram.items()))
+    lines += ["", markdown_table(table, CORPUS_COLUMNS), "", f"rows appended to {path}"]
+    lines.append("PASS: the corpus clears the bar" if payload["passed"] else "FAIL: the corpus is under the bar")
+    emit(args, payload, lines)
+    return 0 if payload["passed"] else 1
+
+
 def skill_text():
     """The agent guide, from the wheel when installed and from the checkout otherwise."""
     for candidate in (Path(__file__).with_name("AGENTS.md"), Path(__file__).resolve().parents[1] / "AGENTS.md"):
@@ -611,6 +658,16 @@ def build_parser():
     bench.add_argument("--baseline", action="store_true", help="re-run the recorded browser-use script too")
     bench.add_argument("--profile", action="store_true", help="print where each step's time went")
     bench.set_defaults(handler=cmd_bench)
+
+    corpus = sub.add_parser("corpus", help="run the real-site corpus")
+    corpus_sub = corpus.add_subparsers(dest="corpus_command")
+    corpus_run = add_json(corpus_sub.add_parser("run", help="run the corpus against the live web"))
+    corpus_run.add_argument("--family", help="only this family")
+    corpus_run.add_argument("--task", help="only this task")
+    corpus_run.add_argument("--runs", type=int, default=3, help="repeat each task N times (default 3)")
+    corpus_run.add_argument("--list", action="store_true", help="list the tasks instead of running them")
+    corpus_run.set_defaults(handler=cmd_corpus)
+    corpus.set_defaults(handler=lambda _args: corpus.print_help() or 0)
     return parser
 
 
