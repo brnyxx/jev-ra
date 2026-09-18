@@ -87,7 +87,7 @@ uvx jev-ra run https://en.wikipedia.org/wiki/Main_Page "Open the Godel incomplet
        Result  ◀──────────────┴── done · blocked · escalate · budget
 ```
 
-每一步一次决策、一次往返，执行路径上没有模型。进入页面的文本只有你提供的值。
+每一步一次决策。输入到页面的文本只有你提供的值。
 
 ## MCP 工具
 
@@ -152,11 +152,11 @@ with Agent() as agent:
 print(result.status, result.elapsed_ms, [step["target_label"] for step in result.steps])
 ```
 
-## 给值，不猜值
+## 值
 
 TYPE_TEXT 需要一个字符串，而 jev-ra 不会凭空造一个。在选定字段的同一次往返里，Jev 会挑出*你给的*
 值中哪一个属于该字段。如果没有合适的值，也没有配置文本助手，运行就会以 `needs_value` 停下，并给出
-字段的 label、role 和当前值。你补上值再调一次即可。默认安装里没有文本模型，这正是设计的要点。
+字段的 label、role 和当前值。你补上值再调一次即可。默认安装里没有文本模型。
 
 ## 交还控制权时
 
@@ -167,7 +167,7 @@ TYPE_TEXT 需要一个字符串，而 jev-ra 不会凭空造一个。在选定�
 操作/目标候选，以及最多 3,000 个字符的页面文本，足够在不重新观测的情况下做判断。
 
 校验是确定性的：每次操作后都会比较 url、title、text 和字段状态，`page_changed` 来自页面的语义
-marker，而不是模型的意见。
+marker，而不是来自模型。
 
 ## 基准测试
 
@@ -184,8 +184,8 @@ marker，而不是模型的意见。
 倍率是相对同一台机器、同一个 Chrome 上运行的 browser-use 0.13.10 + gemini-3-flash `flash_mode`
 (分别为 23,058 ms、66,414 ms、15,071 ms)。25 次运行的文本模型调用总数为 0。
 同一套测试框架下让 browser-use 每个任务重跑 5 次，结果更慢：9.07×、8.31×、7.26×。
-即便按最不利的配对 - 我们的中位数对比 browser-use 每个任务的最快一次(15,759 ms、49,914 ms、17,647 ms) -
-仍有 5.8×、5.6×、4.6×，所以标题保持 3-5×。
+用我们的中位数对比 browser-use 每个任务的最快一次(15,759 ms、49,914 ms、17,647 ms),得到
+5.8×、5.6×、4.6×;标题中的 3-5× 低于这个数字。
 `jev-ra bench --live --runs 5` 可以复现这张表，并对每个有基线的任务给出 v0.1 的 3× 门槛的
 PASS/FAIL。[方法、browser-use 原始数据与复现步骤](../BENCHMARKS.md)。
 
@@ -193,7 +193,7 @@ PASS/FAIL。[方法、browser-use 原始数据与复现步骤](../BENCHMARKS.md)
 
 ![browser-use 还在打开航程类型菜单时，jev-ra 已经完成了航班搜索](../../assets/demo/flights-side-by-side.gif)
 
-本 README 中没有任何估算数字；没有完成任务就结束的运行计为失败，而不是计入时间。
+没有完成任务就结束的运行计为失败，而不是计入时间。
 
 ## 不做的事
 
@@ -207,7 +207,7 @@ PASS/FAIL。[方法、browser-use 原始数据与复现步骤](../BENCHMARKS.md)
 | 跨源 iframe | 报告为一个不透明元素；开放的 shadow root 与同源 iframe **会**被遍历 |
 | 可见控件超过 250 个 | 报告 `omitted`，卡住的运行升级为 `too_many_controls` 而不是猜测 |
 
-以上每一种都是带着页面文本和候选排名的干净升级，既不是崩溃，也不是悄悄做错动作。
+以上每一种都会返回带页面文本和候选排名的上报。
 ## 常见问题
 
 **用 OpenRouter 还是 TypeSafe 密钥？** 都可以。jev-ra 依次查找 `JEV_RA_API_KEY`、
@@ -222,7 +222,7 @@ PASS/FAIL。[方法、browser-use 原始数据与复现步骤](../BENCHMARKS.md)
 (`$XDG_STATE_HOME/jev-ra/chrome-profile`)中启动并复用。用 `BU_CDP_URL` 可以指向别的 Chrome。不要
 指向已登录了你不愿交给智能体的账号的浏览器。
 
-**为什么没有文本模型？** 因为调用方本身就是拥有上下文的 LLM。加第二个模型每个字段要多花
+**为什么没有文本模型？** 调用方代理已经拥有上下文。加第二个模型每个字段要多花
 675-938 ms，而且会编造值。需要的话可以用 `JEV_RA_TEXT_MODEL` 接上。
 
 ## 配置

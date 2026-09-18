@@ -31,8 +31,7 @@ page says, and takes over when jev-ra escalates. No second LLM runs inside the l
 | Olive Young category: sort by 신상품순 | 15,071 ms | **3,806 ms** | **3.96×** |
 
 Medians over 5 runs each, 2026-09-18, same machine, same dedicated Chrome, both through OpenRouter.
-Every run was checked against the page it left behind, and 25 of 25 passed with zero text-model
-calls. [Method, p90, cost and raw rows](docs/BENCHMARKS.md).
+Each run was verified against the final page; 25 of 25 passed with no text-model calls. [Method, p90, cost and raw rows](docs/BENCHMARKS.md).
 
 ## Quick start
 
@@ -88,8 +87,7 @@ from the variable you already exported and is never printed.
        Result  ◀──────────────┴── done · blocked · escalate · budget
 ```
 
-One decision per step, one round trip, no model in the act path. The only text that reaches the page
-is text you supplied.
+One decision per step. The only text typed into the page is text you supplied.
 
 ## MCP tools
 
@@ -154,13 +152,12 @@ with Agent() as agent:
 print(result.status, result.elapsed_ms, [step["target_label"] for step in result.steps])
 ```
 
-## Values, not guesses
+## Values
 
 TYPE_TEXT needs a string, and jev-ra will not invent one. Jev picks which of *your* values belongs in
 the field it is about to fill, in the same round trip that picks the field. If nothing fits and no
 text helper is configured, the run stops with `needs_value` and reports the field's label, role and
-current value. You supply the value and call again. The default install has no text model in the
-loop, and that is the point.
+current value. You supply the value and call again. The default install has no text model.
 
 ## When it hands control back
 
@@ -172,7 +169,7 @@ also carries the top eight operation/target candidates with their probabilities,
 characters of page text — enough to decide what to do without observing again.
 
 Verification is deterministic: after every action jev-ra compares url, title, text and field state,
-and `page_changed` comes from a semantic page marker, not from the model's opinion.
+and `page_changed` comes from a semantic page marker, not from the model.
 
 ## Benchmarks
 
@@ -189,8 +186,8 @@ Five tasks, five runs each, every run verified against the page it left behind:
 Ratios are against browser-use 0.13.10 + gemini-3-flash `flash_mode` on the same machine and the
 same Chrome: 23,058 ms, 66,414 ms and 15,071 ms respectively. Text-model calls across all 25 runs: 0.
 A same-harness re-run of browser-use, five runs per task, was slower still: 9.07×, 8.31× and 7.26×.
-Even the harshest pairing - our median against browser-use's fastest single run of each task
-(15,759 ms, 49,914 ms, 17,647 ms) - is 5.8×, 5.6× and 4.6×, which is why the headline stays 3-5×.
+Our median against browser-use's fastest single run of each task (15,759 ms, 49,914 ms,
+17,647 ms) is 5.8×, 5.6× and 4.6×; the headline claim of 3-5× is below that.
 `jev-ra bench --live --runs 5` reproduces this table and prints PASS/FAIL against the v0.1 bar of
 ≥ 3× on every task with a baseline. [Method, the browser-use rows, and how to reproduce
 them](docs/BENCHMARKS.md).
@@ -199,8 +196,7 @@ jev-ra on the left, browser-use `flash_mode` on the right, same task, same Chrom
 
 ![jev-ra finishes the Google Flights search while browser-use is still opening the trip-type menu](assets/demo/flights-side-by-side.gif)
 
-No number in this README is estimated, and a run that finishes without doing the task counts as a
-failure rather than as a time.
+A run that finishes without doing the task counts as a failure, not as a time.
 
 ## What it will not do
 
@@ -214,8 +210,7 @@ failure rather than as a time.
 | Cross-origin iframes | reported as one opaque element; open shadow roots and same-origin iframes **are** traversed |
 | More than 250 visible controls | `omitted` is reported, and a stuck run escalates `too_many_controls` rather than guessing |
 
-Every one of these is a clean escalation carrying the page text and the ranked candidates, not a
-crash and not a silent wrong action.
+Each returns an escalation with the page text and the ranked candidates.
 
 ## FAQ
 
@@ -233,8 +228,8 @@ sent is the element table and the visible text, never the HTML.
 (`$XDG_STATE_HOME/jev-ra/chrome-profile`) and reuse it. Point `BU_CDP_URL` at a different Chrome to
 override. Do not point it at a browser signed into anything you would not let an agent operate.
 
-**Why no text model?** Because the host is already an LLM with the context. Adding a second one costs
-675-938 ms per field and invents values. You can still configure one with `JEV_RA_TEXT_MODEL`.
+**Why no text model?** The host agent already has the context. A second model adds 675-938 ms per
+field and invents values. You can still configure one with `JEV_RA_TEXT_MODEL`.
 
 ## Configuration
 
