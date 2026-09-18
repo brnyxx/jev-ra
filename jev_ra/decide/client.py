@@ -10,28 +10,13 @@ from dataclasses import dataclass, field
 import httpx
 
 from ..config import is_openrouter
+from ..errors import ConfigError, JevAuthError, JevBadResponse, JevError, JevUnavailable
 
 logger = logging.getLogger(__name__)
 
 TIMEOUT_S = 25.0
 RETRY_STATUS = {429, 500, 502, 503, 529}
 PROBABILITY_TOLERANCE = 0.02
-
-
-class JevError(Exception):
-    """A decision could not be obtained. No action has been executed."""
-
-
-class JevAuthError(JevError):
-    """No usable key, or the provider rejected it."""
-
-
-class JevUnavailable(JevError):
-    """The provider could not be reached or kept failing."""
-
-
-class JevInvalidResponse(JevError):
-    """The provider answered, but the answers cannot be trusted."""
 
 
 @dataclass(frozen=True)
@@ -75,25 +60,25 @@ def read_choice(answer, criteria, name):
     """Validate one choice answer against the options it was offered."""
     probabilities = answer.get("probabilities")
     if not isinstance(probabilities, dict) or set(probabilities) != set(criteria):
-        raise JevInvalidResponse(f"{name}: probabilities do not cover the offered options")
+        raise JevBadResponse(f"{name}: probabilities do not cover the offered options")
     if not all(finite_unit(value) for value in probabilities.values()):
-        raise JevInvalidResponse(f"{name}: probabilities are not numbers in [0, 1]")
+        raise JevBadResponse(f"{name}: probabilities are not numbers in [0, 1]")
     if abs(sum(probabilities.values()) - 1) > PROBABILITY_TOLERANCE:
-        raise JevInvalidResponse(f"{name}: probabilities do not sum to 1")
+        raise JevBadResponse(f"{name}: probabilities do not sum to 1")
     if not finite_unit(answer.get("confidence")):
-        raise JevInvalidResponse(f"{name}: confidence is not a number in [0, 1]")
+        raise JevBadResponse(f"{name}: confidence is not a number in [0, 1]")
     choice = answer.get("choice")
     if choice not in criteria:
-        raise JevInvalidResponse(f"{name}: choice {choice!r} was not offered")
+        raise JevBadResponse(f"{name}: choice {choice!r} was not offered")
     if probabilities[choice] < max(probabilities.values()) - 1e-6:
-        raise JevInvalidResponse(f"{name}: choice is not the most probable option")
+        raise JevBadResponse(f"{name}: choice is not the most probable option")
     return answer
 
 
 def read_noul(answer, name):
     """Validate one noul answer."""
     if not finite_unit(answer.get("noul")):
-        raise JevInvalidResponse(f"{name}: noul is not a number in [0, 1]")
+        raise JevBadResponse(f"{name}: noul is not a number in [0, 1]")
     return answer
 
 
@@ -101,19 +86,19 @@ def read_answers(payload, questions):
     """Validate every asked question's answer, or refuse the whole reply."""
     answers = payload.get("answers")
     if not isinstance(answers, dict):
-        raise JevInvalidResponse("Response carries no answers")
+        raise JevBadResponse("Response carries no answers")
     validated = {}
     for name, question in questions.items():
         answer = answers.get(name)
         if not isinstance(answer, dict):
-            raise JevInvalidResponse(f"{name}: no answer")
+            raise JevBadResponse(f"{name}: no answer")
         kind = question.get("type")
         if kind == "choice":
             validated[name] = read_choice(answer, question["criteria"], name)
         elif kind == "noul":
             validated[name] = read_noul(answer, name)
         else:
-            raise JevInvalidResponse(f"{name}: unsupported question type {kind!r}")
+            raise JevBadResponse(f"{name}: unsupported question type {kind!r}")
     return validated
 
 
@@ -137,11 +122,11 @@ class DecisionClient:
     def decide(self, state, questions):
         """Ask one question set and return the validated answers."""
         if not self.config.api_key:
-            raise JevAuthError("No Jev API key. Set JEV_RA_API_KEY, TYPESAFE_API_KEY or OPENROUTER_API_KEY.")
+            raise ConfigError("No Jev API key found in JEV_RA_API_KEY, TYPESAFE_API_KEY or OPENROUTER_API_KEY.")
         started = time.perf_counter()
         payload = self.post(self.build(state, questions))
         if not isinstance(payload, dict):
-            raise JevInvalidResponse("Response is not a JSON object")
+            raise JevBadResponse("Response is not a JSON object")
         return Reply(
             answers=read_answers(payload, questions),
             model=payload.get("model") or self.config.model,
@@ -172,7 +157,7 @@ class DecisionClient:
             try:
                 return response.json()
             except ValueError:
-                raise JevInvalidResponse("Response body is not JSON") from None
+                raise JevBadResponse("Response body is not JSON") from None
         raise JevUnavailable("Jev is unavailable")
 
     def close(self):

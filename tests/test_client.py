@@ -4,7 +4,8 @@ import httpx
 import pytest
 
 from jev_ra import config
-from jev_ra.decide import DecisionClient, JevAuthError, JevError, JevInvalidResponse, JevUnavailable
+from jev_ra.decide import DecisionClient, JevAuthError, JevBadResponse, JevError, JevUnavailable
+from jev_ra.errors import ConfigError
 
 QUESTIONS = {
     "operation": {
@@ -54,34 +55,34 @@ def test_successful_decision_returns_validated_answers():
 
 def test_missing_answer_is_rejected():
     client = client_for(responder({"answers": {"operation": ANSWERS["operation"]}}))
-    with pytest.raises(JevInvalidResponse, match="goal_achieved: no answer"):
+    with pytest.raises(JevBadResponse, match="goal_achieved: no answer"):
         client.decide({}, QUESTIONS)
 
 
 def test_choice_that_is_not_the_argmax_is_rejected():
     answers = dict(ANSWERS, operation=choice_answer("DONE", {"CLICK": 0.9, "DONE": 0.1}))
     client = client_for(responder({"answers": answers}))
-    with pytest.raises(JevInvalidResponse, match="most probable"):
+    with pytest.raises(JevBadResponse, match="most probable"):
         client.decide({}, QUESTIONS)
 
 
 def test_choice_outside_the_offered_options_is_rejected():
     answers = dict(ANSWERS, operation=choice_answer("TYPE_TEXT", {"CLICK": 0.9, "DONE": 0.1}))
     client = client_for(responder({"answers": answers}))
-    with pytest.raises(JevInvalidResponse, match="was not offered"):
+    with pytest.raises(JevBadResponse, match="was not offered"):
         client.decide({}, QUESTIONS)
 
 
 def test_probabilities_that_do_not_sum_to_one_are_rejected():
     answers = dict(ANSWERS, operation=choice_answer("CLICK", {"CLICK": 0.5, "DONE": 0.1}))
     client = client_for(responder({"answers": answers}))
-    with pytest.raises(JevInvalidResponse, match="do not sum to 1"):
+    with pytest.raises(JevBadResponse, match="do not sum to 1"):
         client.decide({}, QUESTIONS)
 
 
 def test_noul_outside_the_unit_interval_is_rejected():
     client = client_for(responder({"answers": dict(ANSWERS, goal_achieved={"noul": 4})}))
-    with pytest.raises(JevInvalidResponse, match="goal_achieved: noul"):
+    with pytest.raises(JevBadResponse, match="goal_achieved: noul"):
         client.decide({}, QUESTIONS)
 
 
@@ -132,7 +133,7 @@ def test_timeout_becomes_unavailable():
 def test_no_key_means_no_request_at_all():
     calls = []
     client = client_for(responder({"answers": ANSWERS}, calls=calls), env={})
-    with pytest.raises(JevAuthError, match="No Jev API key"):
+    with pytest.raises(ConfigError, match="No Jev API key"):
         client.decide({}, QUESTIONS)
     assert calls == []
 

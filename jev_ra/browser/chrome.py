@@ -10,6 +10,8 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
+from ..errors import ChromeError
+
 logger = logging.getLogger(__name__)
 
 PORT_FILE = "DevToolsActivePort"
@@ -42,10 +44,6 @@ FLAGS = (
     "--disable-backgrounding-occluded-windows",
     "--disable-renderer-backgrounding",
 )
-
-
-class ChromeError(RuntimeError):
-    """No Chrome could be found, launched or reached."""
 
 
 def profile_dir(env=None):

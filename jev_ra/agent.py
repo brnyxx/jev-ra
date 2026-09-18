@@ -5,11 +5,12 @@ import time
 from dataclasses import asdict, dataclass, field
 
 from .browser import actions
-from .browser.session import Session, StalePage
+from .browser.session import Session
 from .config import load
-from .decide.client import DecisionClient, JevInvalidResponse
+from .decide.client import DecisionClient
 from .decide.policy import InvalidDecision, build_questions, build_state, read_answers
 from .decide.questions import CANDIDATES, GOAL_ACHIEVED_THRESHOLD
+from .errors import JevBadResponse, StalePage
 from .text import NeedsValue, ValueBinder
 
 logger = logging.getLogger(__name__)
@@ -82,7 +83,7 @@ class Agent:
             state = build_state(page, space, goal, run.history, binder.available())
             try:
                 reply = self.decide(state, questions)
-            except JevInvalidResponse as error:
+            except JevBadResponse as error:
                 run.decisions += 1
                 if reasked:
                     return run.escalate("invalid_decision", page, detail={"error": str(error)})

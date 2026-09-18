@@ -1,20 +1,13 @@
 """Jev decisions: transport, question shapes and the per-step policy."""
 
-from .client import (
-    DecisionClient,
-    JevAuthError,
-    JevError,
-    JevInvalidResponse,
-    JevUnavailable,
-    Reply,
-    read_answers,
-)
+from ..errors import JevAuthError, JevBadResponse, JevError, JevUnavailable
+from .client import DecisionClient, Reply, read_answers
 
 __all__ = [
     "DecisionClient",
     "JevAuthError",
+    "JevBadResponse",
     "JevError",
-    "JevInvalidResponse",
     "JevUnavailable",
     "Reply",
     "read_answers",

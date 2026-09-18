@@ -9,9 +9,10 @@ from mcp.server.mcpserver.exceptions import ToolError
 from . import __version__
 from .agent import Agent
 from .browser import actions
-from .browser.session import Session, StalePage
+from .browser.session import Session
 from .config import load
-from .decide.client import DecisionClient, JevError
+from .decide.client import DecisionClient
+from .errors import JevRaError, render
 from .extract import MODES, extract
 from .search import MAX_PAGES, search
 
@@ -110,14 +111,11 @@ def build_server(browser=None):
     mcp = MCPServer("jev-ra", version=__version__, instructions=INSTRUCTIONS)
 
     def guarded(call):
+        """Run a tool body, turning any anticipated failure into the CLI's own sentence."""
         try:
             return call()
-        except StalePage as error:
-            raise ToolError(f"The page changed before the action ran: {error}") from None
-        except LookupError as error:
-            raise ToolError(str(error)) from None
-        except JevError as error:
-            raise ToolError(str(error)) from None
+        except (JevRaError, LookupError) as error:
+            raise ToolError(render(error)) from None
 
     @mcp.tool()
     def browser_open(url: str) -> dict:

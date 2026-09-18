@@ -10,6 +10,7 @@ from browser_harness.admin import ensure_daemon
 from browser_harness.helpers import cdp
 
 from ..config import load
+from ..errors import StalePage
 from . import MAX_ELEMENTS, guard_expression, marker_expression, snapshot_expression
 from .chrome import ensure as ensure_chrome
 
@@ -81,10 +82,6 @@ SETTLE_JS = """(action => new Promise(resolve => {
   };
   requestAnimationFrame(ready);
 }))"""
-
-
-class StalePage(ValueError):
-    """A decision no longer refers to the observed page."""
 
 
 class Session:

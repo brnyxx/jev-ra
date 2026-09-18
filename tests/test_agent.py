@@ -3,7 +3,7 @@ import pytest
 from jev_ra import config
 from jev_ra.agent import Agent
 from jev_ra.browser.session import StalePage
-from jev_ra.decide import JevInvalidResponse, Reply
+from jev_ra.decide import JevBadResponse, Reply
 
 FORM_ACTIONS = [
     {"id": "e1", "node": 1, "role": "textbox", "kind": "fill", "label": "City", "value": ""},
@@ -279,7 +279,7 @@ def test_an_unofferable_target_triggers_one_corrective_re_ask():
 
 def test_a_second_invalid_answer_set_escalates():
     def always_broken(state, questions):
-        raise JevInvalidResponse("operation: probabilities do not sum to 1")
+        raise JevBadResponse("operation: probabilities do not sum to 1")
 
     result = agent_with(always_broken).run("find flights")
     assert (result.status, result.reason) == ("escalate", "invalid_decision")

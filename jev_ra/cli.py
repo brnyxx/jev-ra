@@ -13,9 +13,10 @@ from pathlib import Path
 from . import __version__
 from .agent import Agent
 from .browser import actions
-from .browser.session import Session, StalePage
+from .browser.session import Session
 from .config import load, state_path
-from .decide.client import DecisionClient, JevError
+from .decide.client import DecisionClient
+from .errors import JevError, JevRaError, render
 from .extract import MODES, extract
 
 logger = logging.getLogger(__name__)
@@ -44,8 +45,10 @@ DOCTOR_STATE = {
 }
 
 
-class SessionMissing(Exception):
+class SessionMissing(JevRaError):
     """No stateful session is open."""
+
+    next_step = "Run `jev-ra open URL` first."
 
 
 def read_state():
@@ -78,12 +81,12 @@ def attach():
     """Reattach to the session `open` left behind."""
     state = read_state()
     if not state:
-        raise SessionMissing("No open session. Run `jev-ra open URL` first.")
+        raise SessionMissing("No open session.")
     try:
         return Session(load(), target_id=state["target_id"])
     except RuntimeError as error:
         clear_state()
-        raise SessionMissing(f"The stored session is gone ({error}). Run `jev-ra open URL` again.") from None
+        raise SessionMissing(f"The stored session is gone ({error}).") from None
 
 
 def parse_values(pairs):
@@ -577,6 +580,6 @@ def main(argv=None):
         return 0
     try:
         return args.handler(args)
-    except (SessionMissing, JevError, StalePage, LookupError, RuntimeError, ValueError) as error:
-        print(str(error), file=sys.stderr)
+    except (JevRaError, LookupError, RuntimeError, ValueError) as error:
+        print(render(error), file=sys.stderr)
         return 1

@@ -1,8 +1,33 @@
 """A fast browser-use layer for CLI coding agents."""
 
 from .agent import Agent, Result
-from .browser.session import Session, StalePage
+from .browser.session import Session
+from .errors import (
+    ChromeError,
+    ConfigError,
+    Escalated,
+    JevAuthError,
+    JevBadResponse,
+    JevError,
+    JevRaError,
+    JevUnavailable,
+    StalePage,
+)
 
 __version__ = "0.1.0"
 
-__all__ = ["Agent", "Result", "Session", "StalePage", "__version__"]
+__all__ = [
+    "Agent",
+    "ChromeError",
+    "ConfigError",
+    "Escalated",
+    "JevAuthError",
+    "JevBadResponse",
+    "JevError",
+    "JevRaError",
+    "JevUnavailable",
+    "Result",
+    "Session",
+    "StalePage",
+    "__version__",
+]
