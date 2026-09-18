@@ -335,6 +335,44 @@ def cmd_doctor(args):
     return 0 if ok else 1
 
 
+def bench_line(row):
+    return (
+        f"  {row['task']}: {row['status']} in {row['elapsed_ms']} ms,"
+        f" {row['steps']} steps, {row['decisions']} decisions, {row['text_calls']} text calls"
+    )
+
+
+def ratio_line(row):
+    reference = f"{row['flash_mode_ms']} ms" if row["flash_mode_ms"] else "no baseline row"
+    ratio = f"{row['ratio']}x" if row["ratio"] else "n/a"
+    return f"  {row['task']}: {row['jev_ra_ms']} ms / {reference} = {ratio}  {'PASS' if row['passed'] else 'FAIL'}"
+
+
+def cmd_bench(args):
+    from .bench import ACCEPTANCE_RATIO, flash_baseline, ratio_rows, run_live, run_offline
+
+    config = load()
+    offline = run_offline(config)
+    payload = {"offline": offline, "baseline_flash_ms": flash_baseline()}
+    lines = ["offline (scripted decisions, local fixtures, no network):"]
+    lines += [bench_line(row) for row in offline]
+    if not args.live:
+        lines.append("Run `jev-ra bench --live` to measure the three live tasks against the recorded baseline.")
+        emit(args, payload, lines)
+        return 0
+    live = run_live(config)
+    rows = ratio_rows(live)
+    payload["live"] = live
+    payload["ratios"] = rows
+    payload["passed"] = all(row["passed"] for row in rows)
+    lines.append(f"live (jev-ra ms / browser-use flash_mode ms, >= {ACCEPTANCE_RATIO}x to pass):")
+    lines += [bench_line(row) for row in live]
+    lines += [ratio_line(row) for row in rows]
+    lines.append("PASS: every task clears the bar" if payload["passed"] else "FAIL: at least one task is short")
+    emit(args, payload, lines)
+    return 0 if payload["passed"] else 1
+
+
 def cmd_mcp(_args):
     from .mcp_server import main as serve
 
@@ -417,6 +455,10 @@ def build_parser():
 
     doctor = add_json(sub.add_parser("doctor", help="check the key, the endpoint, Chrome and one live decision"))
     doctor.set_defaults(handler=cmd_doctor)
+
+    bench = add_json(sub.add_parser("bench", help="time the offline fixtures, and the live tasks with --live"))
+    bench.add_argument("--live", action="store_true", help="also run the three live tasks (needs a key)")
+    bench.set_defaults(handler=cmd_bench)
     return parser
 
 
@@ -428,6 +470,6 @@ def main(argv=None):
         return 0
     try:
         return args.handler(args)
-    except (SessionMissing, JevError, StalePage, LookupError, ValueError) as error:
+    except (SessionMissing, JevError, StalePage, LookupError, RuntimeError, ValueError) as error:
         print(str(error), file=sys.stderr)
         return 1

@@ -103,7 +103,9 @@ def build_questions(space, goal, history=(), values=None, exclude=()):
     if values and "TYPE_TEXT" in targets:
         criteria = {name: f"{name}: {preview(value)}" for name, value in values.items()}
         criteria[NONE_VALUE] = NONE_VALUE_LABEL
-        questions["value_for_field"] = choice(criteria, instructions(goal, VALUE_FOR_FIELD))
+        # The field is chosen by a parallel question, so name the candidates here or there is nothing to match.
+        fields = [space.describe(target, action) for target, action in targets["TYPE_TEXT"].items()]
+        questions["value_for_field"] = choice(criteria, instructions(goal, VALUE_FOR_FIELD, fields=fields))
     if history:
         questions["prev_ok"] = noul(PREV_OK_CRITERIA, instructions(goal, PREV_OK))
     questions["goal_achieved"] = noul(GOAL_ACHIEVED_CRITERIA, instructions(goal, GOAL_ACHIEVED))

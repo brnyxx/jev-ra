@@ -164,7 +164,7 @@ class Session:
             )
         else:
             self.input(action, text)
-        self.after_input = action if kind not in {"wait", "scroll"} else None
+        self.after_input = action if kind != "wait" else None
         return {"executed": action["id"], "kind": kind, "text": text}
 
     def input(self, action, text):

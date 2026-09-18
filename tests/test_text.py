@@ -26,11 +26,21 @@ def binder(values=None, env=None, handler=None, calls=None):
 
 def test_a_host_value_is_chosen_and_spent_once():
     bound = binder({"city": "London", "email": "a@b.c"})
-    assert bound.bind("city", FIELD, "book a flight").text == "London"
+    value = bound.bind("city", FIELD, "book a flight")
+    assert value.text == "London"
+    assert bound.used == []
+    bound.spend(value)
     assert bound.used == ["city"]
     assert set(bound.available()) == {"email"}
     with pytest.raises(NeedsValue):
         bound.bind("city", FIELD, "book a flight")
+
+
+def test_a_value_stays_available_until_it_reaches_the_page():
+    bound = binder({"city": "London"})
+    bound.bind("city", FIELD, "book a flight")
+    assert set(bound.available()) == {"city"}
+    assert bound.bind("city", FIELD, "book a flight").text == "London"
 
 
 def test_host_values_are_stringified():

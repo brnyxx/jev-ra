@@ -106,7 +106,7 @@ class Agent:
                 continue
             unverified = False
 
-            text = None
+            text, value = None, None
             if decision.operation == "TYPE_TEXT":
                 try:
                     value = binder.bind(decision.value_name, decision.action, goal, page, run.history)
@@ -123,6 +123,9 @@ class Agent:
                 page = self.session.observe()
                 continue
             stale_retries = 0
+            if value is not None:
+                # Only now is the value really on the page; a stale retry must not burn it.
+                binder.spend(value)
 
             before, page = page, self.session.observe()
             run.record(decision, before, page, text)

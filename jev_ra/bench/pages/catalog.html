@@ -1,0 +1,25 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Bench catalog</title>
+<style>
+  body{margin:24px;font:14px system-ui}
+  .filler{height:1100px;background:linear-gradient(#fafafa,#eee);display:flex;align-items:center;justify-content:center}
+  .sort button{margin-right:8px;padding:6px 12px}
+  .sort button[aria-pressed="true"]{font-weight:700}
+</style>
+<h1>Bench catalog</h1>
+<div class="filler">Product hero</div>
+<div class="sort">
+  <button id="popular" aria-pressed="true" onclick="sortBy('popular')">Most popular</button>
+  <button id="newest" aria-pressed="false" onclick="sortBy('newest')">Newest first</button>
+</div>
+<p id="order">Sorted by: Most popular</p>
+<script>
+  function sortBy(key) {
+    for (const id of ["popular", "newest"]) {
+      document.getElementById(id).setAttribute("aria-pressed", String(id === key));
+    }
+    document.getElementById("order").textContent =
+      "Sorted by: " + (key === "newest" ? "Newest first" : "Most popular");
+  }
+</script>

@@ -65,9 +65,9 @@ class ValueBinder:
         return {name: value for name, value in self.values.items() if name not in self.used}
 
     def bind(self, name, action, goal, page=None, history=()):
+        """Resolve a value. It stays available until spend() confirms it actually reached the page."""
         available = self.available()
         if name in available:
-            self.used.append(name)
             return Value(text=available[name], source="values", name=name)
         helper = self.config.text_model
         if helper is None:
@@ -77,6 +77,10 @@ class ValueBinder:
             {"model": value.model, "latency_ms": value.latency_ms, "field": action.get("label"), "usage": value.usage}
         )
         return value
+
+    def spend(self, value):
+        if value.source == "values" and value.name not in self.used:
+            self.used.append(value.name)
 
     def client(self):
         if self._client is None:
