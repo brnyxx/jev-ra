@@ -127,3 +127,39 @@ def test_a_daemon_that_keeps_timing_out_still_gives_up(bare, monkeypatch):
     with pytest.raises(ChromeError):
         bare.call("Page.navigate", url="https://example.com")
     assert len(calls) == 2
+
+
+def counting_timeout(fail_times):
+    calls = []
+
+    def cdp(method, session_id=None, _response_timeout=None, **params):
+        calls.append(method)
+        if len(calls) <= fail_times:
+            raise TimeoutError(f"{method} timed out after 5s waiting for the daemon")
+        return {"ok": True}
+
+    cdp.calls = calls
+    return cdp
+
+
+def test_a_read_only_call_is_asked_once_more_when_chrome_answers_late(bare, monkeypatch):
+    cdp = counting_timeout(1)
+    monkeypatch.setattr(session_module, "cdp", cdp)
+    assert bare.call("Runtime.evaluate", expression="1") == {"ok": True}
+    assert cdp.calls == ["Runtime.evaluate", "Runtime.evaluate"]
+
+
+def test_input_is_never_dispatched_twice_because_the_answer_was_slow(bare, monkeypatch):
+    cdp = counting_timeout(1)
+    monkeypatch.setattr(session_module, "cdp", cdp)
+    with pytest.raises(ChromeError):
+        bare.call("Input.dispatchMouseEvent", type="mousePressed", x=1, y=1)
+    assert cdp.calls == ["Input.dispatchMouseEvent"]
+
+
+def test_typed_text_is_never_inserted_twice_either(bare, monkeypatch):
+    cdp = counting_timeout(1)
+    monkeypatch.setattr(session_module, "cdp", cdp)
+    with pytest.raises(ChromeError):
+        bare.call("Input.insertText", text="hoodie")
+    assert cdp.calls == ["Input.insertText"]

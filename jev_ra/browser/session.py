@@ -54,6 +54,19 @@ PAINTED_JS = """(() => {
 # could handle. Give the evaluating calls room, and turn what is left into ChromeError.
 CALL_TIMEOUT_S = 5.0
 CALL_ATTEMPTS = 2
+# Asking again is only safe where asking twice means the same as asking once. Input never is: a
+# mousePressed that answered late still pressed, and a second one is a second click; an insertText
+# that answered late still typed, and a second one types the query again. Everything here either
+# reads, or settles to the same place whichever way it is reached.
+IDEMPOTENT = (
+    "Runtime.evaluate",
+    "Page.navigate",
+    "Page.captureScreenshot",
+    "Emulation.setDeviceMetricsOverride",
+    "Emulation.setFocusEmulationEnabled",
+    "Network.enable",
+    "Network.setBlockedURLs",
+)
 EVALUATE_TIMEOUT_S = 30.0
 WAIT_SLEEP_S = 0.1
 SETTLE_ATTEMPTS = 10
@@ -194,13 +207,14 @@ class Session:
 
     def call(self, method, timeout=CALL_TIMEOUT_S, **params):
         """One CDP call on this target's session, with a budget the caller can widen."""
-        for attempt in range(CALL_ATTEMPTS):
+        attempts = CALL_ATTEMPTS if method in IDEMPOTENT else 1
+        for attempt in range(attempts):
             try:
                 return cdp(method, session_id=self.session_id, _response_timeout=timeout, **params)
             except (TimeoutError, OSError) as error:
                 # A browser with thirty tabs open answers late now and then. One slow answer is
                 # not a browser that has gone away, and ending the run over it loses the work.
-                if attempt == CALL_ATTEMPTS - 1:
+                if attempt == attempts - 1:
                     raise ChromeError(f"Chrome stopped answering during {method}: {error}") from error
                 logger.info("Chrome was slow to answer %s; asking once more", method)
             except RuntimeError as error:
