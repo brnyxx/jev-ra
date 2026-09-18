@@ -8,7 +8,7 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 LANDING = ROOT / "docs" / "index.html"
 PAGES = ROOT / ".github" / "workflows" / "pages.yml"
-READMES = ("README.md", "README.ko.md")
+READMES = ("README.md", "docs/i18n/README.ko.md")
 
 
 def local_references(text):
@@ -23,16 +23,16 @@ def local_references(text):
 
 @pytest.mark.parametrize("name", READMES)
 def test_every_readme_link_resolves_inside_the_repository(name):
-    for reference in local_references((ROOT / name).read_text()):
-        assert (ROOT / reference).exists(), f"{name} points at {reference}, which is not in the repo"
+    path = ROOT / name
+    for reference in local_references(path.read_text()):
+        assert (path.parent / reference).exists(), f"{name} points at {reference}, which is not in the repo"
 
 
 @pytest.mark.parametrize("name", READMES)
 def test_the_readmes_use_the_brand_assets(name):
     text = (ROOT / name).read_text()
-    assert "assets/logo.svg" in text
-    assert "assets/hero.png" in text
-    assert "assets/demo/flights-side-by-side.gif" in text
+    for asset in ("logo.svg", "hero.png", "demo/flights-side-by-side.gif"):
+        assert f"assets/{asset}" in text
     assert "shields.io" in text
 
 

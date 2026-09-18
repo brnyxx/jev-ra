@@ -13,6 +13,8 @@
 
 [![jev-ra: browser use for coding agents, 3-5x faster than browser-use](assets/hero.png)](docs/BENCHMARKS.md)
 
+**English** · [한국어](docs/i18n/README.ko.md) · [日本語](docs/i18n/README.ja.md) · [简体中文](docs/i18n/README.zh-CN.md)
+
 # jev-ra
 
 **A fast browser-use layer for CLI coding agents.** Claude Code, Codex, or any MCP client hands
@@ -231,4 +233,4 @@ measured. Chrome is driven through
 See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
 MIT licensed. [Contributing](CONTRIBUTING.md) · [Security](SECURITY.md) · [Agent guide](AGENTS.md) ·
-[Usage reference](docs/USAGE.md) · [한국어](README.ko.md)
+[Usage reference](docs/USAGE.md) · [한국어](docs/i18n/README.ko.md)

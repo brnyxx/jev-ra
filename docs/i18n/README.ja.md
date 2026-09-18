@@ -1,0 +1,238 @@
+<p align="center">
+  <img src="../../assets/logo.svg" alt="jev-ra" width="360">
+</p>
+
+<p align="center">
+  <a href="https://github.com/brnyxx/jev-ra/actions/workflows/ci.yml"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/brnyxx/jev-ra/ci.yml?branch=main&label=ci"></a>
+  <a href="https://pypi.org/project/jev-ra/"><img alt="PyPI" src="https://img.shields.io/pypi/v/jev-ra"></a>
+  <img alt="Python" src="https://img.shields.io/badge/python-3.12%20%7C%203.13%20%7C%203.14-blue">
+  <img alt="MCP" src="https://img.shields.io/badge/MCP-stdio-111">
+  <img alt="Chrome" src="https://img.shields.io/badge/Chrome-CDP-111">
+  <a href="../../LICENSE"><img alt="License" src="https://img.shields.io/badge/license-MIT-green"></a>
+</p>
+
+[![jev-ra: コーディングエージェントのためのブラウザ操作、browser-use より 3-5 倍速い](../../assets/hero.png)](../BENCHMARKS.md)
+
+[English](../../README.md) · [한국어](README.ko.md) · **日本語** · [简体中文](README.zh-CN.md)
+
+# jev-ra
+
+**CLI コーディングエージェントのための高速なブラウザ操作レイヤー。** Claude Code、Codex、あるいは
+任意の MCP クライアントが jev-ra にゴールを渡す。System One 判断モデルである TypeSafe Jev が、
+1 往復で各ステップの操作と対象要素を同時に選ぶ。計画を立て、入力すべき文字列を渡し、ページの内容を
+読み、jev-ra がエスカレートしたら引き継ぐ。それは呼び出し側のエージェントの仕事だ。ループの中で
+2 つ目の LLM が動くことはない。
+
+![3 秒足らずでゲーデルの不完全性定理の記事を開く jev-ra](../../assets/demo/wikipedia.gif)
+
+| タスク | browser-use 0.13.10 + gemini-3-flash `flash_mode` | jev-ra | |
+|---|---|---|---|
+| Wikipedia: ゲーデルの不完全性定理の記事を開く | 23,058 ms | **2,714 ms** | **8.5×** |
+| Google Flights ZRH→LON 片道、結果が表示されるまで | 66,414 ms | **8,888 ms** | **7.5×** |
+| Olive Young カテゴリ: 신상품순 で並べ替え | 15,071 ms | **3,806 ms** | **4.0×** |
+
+各 5 回実行の中央値。2026-09-18、同じマシン、同じ専用 Chrome、どちらも OpenRouter 経由。すべての
+実行は残されたページに対して検証し、25 回中 25 回が成功、テキストモデルの呼び出しは 0 回だった。
+[測定方法、p90、コスト、生データ](../BENCHMARKS.md)。
+
+## クイックスタート
+
+**Claude Code**
+
+```sh
+export OPENROUTER_API_KEY=sk-or-...
+uvx jev-ra install claude
+# その後 Claude Code で: "open wikipedia.org and find the Gödel incompleteness article"
+```
+
+**Codex**
+
+```sh
+export OPENROUTER_API_KEY=sk-or-...
+uvx jev-ra install codex
+# その後 Codex で: "use jev-ra to open wikipedia.org and find the Gödel incompleteness article"
+```
+
+**シェル**
+
+```sh
+export OPENROUTER_API_KEY=sk-or-...
+uvx jev-ra doctor
+uvx jev-ra run https://en.wikipedia.org/wiki/Main_Page "Open the Godel incompleteness article." \
+  --value "search_query=Godel incompleteness theorems"
+```
+
+Python を用意したくない場合は `npx -y jev-ra install claude` でも同じことができる。
+
+どちらにせよインストール手順はない。`uvx` が PyPI から直接実行し、サーバーコマンドとして
+`uvx jev-ra mcp` を登録する。恒久的に入れるなら `uv tool install jev-ra`。鍵はすでに export して
+ある変数から渡され、出力されることはない。
+
+## 仕組み
+
+```
+  あなたのエージェント              jev-ra                              Chrome
+ ────────────────────         ───────────────                      ─────────────
+  ゴール + values  ────────▶  observe ─────────────────────────▶  snapshot.js
+                              │   要素、ガード、ページ marker    ◀──── eval 1 回
+                              ▼
+                              1 回のリクエスト: 操作? 対象?
+                              値? prev_ok? goal_achieved?    ──▶  Jev  (~300 ms)
+                              │
+                              ▼
+                              鮮度ガード ──▶ act ──────────────▶  信頼された CDP 入力
+                              │                                    (JS クリックではない)
+                              ▼
+                              url/title/text/フィールド状態を検証
+                              │
+       Result  ◀──────────────┴── done · blocked · escalate · budget
+```
+
+ステップごとに判断 1 回、往復 1 回、実行経路にモデルはない。ページに入る文字列はあなたが渡した値
+だけだ。
+
+## MCP ツール
+
+| ツール | 引数 | 何をするか |
+|---|---|---|
+| `browser_open` | url | 共有セッションで URL を開き、ページを要約する。 |
+| `browser_run` | goal, values?, max_steps? | ゴール全体を遂行する。入力が必要な値は values で渡す。 |
+| `browser_search` | query, goal?, max_pages? | 検索し、上位の結果を並列タブで読み、ゴールに対して順位づけする。 |
+| `browser_act` | instruction, values? | 指示に沿った 1 ステップを判断して実行する。 |
+| `browser_observe` | max_elements? | 観測されたコントロールと可視テキストを列挙する。 |
+| `browser_extract` | mode? | 構造化されたページデータ: `text`、`elements`、`links`、`tables`、`main`。 |
+| `browser_click` | ref | 観測済み要素を ref でクリックする。 |
+| `browser_type` | ref, text | 観測済みフィールドに入力する。 |
+| `browser_select` | ref, option | 観測済みドロップダウンの選択肢を選ぶ。 |
+| `browser_scroll` | direction? | 1 画面分だけ上下にスクロールする。 |
+| `browser_press` | key | Enter、Escape、Tab を押す。 |
+| `browser_wait` | - | 少し待ってからもう一度観測する。 |
+| `browser_screenshot` | - | 現在のビューポートの JPEG。 |
+| `browser_close` | - | サーバーが保持しているセッションを閉じる。 |
+
+すべての応答に `elapsed_ms` が含まれ、Jev を呼んだ場合は `decisions` と `cost` も含まれる。
+
+## CLI
+
+```sh
+jev-ra run URL "goal" [--value name=text ...] [--max-steps N] [--json]
+jev-ra search "query" ["what the page must answer"] [--max-pages 3]
+jev-ra open URL | observe | extract [--mode text|elements|links|tables|main]
+jev-ra act "instruction" | click REF | type REF TEXT | select REF OPTION
+jev-ra scroll down|up | press Enter|Escape|Tab | wait | screenshot [PATH] | close
+jev-ra mcp | install claude|codex [--scope user|project|local] | doctor | bench [--live]
+```
+
+`open` … `close` は `$XDG_STATE_HOME/jev-ra/session.json` の target id を通じて 1 つのブラウザを
+複数の呼び出しで共有する。どのコマンドでも `--json` を付ければ生のペイロードが得られる。
+
+## Python
+
+```python
+from jev_ra import Agent
+
+with Agent() as agent:
+    result = agent.run(
+        "Place the order with express shipping.",
+        values={"name": "Ada Lovelace", "email": "ada@example.com"},
+        url="https://example.com/checkout",
+    )
+print(result.status, result.elapsed_ms, [step["target_label"] for step in result.steps])
+```
+
+## 推測せず、値を受け取る
+
+TYPE_TEXT には文字列が必要だが、jev-ra はそれを作り出さない。フィールドを選ぶのと同じ往復の中で、
+Jev が*あなたが渡した*値のどれがそのフィールドに入るかを選ぶ。合う値がなくテキストヘルパーも設定
+されていなければ、実行は `needs_value` で止まり、フィールドの label、role、現在値を返す。値を渡して
+もう一度呼べばいい。既定のインストールにテキストモデルが入っていないことが、この設計の要点だ。
+
+## 制御を返すとき
+
+`Result.status` は `done`、`blocked`、`escalate`、`budget` のいずれか。escalate には `reason`
+(`needs_value`、`stuck_loop`、`unverified_done`、`stale`、`invalid_decision`、`too_many_controls`)、
+確率つきの上位 8 件の操作/対象候補、そして最大 3,000 文字のページテキストが含まれる。もう一度観測
+しなくても判断できるだけの材料だ。
+
+検証は決定論的だ。各アクションのあとに url、title、text、フィールド状態を比較し、`page_changed` は
+モデルの意見ではなくページの意味ベースの marker から決まる。
+
+## ベンチマーク
+
+5 つのタスク、各 5 回実行、すべての実行を残されたページに対して検証した:
+
+| タスク | 中央値 | p90 | 成功 | 判断 | コスト | 比率 |
+|---|---|---|---|---|---|---|
+| Wikipedia 記事 | 2,714 ms | 3,179 ms | 5/5 | 3 | $0.00075 | 8.50× |
+| Google Flights 検索 | 8,888 ms | 10,573 ms | 5/5 | 14 | $0.00317 | 7.47× |
+| Olive Young 並べ替え | 3,806 ms | 4,858 ms | 5/5 | 4 | $0.00204 | 3.96× |
+| 出典つきの検索 | 2,416 ms | 2,571 ms | 5/5 | 4 | $0.00035 | 基準なし |
+| ローカルの決済フォーム | 2,191 ms | 2,338 ms | 5/5 | 5 | $0.00049 | 基準なし |
+
+比率は同じマシン、同じ Chrome で動かした browser-use 0.13.10 + gemini-3-flash `flash_mode` に対する
+もの(それぞれ 23,058 ms、66,414 ms、15,071 ms)。25 回全体でテキストモデルの呼び出しは 0。
+`jev-ra bench --live --runs 5` でこの表を再現でき、基準のあるすべてのタスクについて 3 倍以上という
+v0.1 の基準に対する PASS/FAIL を表示する。
+[測定方法、browser-use の生データ、再現手順](../BENCHMARKS.md)。
+
+左が jev-ra、右が browser-use `flash_mode`。同じタスク、同じ Chrome、実時間:
+
+![browser-use がまだ券種メニューを開いている間に jev-ra は航空券検索を終える](../../assets/demo/flights-side-by-side.gif)
+
+この README の数値はどれも推定ではなく、タスクを達成せずに終わった実行は時間ではなく失敗として
+数える。
+
+## やらないこと
+
+Canvas、ファイルアップロード、ポップアップウィンドウ、複数タブのワークフロー、認証フロー、CAPTCHA、
+stealth。可視コントロールが 250 個を超えるページは `omitted` を報告し、推測する代わりに
+`too_many_controls` でエスカレートする。クロスオリジンの iframe は 1 つの不透明な要素として報告し、
+open な shadow root と同一オリジンの iframe は**たどる**。
+
+## FAQ
+
+**OpenRouter か TypeSafe の鍵か?** どちらでもいい。jev-ra は `JEV_RA_API_KEY`、`TYPESAFE_API_KEY`、
+`OPENROUTER_API_KEY` の順に鍵を探す。`sk-or-` で始まる鍵は OpenRouter 経路
+(`typesafe/jev-1.13`)を、それ以外は直接経路(`jev-latest`)を選ぶ。`JEV_RA_ENDPOINT` と
+`JEV_RA_MODEL` が両方を上書きする。OpenRouter の方が入手しやすく、上流の計測によれば直接呼び出しの
+方が判断あたり約 140 ms 速い。
+
+**1 タスクいくらか?** **$0.00035**(検索、判断 4 回)から **$0.00317**(Google Flights の全工程、
+判断 14 回)。コストはページの大きさではなく判断の回数に比例する。送るのは HTML ではなく要素表と
+可視テキストだからだ。
+
+**専用の Chrome が必要か?** 自分で見つけるか、専用プロファイル
+(`$XDG_STATE_HOME/jev-ra/chrome-profile`)で起動して再利用する。`BU_CDP_URL` で別の Chrome を
+指定できる。エージェントに任せたくないアカウントにログイン済みのブラウザは指さないこと。
+
+**なぜテキストモデルがないのか?** 呼び出す側がすでに文脈を持つ LLM だからだ。2 つ目のモデルを挟むと
+フィールドごとに 675-938 ms かかり、値を捏造する。必要なら `JEV_RA_TEXT_MODEL` で付けられる。
+
+## 設定
+
+| 変数 | 効果 |
+|---|---|
+| `JEV_RA_API_KEY`, `TYPESAFE_API_KEY`, `OPENROUTER_API_KEY` | 鍵。この優先順位で |
+| `JEV_RA_ENDPOINT`, `JEV_RA_MODEL` | 経路の上書き |
+| `JEV_RA_CHROME` | 起動するブラウザのバイナリパス |
+| `BU_CDP_URL` | 新しく起動する代わりに接続する既存の Chrome |
+| `JEV_RA_VIEWPORT` | 例: `1280x900`(既定値) |
+| `JEV_RA_MAX_STEPS`, `JEV_RA_MAX_DECISIONS`, `JEV_RA_TIMEOUT_S` | 予算 (40 / 80 / 120) |
+| `JEV_RA_BLOCK_RESOURCES` | `0` でフォント/メディアの遮断を切る |
+| `JEV_RA_SEARCH_URL` | 検索エンドポイントのテンプレート。`{query}` が置換される |
+| `JEV_RA_TEXT_MODEL`, `JEV_RA_TEXT_BASE_URL`, `JEV_RA_TEXT_API_KEY` | 任意のテキストヘルパー。既定はオフ |
+
+`$XDG_CONFIG_HOME/jev-ra/config.json` に同じキーを書ける。環境変数が優先される。
+
+## クレジット
+
+`jev_ra/browser/snapshot.js` と `NEXT_ACTION` / `TARGET` の指示文は
+[browser-use/jev-ultrafast](https://github.com/browser-use/jev-ultrafast)(MIT)から取り込んで
+調整したもので、そこで計測されたテキストだ。Chrome の駆動には
+[browser-harness](https://github.com/browser-use/browser-harness)(MIT)を使う。
+[THIRD_PARTY_NOTICES.md](../../THIRD_PARTY_NOTICES.md) を参照。
+
+MIT ライセンス。[コントリビュート](../../CONTRIBUTING.md) · [セキュリティ](../../SECURITY.md) ·
+[エージェントガイド](../../AGENTS.md) · [利用リファレンス](../USAGE.md)
+
+[English](../../README.md) · [한국어](README.ko.md) · **日本語** · [简体中文](README.zh-CN.md)

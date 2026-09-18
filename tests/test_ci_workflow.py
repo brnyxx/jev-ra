@@ -125,6 +125,10 @@ def test_ci_fails_when_the_generated_usage_guide_drifts():
     assert "scripts/gen_usage.py --check" in WORKFLOW.read_text()
 
 
+def test_ci_fails_when_a_translated_readme_drifts():
+    assert "scripts/check_i18n.py --check" in WORKFLOW.read_text()
+
+
 def test_the_gates_are_configured_in_pyproject():
     data = tomllib.loads((WORKFLOWS.parents[1] / "pyproject.toml").read_text())
     lint = data["tool"]["ruff"]["lint"]

@@ -63,6 +63,9 @@ jobs:
       - name: Usage guide is in sync
         run: uv run python scripts/gen_usage.py --check
 
+      - name: Translated READMEs are in sync
+        run: uv run python scripts/check_i18n.py --check
+
       - name: Test with coverage
         run: uv run pytest -q
 
