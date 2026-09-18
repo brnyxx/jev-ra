@@ -163,3 +163,14 @@ def test_typed_text_is_never_inserted_twice_either(bare, monkeypatch):
     with pytest.raises(ChromeError):
         bare.call("Input.insertText", text="hoodie")
     assert cdp.calls == ["Input.insertText"]
+
+
+@pytest.mark.parametrize("method", ["focused", "focus"])
+def test_a_node_that_is_not_an_observed_id_never_reaches_the_page(bare, method, monkeypatch):
+    def refuse(*_args, **_kwargs):
+        raise AssertionError("the page was evaluated with an unchecked node")
+
+    monkeypatch.setattr(session_module, "cdp", refuse)
+    for smuggled in ("1); alert(1)//", 1.0, None, True, "12"):
+        with pytest.raises(ValueError):
+            getattr(bare, method)(smuggled)

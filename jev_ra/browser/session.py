@@ -464,14 +464,15 @@ class Session:
 
     def focused(self, node):
         """Whether the observed field itself holds focus."""
-        return bool(self.evaluate(f"({FOCUSED_JS})({node})"))
+        return bool(self.evaluate(f"({FOCUSED_JS})({observed(node)})"))
 
     def focus(self, node):
         """Ask the browser to focus one observed node, and say whether it now holds focus."""
+        node = observed(node)
         handle = self.call(
             "Runtime.evaluate",
             timeout=EVALUATE_TIMEOUT_S,
-            expression=f"window.__jevRa?.nodes.get({node})",
+            expression=f"window.__jevRa?.nodes.get({observed(node)})",
             returnByValue=False,
         )
         object_id = (handle.get("result") or {}).get("objectId")
@@ -548,6 +549,13 @@ class Session:
 
     def __exit__(self, *_args):
         self.close()
+
+
+def observed(node):
+    """One observed node id, or a refusal. Nothing else is ever written into an expression."""
+    if type(node) is not int:
+        raise ValueError("Only an observed node id is ever put into an expression")
+    return node
 
 
 # What a click can change about a control without adding or removing one: a menu button flips
