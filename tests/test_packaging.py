@@ -24,9 +24,49 @@ def test_the_metadata_is_complete_enough_to_publish():
     assert data["requires-python"] == ">=3.12"
     assert data["license"] == "MIT"
     assert data["readme"] == "README.md"
-    assert set(data["urls"]) >= {"Homepage", "Repository", "Issues", "Changelog"}
-    assert any(line.startswith("License :: OSI Approved :: MIT") for line in data["classifiers"])
+    assert set(data["urls"]) == {"Homepage", "Documentation", "Repository", "Issues", "Changelog"}
+    assert all(url.startswith("https://github.com/brnyxx/jev-ra") for url in data["urls"].values())
     assert sorted(data["dependencies"]) == ["browser-harness[mcp]>=0.1.13,<0.2", "httpx[http2]>=0.28,<1"]
+
+
+def test_the_classifiers_say_what_this_is():
+    classifiers = project()["classifiers"]
+    for needed in (
+        "Development Status :: 4 - Beta",
+        "Environment :: Console",
+        "Intended Audience :: Developers",
+        "License :: OSI Approved :: MIT License",
+        "Topic :: Internet :: WWW/HTTP :: Browsers",
+        "Typing :: Typed",
+    ):
+        assert needed in classifiers, f"missing classifier {needed}"
+    for version in ("3.12", "3.13", "3.14"):
+        assert f"Programming Language :: Python :: {version}" in classifiers
+
+
+def test_the_package_ships_its_data_files():
+    package = PYPROJECT.parent / "jev_ra"
+    assert (package / "py.typed").exists()
+    assert (package / "browser" / "snapshot.js").exists()
+    assert sorted(item.name for item in (package / "bench" / "pages").iterdir()) == [
+        "catalog.html",
+        "checkout.html",
+    ]
+
+
+def test_the_social_preview_is_the_size_github_wants():
+    from PIL import Image
+
+    with Image.open(PYPROJECT.parent / "assets" / "social-preview.png") as image:
+        assert image.size == (1280, 640)
+
+
+def test_the_npm_keywords_cover_how_people_will_look_for_it():
+    import json
+
+    keywords = json.loads((PYPROJECT.parent / "npm" / "package.json").read_text())["keywords"]
+    for needed in ("mcp", "mcp-server", "browser-automation", "claude-code", "codex"):
+        assert needed in keywords
 
 
 def test_the_server_command_prefers_an_installed_entry_point():

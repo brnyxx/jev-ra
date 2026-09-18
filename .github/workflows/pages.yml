@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - "docs/index.html"
+      - "docs/assets-site/**"
       - "assets/**"
       - ".github/workflows/pages.yml"
   workflow_dispatch:
@@ -29,6 +30,7 @@ jobs:
           mkdir -p site
           cp docs/index.html site/index.html
           cp -R assets site/assets
+          if [ -d docs/assets-site ]; then cp -R docs/assets-site/. site/; fi
           test -f site/assets/hero.png
           test -f site/assets/mark-dark-512.png
           test -f site/assets/demo/flights-side-by-side.mp4

@@ -50,6 +50,12 @@ def test_the_landing_page_assets_exist():
         assert (ROOT / reference).exists(), f"docs/index.html points at {reference}"
 
 
+def test_the_pages_workflow_carries_the_maintainer_site_files_too():
+    text = PAGES.read_text()
+    assert "docs/assets-site/**" in text
+    assert "cp -R docs/assets-site/. site/" in text
+
+
 def test_the_pages_workflow_assembles_the_landing_page_with_its_assets():
     text = PAGES.read_text()
     assert text.startswith("name: pages\n")
