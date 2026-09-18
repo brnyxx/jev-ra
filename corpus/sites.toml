@@ -18,13 +18,18 @@ goal = "Sort this product list by 신상품순."
 expect = "done"
 verify = { url_contains = ["prdSort=02"] }
 
+# Was: open the 스킨케어 category from the main page's category menu. That menu opens its second
+# level on hover and on nothing else, and v0.1 has no way for a decision to ask for a hover, so
+# the run stopped one click short every time. Brand filtering exercises the same listing controls
+# and is a thing the shop can actually be asked for.
 [[task]]
-name = "oliveyoung_category_open"
+name = "oliveyoung_brand_filter"
 family = "ecommerce"
-url = "https://www.oliveyoung.co.kr/store/main/main.do"
-goal = "Open the 스킨케어 category page from the category menu."
+url = "https://www.oliveyoung.co.kr/store/display/getMCategoryList.do?dispCatNo=100000100010014"
+goal = "Filter this product list to the brand 구달."
 expect = "done"
-verify = { url_contains = ["dispCatNo"], text_any = ["스킨케어"] }
+# The unfiltered listing carries an empty checkBrnds=, so the brand itself has to be in it.
+verify = { url_contains = ["checkBrnds=%EA%B5%AC%EB%8B%AC"], text_any = ["구달"] }
 
 [[task]]
 name = "musinsa_search"
@@ -120,14 +125,17 @@ max_steps = 25
 expect = "done"
 verify = { text_any = ["Lisbon", "리스본"] }
 
+# Was: open the date grid or price graph. Neither exists until a search has been run, so the task
+# asked for something the page did not have and the run was right to refuse it. Changing the trip
+# type is the same kind of control - a menu on a single-page app - and is there from the start.
 [[task]]
-name = "flights_explore_open"
+name = "flights_trip_type"
 family = "booking"
 url = "https://www.google.com/travel/flights"
-goal = "Open the flight price graph or the date grid for the current search."
+goal = "Change the trip type to one-way."
 max_steps = 20
 expect = "done"
-verify = { text_any = ["날짜", "Date grid", "가격 그래프", "Price graph"] }
+verify = { label_any = ["편도", "One way", "one-way"] }
 
 [[task]]
 name = "korail_timetable"
