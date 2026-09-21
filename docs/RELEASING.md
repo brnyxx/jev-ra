@@ -42,6 +42,12 @@ runner cannot answer an interactive prompt, so `NPM_TOKEN` must be a token that 
 an OTP challenge (npm's automation token). If the `npm` job stops at the OTP prompt, rotate the
 token and re-run the job, as below.
 
+A dead token does not say so: `npm publish` answers `404 Not Found - PUT
+https://registry.npmjs.org/jev-ra` and `'jev-ra@0.1.0' is not in this registry` (seen on the first
+0.1.0 run, 2026-09-21). Check the token with `npm whoami`; `E401` means it is expired or revoked.
+Create a new one and set the secret again. The package page on npmjs.com keeps showing the 0.0.1
+placeholder README until a publish succeeds; the README that ships is `npm/README.md`.
+
 ## Enable the publish jobs
 
 The publish jobs also require two repository variables (Settings > Secrets and variables > Actions
