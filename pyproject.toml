@@ -6,7 +6,7 @@ readme = "README.md"
 license = "MIT"
 requires-python = ">=3.12"
 authors = [{ name = "Brian Kim" }]
-keywords = ["browser", "mcp", "agent", "cdp", "automation"]
+keywords = ["browser", "browser-automation", "mcp", "mcp-server", "agent", "ai-agent", "cdp", "chrome", "automation", "claude-code", "codex", "cursor", "typesafe", "jev", "web-agent"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
@@ -27,7 +27,7 @@ jev-ra = "jev_ra.cli:main"
 jev-ra-mcp = "jev_ra.mcp_server:main"
 
 [project.urls]
-Homepage = "https://github.com/brnyxx/jev-ra"
+Homepage = "https://brnyxx.github.io/jev-ra/"
 Documentation = "https://github.com/brnyxx/jev-ra/blob/main/docs/USAGE.md"
 Repository = "https://github.com/brnyxx/jev-ra"
 Issues = "https://github.com/brnyxx/jev-ra/issues"

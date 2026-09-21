@@ -30,7 +30,14 @@ Codex asks the user to trust the new MCP server once (`/mcp` inside Codex). Do n
 
 ### npm launcher (no Python setup)
 
-Not published yet. Until it is, use the `uvx` commands above.
+```sh
+npx -y jev-ra install claude     # or: install codex
+npx -y jev-ra doctor
+```
+
+The npm package is a launcher: it finds `uv`, offers to install it if it is missing (`--yes` skips
+the question, `--no-install` refuses and exits 2), and runs `uvx --from jev-ra==<its version> jev-ra`
+with every other argument passed through. The MCP server it registers is still `uvx jev-ra mcp`.
 
 ### Any other MCP client
 

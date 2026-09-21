@@ -25,7 +25,9 @@ def test_the_metadata_is_complete_enough_to_publish():
     assert data["license"] == "MIT"
     assert data["readme"] == "README.md"
     assert set(data["urls"]) == {"Homepage", "Documentation", "Repository", "Issues", "Changelog"}
-    assert all(url.startswith("https://github.com/brnyxx/jev-ra") for url in data["urls"].values())
+    assert data["urls"]["Homepage"] == "https://brnyxx.github.io/jev-ra/"
+    others = (url for name, url in data["urls"].items() if name != "Homepage")
+    assert all(url.startswith("https://github.com/brnyxx/jev-ra") for url in others)
     assert sorted(data["dependencies"]) == ["browser-harness[mcp]>=0.1.13,<0.2", "httpx[http2]>=0.28,<1"]
 
 

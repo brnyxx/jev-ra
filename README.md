@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/logo.svg" alt="jev-ra" width="360">
+  <img src="https://raw.githubusercontent.com/brnyxx/jev-ra/main/assets/logo.svg" alt="jev-ra" width="360">
 </p>
 
 <p align="center">
@@ -8,12 +8,12 @@
   <img alt="Python" src="https://img.shields.io/badge/python-3.12%20%7C%203.13%20%7C%203.14-blue">
   <img alt="MCP" src="https://img.shields.io/badge/MCP-stdio-111">
   <img alt="Chrome" src="https://img.shields.io/badge/Chrome-CDP-111">
-  <a href="LICENSE"><img alt="License" src="https://img.shields.io/badge/license-MIT-green"></a>
+  <a href="https://github.com/brnyxx/jev-ra/blob/main/LICENSE"><img alt="License" src="https://img.shields.io/badge/license-MIT-green"></a>
 </p>
 
-[![jev-ra: browser use for coding agents, 3-5× faster than browser-use](assets/hero.png)](docs/BENCHMARKS.md)
+[![jev-ra: browser use for coding agents, 3-5× faster than browser-use](https://raw.githubusercontent.com/brnyxx/jev-ra/main/assets/hero.png)](https://github.com/brnyxx/jev-ra/blob/main/docs/BENCHMARKS.md)
 
-**English** · [한국어](docs/i18n/README.ko.md) · [日本語](docs/i18n/README.ja.md) · [简体中文](docs/i18n/README.zh-CN.md)
+**English** · [한국어](https://github.com/brnyxx/jev-ra/blob/main/docs/i18n/README.ko.md) · [日本語](https://github.com/brnyxx/jev-ra/blob/main/docs/i18n/README.ja.md) · [简体中文](https://github.com/brnyxx/jev-ra/blob/main/docs/i18n/README.zh-CN.md)
 
 # jev-ra
 
@@ -22,7 +22,7 @@ jev-ra a goal. TypeSafe Jev, a System One decision model, picks the operation *a
 element for every step in one round trip. Your agent plans, supplies the text values, reads what the
 page says, and takes over when jev-ra escalates. No second LLM runs inside the loop.
 
-![jev-ra opening the Gödel incompleteness article in under three seconds](assets/demo/wikipedia.gif)
+![jev-ra opening the Gödel incompleteness article in under three seconds](https://raw.githubusercontent.com/brnyxx/jev-ra/main/assets/demo/wikipedia.gif)
 
 | task | browser-use 0.13.10 + gemini-3-flash `flash_mode` | jev-ra | |
 |---|---|---|---|
@@ -31,7 +31,7 @@ page says, and takes over when jev-ra escalates. No second LLM runs inside the l
 | Olive Young category: sort by 신상품순 | 15,071 ms | **3,806 ms** | **3.96×** |
 
 Medians over 5 runs each, 2026-09-18, same machine, same dedicated Chrome, both through OpenRouter.
-Each run was verified against the final page; 25 of 25 passed with no text-model calls. [Method, p90, cost and raw rows](docs/BENCHMARKS.md).
+Each run was verified against the final page; 25 of 25 passed with no text-model calls. [Method, p90, cost and raw rows](https://github.com/brnyxx/jev-ra/blob/main/docs/BENCHMARKS.md).
 
 ## Quick start
 
@@ -60,8 +60,9 @@ uvx jev-ra run https://en.wikipedia.org/wiki/Main_Page "Open the Godel incomplet
   --value "search_query=Godel incompleteness theorems"
 ```
 
-No Python setup? `npx -y jev-ra install claude` does the same thing through the npm launcher after
-the 0.1.0 release (see [Releases](https://github.com/brnyxx/jev-ra/releases)).
+No Python setup? `npx -y jev-ra install claude` does the same thing through the npm launcher. The
+npm package is a launcher only: it finds `uv`, offers to install it, and runs the PyPI package pinned
+to its own version.
 
 There is no install step either way: `uvx` runs jev-ra straight from PyPI and registers `uvx jev-ra
 mcp` as the server command. For a permanent copy, `uv tool install jev-ra`. The key is forwarded
@@ -190,11 +191,11 @@ Our median against browser-use's fastest single run of each task (15,759 ms, 49,
 17,647 ms) is 5.8×, 5.6× and 4.6×; the headline claim of 3-5× is below that.
 `jev-ra bench --live --runs 5` reproduces this table and prints PASS/FAIL against the v0.1 bar of
 ≥ 3× on every task with a baseline. [Method, the browser-use rows, and how to reproduce
-them](docs/BENCHMARKS.md).
+them](https://github.com/brnyxx/jev-ra/blob/main/docs/BENCHMARKS.md).
 
 jev-ra on the left, browser-use `flash_mode` on the right, same task, same Chrome, real time:
 
-![jev-ra finishes the Google Flights search while browser-use is still opening the trip-type menu](assets/demo/flights-side-by-side.gif)
+![jev-ra finishes the Google Flights search while browser-use is still opening the trip-type menu](https://raw.githubusercontent.com/brnyxx/jev-ra/main/assets/demo/flights-side-by-side.gif)
 
 A run that finishes without doing the task counts as a failure, not as a time.
 
@@ -255,5 +256,5 @@ measured. Chrome is driven through
 [browser-harness](https://github.com/browser-use/browser-harness) (MIT).
 See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
-MIT licensed. [Contributing](CONTRIBUTING.md) · [Security](SECURITY.md) · [Agent guide](AGENTS.md) ·
-[Usage reference](docs/USAGE.md) · [한국어](docs/i18n/README.ko.md)
+MIT licensed. [Contributing](https://github.com/brnyxx/jev-ra/blob/main/CONTRIBUTING.md) · [Security](https://github.com/brnyxx/jev-ra/blob/main/SECURITY.md) · [Agent guide](https://github.com/brnyxx/jev-ra/blob/main/AGENTS.md) ·
+[Usage reference](https://github.com/brnyxx/jev-ra/blob/main/docs/USAGE.md) · [한국어](https://github.com/brnyxx/jev-ra/blob/main/docs/i18n/README.ko.md)
