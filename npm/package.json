@@ -1,6 +1,6 @@
 {
   "name": "jev-ra",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "A fast browser-use layer for CLI coding agents: MCP server, CLI and Python API. This package is a launcher; it runs the Python tool through uv.",
   "keywords": ["browser", "browser-automation", "mcp", "mcp-server", "agent", "ai-agent", "cdp",
     "chrome", "automation", "claude-code", "codex", "cursor", "typesafe", "jev", "web-agent"],

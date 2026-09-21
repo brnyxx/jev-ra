@@ -1,6 +1,14 @@
 # Changelog
 
-## Unreleased
+## 0.1.1 - 2026-09-21
+
+### Fixed
+- The npm launcher did nothing when run the way npm runs it. `node_modules/.bin/jev-ra` is a
+  symlink, so the "am I the entry point" check compared the link's path with the file's and never
+  matched; `npx jev-ra ...` exited 0 without output. The check now compares real paths. 0.1.0 on
+  npm is affected; PyPI 0.1.0 is not.
+
+## 0.1.0 - 2026-09-21
 
 ### Added
 - Jev decisions client with strict answer validation: every choice must be an offered option and the
