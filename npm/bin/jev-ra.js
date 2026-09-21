@@ -8,7 +8,7 @@ import { createInterface } from "node:readline";
 import { fileURLToPath } from "node:url";
 import process from "node:process";
 
-export const PINNED = "0.1.1";
+export const PINNED = "0.1.2";
 export const INSTALL_HINT = [
   "jev-ra runs on uv, which is not on PATH.",
   "Install it with one of:",

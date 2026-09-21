@@ -1,12 +1,34 @@
-# jev-ra (npm launcher)
+<p align="center">
+  <a href="https://brnyxx.github.io/jev-ra/"><img src="https://raw.githubusercontent.com/brnyxx/jev-ra/main/assets/logo.svg" alt="jev-ra" width="360"></a>
+</p>
 
-A fast browser-use layer for CLI coding agents. Claude Code, Codex, or any MCP client hands jev-ra a
+<p align="center">
+  <a href="https://www.npmjs.com/package/jev-ra"><img alt="npm" src="https://img.shields.io/npm/v/jev-ra"></a>
+  <a href="https://pypi.org/project/jev-ra/"><img alt="PyPI" src="https://img.shields.io/pypi/v/jev-ra"></a>
+  <a href="https://github.com/brnyxx/jev-ra/actions/workflows/ci.yml"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/brnyxx/jev-ra/ci.yml?branch=main&label=ci"></a>
+  <img alt="Node" src="https://img.shields.io/badge/node-20%2B-339933">
+  <img alt="MCP" src="https://img.shields.io/badge/MCP-stdio-111">
+  <img alt="Chrome" src="https://img.shields.io/badge/Chrome-CDP-111">
+  <a href="https://github.com/brnyxx/jev-ra/blob/main/LICENSE"><img alt="License" src="https://img.shields.io/badge/license-MIT-green"></a>
+</p>
+
+[![jev-ra: browser use for coding agents, 3-5x faster than browser-use](https://raw.githubusercontent.com/brnyxx/jev-ra/main/assets/hero.png)](https://brnyxx.github.io/jev-ra/)
+
+<p align="center"><a href="https://brnyxx.github.io/jev-ra/">brnyxx.github.io/jev-ra</a> · <a href="https://github.com/brnyxx/jev-ra">GitHub</a> · <a href="https://github.com/brnyxx/jev-ra/blob/main/docs/USAGE.md">CLI and tool reference</a> · <a href="https://github.com/brnyxx/jev-ra/blob/main/docs/BENCHMARKS.md">Benchmarks</a></p>
+
+# jev-ra
+
+**A fast browser-use layer for CLI coding agents.** Claude Code, Codex, or any MCP client hands jev-ra a
 goal; TypeSafe Jev picks the operation and the target element for every step in one round trip, in
-about 300 ms. Measured 3-5x faster than browser-use on the same tasks, same Chrome, same key.
+about 300 ms. Measured 3-5x faster than browser-use on the same tasks, same Chrome, same key. The site
+replays a real recorded run: [brnyxx.github.io/jev-ra](https://brnyxx.github.io/jev-ra/).
 
-**This package contains no jev-ra code.** It is a launcher: it finds [uv](https://docs.astral.sh/uv/),
-offers to install it the first time, and then runs the Python package from PyPI through `uvx`,
-pinned to this package's own version. Use it when you do not want to set Python up yourself.
+## This package is the npm launcher
+
+**It contains no jev-ra code.** It finds [uv](https://docs.astral.sh/uv/), offers to install it the
+first time, and then runs the Python package from PyPI through `uvx`, pinned to this package's own
+version. Use it when you do not want to set Python up yourself. The Python package is
+[jev-ra on PyPI](https://pypi.org/project/jev-ra/); `uvx jev-ra ...` does the same without Node.
 
 ```sh
 export OPENROUTER_API_KEY=sk-or-...

@@ -15,6 +15,8 @@
 
 [English](../../README.md) · [한국어](README.ko.md) · **日本語** · [简体中文](README.zh-CN.md)
 
+**サイト:** [brnyxx.github.io/jev-ra](https://brnyxx.github.io/jev-ra/?lang=ja) で実際に記録した実行を再生し、パイプラインを説明している。
+
 # jev-ra
 
 **CLI コーディングエージェントのための高速なブラウザ操作レイヤー。** Claude Code、Codex、あるいは

@@ -15,6 +15,8 @@
 
 **English** · [한국어](https://github.com/brnyxx/jev-ra/blob/main/docs/i18n/README.ko.md) · [日本語](https://github.com/brnyxx/jev-ra/blob/main/docs/i18n/README.ja.md) · [简体中文](https://github.com/brnyxx/jev-ra/blob/main/docs/i18n/README.zh-CN.md)
 
+**Site:** [brnyxx.github.io/jev-ra](https://brnyxx.github.io/jev-ra/) replays a real recorded run and explains the pipeline.
+
 # jev-ra
 
 **A fast browser-use layer for CLI coding agents.** Claude Code, Codex, or any MCP client hands

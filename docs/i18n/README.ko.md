@@ -15,6 +15,8 @@
 
 [English](../../README.md) · **한국어** · [日本語](README.ja.md) · [简体中文](README.zh-CN.md)
 
+**사이트:** [brnyxx.github.io/jev-ra](https://brnyxx.github.io/jev-ra/?lang=ko)에서 실제 기록된 실행을 재생하고 파이프라인을 설명한다.
+
 # jev-ra
 
 **CLI 코딩 에이전트를 위한 빠른 브라우저 조작 계층.** Claude Code, Codex, 또는 MCP 클라이언트가

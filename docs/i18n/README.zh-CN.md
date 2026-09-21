@@ -15,6 +15,8 @@
 
 [English](../../README.md) · [한국어](README.ko.md) · [日本語](README.ja.md) · **简体中文**
 
+**网站:** [brnyxx.github.io/jev-ra](https://brnyxx.github.io/jev-ra/?lang=zh-CN) 回放一次真实记录的运行并说明流水线。
+
 # jev-ra
 
 **面向 CLI 编码智能体的高速浏览器操作层。** Claude Code、Codex 或任何 MCP 客户端把目标交给

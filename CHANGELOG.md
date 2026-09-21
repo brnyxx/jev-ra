@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.2 - 2026-09-21
+
+### Changed
+- The npm package page carries the same header as the repository: logo, badges, the hero, and links
+  to the site, the reference and the benchmarks. Its homepage is the site. The four READMEs link
+  the site too. No code change.
+
 ## 0.1.1 - 2026-09-21
 
 ### Fixed
