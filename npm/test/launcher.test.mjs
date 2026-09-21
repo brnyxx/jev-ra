@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
+import { mkdtempSync, symlinkSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import test from "node:test";
@@ -61,11 +63,23 @@ test("with uv present the arguments reach the Python entry point", () => {
   const wheel = join(here, "..", "..", "dist");
   const finished = spawnSync(process.execPath, [launcher, "--version"], {
     encoding: "utf8",
-    env: { ...process.env, JEV_RA_FROM: join(wheel, "jev_ra-0.1.0-py3-none-any.whl") },
+    env: { ...process.env, JEV_RA_FROM: join(wheel, `jev_ra-${PINNED}-py3-none-any.whl`) },
   });
   if (finished.status === 2) return; // uv is not installed on this machine
   assert.equal(finished.status, 0);
   assert.match(finished.stdout, /^jev-ra \d+\.\d+\.\d+/);
+});
+
+test("npm runs the bin through a symlink, and the launcher still runs", () => {
+  // node_modules/.bin/jev-ra -> ../jev-ra/bin/jev-ra.js: argv[1] is the link, import.meta.url the file.
+  const link = join(mkdtempSync(join(tmpdir(), "jev-ra-bin-")), "jev-ra");
+  symlinkSync(launcher, link);
+  const finished = spawnSync(process.execPath, [link, "--version", "--no-install"], {
+    encoding: "utf8",
+    env: { ...process.env, PATH: join(here, "empty-path") },
+  });
+  assert.equal(finished.status, 2);
+  assert.match(finished.stderr, /uv, which is not on PATH/);
 });
 
 test("the hint names every supported way to install uv", () => {

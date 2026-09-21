@@ -3,10 +3,12 @@
 // uv builds and caches the Python environment, so there is nothing to install first.
 
 import { execFileSync, spawnSync } from "node:child_process";
+import { realpathSync } from "node:fs";
 import { createInterface } from "node:readline";
+import { fileURLToPath } from "node:url";
 import process from "node:process";
 
-export const PINNED = "0.1.0";
+export const PINNED = "0.1.1";
 export const INSTALL_HINT = [
   "jev-ra runs on uv, which is not on PATH.",
   "Install it with one of:",
@@ -83,6 +85,16 @@ export async function main(argv = process.argv.slice(2)) {
   }
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+// npm installs the bin as a symlink, so argv[1] is the link and import.meta.url the file it points at.
+function invokedDirectly(argv1 = process.argv[1]) {
+  if (!argv1) return false;
+  try {
+    return realpathSync(argv1) === realpathSync(fileURLToPath(import.meta.url));
+  } catch {
+    return false;
+  }
+}
+
+if (invokedDirectly()) {
   process.exitCode = await main();
 }
