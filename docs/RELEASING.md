@@ -117,6 +117,26 @@ Each prints the key, the route, Chrome and one live decision; the last line is
 `decision: DONE in <n> ms via <model>`. The `npx` run exercises the npm launcher, which contains no
 jev-ra code and runs the same pinned Python package through `uvx`.
 
+## If the `pypi` job says `invalid-publisher`
+
+The OIDC token was valid but pypi.org has no publisher whose four values match the claims the job
+prints (`repository_owner`, `repository`, `workflow_ref`, `environment`). Both 0.1.x runs on
+2026-09-21 failed this way. Compare the project's publishing settings
+(https://pypi.org/manage/project/jev-ra/settings/publishing/) with the claims in the log, letter
+for letter; the environment name is the one most often left blank.
+
+Until it matches, upload what CI built rather than a local build, so the files on PyPI are the
+ones the run tested:
+
+```sh
+gh run download <run id> --dir /tmp/jev-ra-release        # the `dist` artifact of the tag's run
+uv run --with twine twine check /tmp/jev-ra-release/dist/*
+uv run --with twine twine upload --non-interactive /tmp/jev-ra-release/dist/*
+```
+
+`twine` reads the API token from `~/.pypirc` (`username = __token__`). The `npm` job is not
+affected; do not re-run `pypi` after a manual upload, the version exists and PyPI rejects it.
+
 ## If PyPI succeeds and npm fails
 
 The `pypi` and `npm` jobs share only the `build` job; neither depends on the other, so a failed
