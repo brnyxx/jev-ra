@@ -81,7 +81,7 @@ def test_the_release_workflow_publishes_the_npm_launcher_with_provenance():
     assert "vars.NPM_PUBLISH == 'true'" in text
     assert "NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}" in text
     assert "npm pack --dry-run" in text
-    assert 'node --test "test/*.test.mjs"' in text
+    assert "npm test" in text  # package.json spells the glob; Node 20 does not expand a quoted one
 
 
 def test_every_version_in_the_repository_agrees():
