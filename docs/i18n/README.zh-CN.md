@@ -71,23 +71,9 @@ uvx jev-ra run https://en.wikipedia.org/wiki/Main_Page "Open the Godel incomplet
 
 ## 工作方式
 
-```
-  你的智能体                       jev-ra                              Chrome
- ──────────────              ───────────────                      ─────────────
-  目标 + values  ──────────▶  observe ─────────────────────────▶  snapshot.js
-                              │   元素、守卫、页面 marker        ◀──── 一次 eval
-                              ▼
-                              一次请求：操作？目标？
-                              值？prev_ok？goal_achieved？   ──▶  Jev  (~300 ms)
-                              │
-                              ▼
-                              新鲜度守卫 ──▶ act ──────────────▶  可信的 CDP 输入
-                              │                                    (不是 JS 点击)
-                              ▼
-                              校验 url/title/text/字段状态
-                              │
-       Result  ◀──────────────┴── done · blocked · escalate · budget
-```
+![单步流程:观察、决策、执行、验证、结束或返回,以及与 browser-use 相比的每步耗时](https://raw.githubusercontent.com/brnyxx/jev-ra/main/assets/readme-step.svg)
+
+![架构:你的代理通过 MCP 与 jev-ra 通信;jev-ra 通过 DevTools Protocol 驱动 Chrome,每步向 TypeSafe Jev 询问一次](https://raw.githubusercontent.com/brnyxx/jev-ra/main/assets/readme-architecture.svg)
 
 每一步一次决策。输入到页面的文本只有你提供的值。
 

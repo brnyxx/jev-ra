@@ -74,23 +74,9 @@ Python を用意したくない場合は、`npx -y jev-ra install claude` でも
 
 ## 仕組み
 
-```
-  あなたのエージェント              jev-ra                              Chrome
- ────────────────────         ───────────────                      ─────────────
-  ゴール + values  ────────▶  observe ─────────────────────────▶  snapshot.js
-                              │   要素、ガード、ページ marker    ◀──── eval 1 回
-                              ▼
-                              1 回のリクエスト: 操作? 対象?
-                              値? prev_ok? goal_achieved?    ──▶  Jev  (~300 ms)
-                              │
-                              ▼
-                              鮮度ガード ──▶ act ──────────────▶  信頼された CDP 入力
-                              │                                    (JS クリックではない)
-                              ▼
-                              url/title/text/フィールド状態を検証
-                              │
-       Result  ◀──────────────┴── done · blocked · escalate · budget
-```
+![1 ステップの流れ: 観察、判断、実行、検証、終了または返却、そして browser-use と比べたステップあたりの時間](https://raw.githubusercontent.com/brnyxx/jev-ra/main/assets/readme-step.svg)
+
+![アーキテクチャ: エージェントは MCP で jev-ra と話し、jev-ra は DevTools Protocol で Chrome を動かし、ステップごとに一度 TypeSafe Jev に問う](https://raw.githubusercontent.com/brnyxx/jev-ra/main/assets/readme-architecture.svg)
 
 ステップごとに判断 1 回。ページに入力される文字列はあなたが渡した値
 だけだ。

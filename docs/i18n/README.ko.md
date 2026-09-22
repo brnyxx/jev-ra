@@ -72,23 +72,9 @@ Python을 따로 갖추기 싫다면 `npx -y jev-ra install claude`가 npm 런�
 
 ## 동작 방식
 
-```
-  당신의 에이전트                  jev-ra                              Chrome
- ────────────────            ───────────────                      ─────────────
-  목표 + values  ──────────▶  observe ─────────────────────────▶  snapshot.js
-                              │   요소, 가드, 페이지 marker      ◀──── eval 한 번
-                              ▼
-                              한 번의 요청: 연산? 대상?
-                              값? prev_ok? goal_achieved?    ──▶  Jev  (~300 ms)
-                              │
-                              ▼
-                              신선도 가드 ──▶ act ─────────────▶  신뢰된 CDP 입력
-                              │                                    (JS 클릭 아님)
-                              ▼
-                              url/title/text/필드 상태 검증
-                              │
-       Result  ◀──────────────┴── done · blocked · escalate · budget
-```
+![한 스텝의 동작: 관찰, 결정, 실행, 검증, 종료 또는 반환, 그리고 browser-use 대비 스텝당 시간](https://raw.githubusercontent.com/brnyxx/jev-ra/main/assets/readme-step.svg)
+
+![아키텍처: 에이전트는 MCP 로 jev-ra 와 말하고, jev-ra 는 DevTools Protocol 로 Chrome 을 움직이며 스텝마다 한 번 TypeSafe Jev 에 묻는다](https://raw.githubusercontent.com/brnyxx/jev-ra/main/assets/readme-architecture.svg)
 
 단계마다 결정 하나. 페이지에 입력되는 텍스트는 당신이 준
 값뿐이다.

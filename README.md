@@ -79,23 +79,9 @@ would not run.
 
 ## How it works
 
-```
-  your agent                      jev-ra                              Chrome
- ────────────                ───────────────                      ─────────────
-  goal + values  ──────────▶  observe ─────────────────────────▶  snapshot.js
-                              │   elements, guards, page marker  ◀──── one eval
-                              ▼
-                              one request: operation? target?
-                              value? prev_ok? goal_achieved?  ──▶  Jev  (~300 ms)
-                              │
-                              ▼
-                              freshness guard ──▶ act ──────────▶  trusted CDP input
-                              │                                    (no JS clicks)
-                              ▼
-                              verify url/title/text/fields
-                              │
-       Result  ◀──────────────┴── done · blocked · escalate · budget
-```
+![How a step works: observe, decide, act, verify, finish or return, and the wall time per step against browser-use](https://raw.githubusercontent.com/brnyxx/jev-ra/main/assets/readme-step.svg)
+
+![Architecture: your agent talks to jev-ra over MCP; jev-ra drives Chrome over the DevTools Protocol and asks TypeSafe Jev once per step](https://raw.githubusercontent.com/brnyxx/jev-ra/main/assets/readme-architecture.svg)
 
 One decision per step. The only text typed into the page is text you supplied.
 
