@@ -101,8 +101,8 @@ def decider(script, latency_ms=300, cost=0.0002):
     return decide
 
 
-def agent_with(decide, session=None, env=None):
-    return Agent(session=session or FakeSession(), config=config.load(env or {}), decide=decide)
+def agent_with(decide, session=None, env=None, **options):
+    return Agent(session=session or FakeSession(), config=config.load(env or {}), decide=decide, **options)
 
 
 CLICK_SUBMIT = {"operation": answer("CLICK"), "click_target": answer("e2"), "goal_achieved": {"noul": 0.1}}
@@ -296,7 +296,9 @@ def clicks_offered(questions):
 
 def run_over_suggestions(script, pages=None):
     decide = decider(script)
-    agent = agent_with(decide, session=FakeSession(pages or suggesting_pages()))
+    # These tests read the state the settled page produces; a prefetched guess would sit at that
+    # index first and be thrown away, which is the prefetch's own tests' business, not theirs.
+    agent = agent_with(decide, session=FakeSession(pages or suggesting_pages()), prefetch=False)
     result = agent.run("search for a city", values={"city": "Zurich"})
     return decide, result
 
@@ -363,7 +365,7 @@ def test_one_list_closing_as_another_opens_still_counts_as_opened():
         DONE,
     ]
     decide = decider(script)
-    agent = agent_with(decide, session=FakeSession([page(0), listed, swapped, swapped]))
+    agent = agent_with(decide, session=FakeSession([page(0), listed, swapped, swapped]), prefetch=False)
     agent.run("search for a city", values={"city": "Zurich"})
     offered = clicks_offered(decide.seen[2][1])
     assert any("Busan" in text for text in offered)
