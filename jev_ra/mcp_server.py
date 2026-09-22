@@ -1,5 +1,6 @@
 """MCP stdio server. One browser session per process, shared by every tool."""
 
+import inspect
 import logging
 import os
 import signal
@@ -88,7 +89,7 @@ class Browser:
                 "browser-harness pins one browser per process."
             )
         if self.session is None:
-            self.session = self.session_factory(profile=profile or self.profile)
+            self.session = build(self.session_factory, profile or self.profile)
             self.profile = profile or self.profile
         return self.session
 
@@ -146,6 +147,15 @@ def checked_values(values):
     if total > MAX_VALUE_CHARS:
         raise ToolError(f"values takes at most {MAX_VALUE_CHARS} characters in all; {total} were supplied")
     return values
+
+
+def build(factory, profile):
+    """Call a session factory with the profile when it takes one; every older factory takes nothing."""
+    try:
+        takes = "profile" in inspect.signature(factory).parameters
+    except (TypeError, ValueError):
+        takes = False
+    return factory(profile=profile) if takes else factory()
 
 
 def refuse(_state, _questions):

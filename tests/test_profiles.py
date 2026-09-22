@@ -73,7 +73,10 @@ def test_a_named_profile_is_not_overruled_by_bu_cdp_url(monkeypatch, tmp_path):
     # The whole point of asking for a profile is which cookie jar the run gets, so a named
     # profile outranks the ambient Chrome the default profile would have reused.
     assert chrome.ensure(env=env, profile="work") == ("http://127.0.0.1:45002", "launched")
-    assert chrome.ensure(env=env) == ("http://127.0.0.1:45002", "BU_CDP_URL")
+    # The default profile then sees the named launch's url in the environment. It is not one it
+    # wrote, and here nothing answers at it, so it is reported rather than silently replaced.
+    with pytest.raises(chrome.ChromeError, match="BU_CDP_URL"):
+        chrome.ensure(env=env)
 
 
 def test_a_daemon_holding_another_chrome_is_refused_rather_than_driven():

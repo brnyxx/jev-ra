@@ -398,9 +398,10 @@ def ensure(env=None, viewport=(1280, 900), allow_launch=True, profile=None):
         LAUNCHED_URL = None
     port = read_port(profile)
     if port and alive(url_for(port)):
-        LAUNCHED_URL = url_for(port)
-        env["BU_CDP_URL"] = LAUNCHED_URL
-        return LAUNCHED_URL, "reused"
+        if not named:
+            LAUNCHED_URL = url_for(port)
+        env["BU_CDP_URL"] = url_for(port)
+        return url_for(port), "reused"
     if not allow_launch:
         raise ChromeError("No automation Chrome is running and launching is disabled")
     binary = find_browser(env=env)
@@ -410,9 +411,11 @@ def ensure(env=None, viewport=(1280, 900), allow_launch=True, profile=None):
             "or start your own and export BU_CDP_URL."
         )
     port = start(binary, profile, viewport)
-    LAUNCHED_URL = url_for(port)
-    env["BU_CDP_URL"] = LAUNCHED_URL
-    return LAUNCHED_URL, "launched"
+    if not named:
+        LAUNCHED_URL = url_for(port)
+    env["BU_CDP_URL"] = url_for(port)
+    return url_for(port), "launched"
+
 
 def start(binary, profile, viewport):
     """Launch Chrome and return its port, giving up the sandbox only when Chrome asks us to."""
