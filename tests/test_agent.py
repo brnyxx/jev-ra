@@ -339,6 +339,37 @@ def test_typing_that_opened_no_list_opens_nothing():
     assert any("Open City" in text for text in clicks_offered(decide.seen[1][1]))
 
 
+SECOND_LIST_ACTIONS = [
+    *FORM_ACTIONS,
+    {"id": "e5", "node": 5, "role": "option", "kind": "click", "label": "Busan"},
+    {"id": "e6", "node": 6, "role": "option", "kind": "click", "label": "Seoul"},
+]
+
+SECOND_LIST_ELEMENTS = [
+    *FORM_ELEMENTS,
+    {"ref": "e5", "node": 5, "role": "option", "label": "Busan", "rect": {}},
+    {"ref": "e6", "node": 6, "role": "option", "label": "Seoul", "rect": {}},
+]
+
+
+def test_one_list_closing_as_another_opens_still_counts_as_opened():
+    """Google Flights: a second origin field opens its own list as the first one's closes."""
+    listed = {**page(1), "elements": SUGGESTION_ELEMENTS, "actions": SUGGESTION_ACTIONS}
+    swapped = {**page(2), "elements": SECOND_LIST_ELEMENTS, "actions": SECOND_LIST_ACTIONS}
+    assert len(SUGGESTION_ACTIONS) == len(SECOND_LIST_ACTIONS)
+    script = [
+        TYPE_CITY,
+        {"operation": answer("CLICK"), "click_target": answer("e1"), "goal_achieved": {"noul": 0.1}},
+        DONE,
+    ]
+    decide = decider(script)
+    agent = agent_with(decide, session=FakeSession([page(0), listed, swapped, swapped]))
+    agent.run("search for a city", values={"city": "Zurich"})
+    offered = clicks_offered(decide.seen[2][1])
+    assert any("Busan" in text for text in offered)
+    assert not any("Open City" in text for text in offered)
+
+
 def walled(text, url="http://127.0.0.1/wall.html"):
     return {**page(0, url=url, text=text), "doc_text": text}
 

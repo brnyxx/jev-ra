@@ -3,7 +3,7 @@
 import json
 from dataclasses import dataclass, field
 
-from ..browser.actions import element_view
+from ..browser.actions import LIST_ROLES, element_view
 from .questions import (
     CANDIDATES,
     GOAL_ACHIEVED,
@@ -93,6 +93,24 @@ def offered_targets(space, exclude=()):
     return kept
 
 
+def expanded_controls(space, opened):
+    """The nodes whose suggestion list is open: what the last step opened, and what says so.
+
+    The step that opened a list is the first evidence, and it runs out: a field can be replaced by
+    the panel it opened, and a panel's own field can be pressed without anything new appearing. The
+    second evidence is the page's, and it does not run out - a combobox marked expanded on a page
+    that is showing options has its list up, whatever the last step was.
+    """
+    nodes = {opened["node"]} if opened and opened.get("listbox") else set()
+    if any(element.get("role") in LIST_ROLES for element in space.elements):
+        nodes |= {
+            element.get("node")
+            for element in space.elements
+            if element.get("role") == "combobox" and str(element.get("expanded", "")).lower() == "true"
+        }
+    return nodes
+
+
 def reopened(space, opened):
     """The CLICK on a control whose own suggestion list is open.
 
@@ -100,12 +118,11 @@ def reopened(space, opened):
     like the obvious next step - it is the thing the last action was about - and taking it closes
     the list the goal needs, so the run types, presses, types again and gets nowhere.
     """
-    if not opened or not opened.get("listbox"):
+    nodes = expanded_controls(space, opened)
+    if not nodes:
         return set()
     return {
-        ("CLICK", target)
-        for target, action in space.targets.get("CLICK", {}).items()
-        if action.get("node") == opened["node"]
+        ("CLICK", target) for target, action in space.targets.get("CLICK", {}).items() if action.get("node") in nodes
     }
 
 

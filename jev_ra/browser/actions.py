@@ -19,6 +19,10 @@ ACCEPT = re.compile(r"\b(accept|agree|ok)\b|同意|동의", re.IGNORECASE)
 # A wall is taken by pressing something. A checkbox that says "I agree" is a field in a form, not
 # the way past a wall, and narrowing a page down to one would strand the run on it.
 ACCEPT_ROLES = frozenset({"button", "link"})
+# What a suggestion list is made of. `listbox` is never observed as an element of its own, so in
+# practice the options are the list; it is named here because a page that offers one is saying
+# the same thing.
+LIST_ROLES = frozenset({"listbox", "option"})
 
 
 @dataclass(frozen=True)

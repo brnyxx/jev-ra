@@ -8,6 +8,7 @@ from dataclasses import asdict, dataclass, field, replace
 from urllib.parse import urlsplit
 
 from .browser import actions
+from .browser.actions import LIST_ROLES
 from .browser.session import Session
 from .config import load, redact
 from .decide.client import DecisionClient
@@ -138,10 +139,6 @@ def speculate(page, action, text):
     return {**page, "elements": elements, "actions": [*offered, *controls]}
 # The two operations that can put something new on the page without leaving it.
 OPENING = ("CLICK", "TYPE_TEXT")
-# What a suggestion list is made of. `listbox` is never observed as an element of its own, so in
-# practice the options are the list; it is named here because a page that offers one is saying
-# the same thing.
-LIST_ROLES = frozenset({"listbox", "option"})
 
 
 @dataclass
@@ -306,7 +303,8 @@ class Agent:
                 # nowhere to scroll at all, wait a beat and judge the same goal again before
                 # giving up; a look that already ran has given the page the same moment.
                 wait = None if look is not None or waited or looks else space.controls.get("WAIT")
-                if look is None and wait is None:
+                chosen = look if look is not None else wait
+                if chosen is None:
                     return run.escalate("unverified_done", page, decision)
                 best = max(best, score)
                 if look is not None:
@@ -317,9 +315,6 @@ class Agent:
                 else:
                     waited = True
                     logger.info("[%s] DONE at %.2f; waiting for the page to finish loading", run.run_id, score)
-                chosen = look if look is not None else wait
-                if chosen is None:
-                    return run.escalate("unverified_done", page, decision)
                 try:
                     self.session.act(chosen, page, timer=timer)
                 except StalePage:
@@ -726,13 +721,17 @@ def revealed(decision, before, after):
     fresh = [element for element in after.get("elements") or () if element.get("node") not in was]
     if not fresh:
         return None
-    listbox = any(element.get("role") in LIST_ROLES for element in fresh)
-    if decision.operation == "TYPE_TEXT" and not listbox:
-        return None
-    if decision.operation == "CLICK" and len(after.get("actions") or ()) <= len(before.get("actions") or ()):
-        return None
     controls = {element.get("node") for element in fresh}
-    return {"node": decision.action.get("node"), "controls": controls, "listbox": listbox}
+    if any(element.get("role") in LIST_ROLES for element in fresh):
+        # Options that were not there a moment ago are the whole evidence. Counting the page's
+        # actions is not: a second origin field opens its own list as the first one's closes, and
+        # the page ends the step offering exactly as many things as it did before.
+        return {"node": decision.action.get("node"), "controls": controls, "listbox": True}
+    if decision.operation == "TYPE_TEXT":
+        return None
+    if len(after.get("actions") or ()) <= len(before.get("actions") or ()):
+        return None
+    return {"node": decision.action.get("node"), "controls": controls, "listbox": False}
 
 
 def suggesting(opened, page):

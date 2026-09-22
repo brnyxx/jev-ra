@@ -160,6 +160,47 @@ def test_a_field_with_its_list_open_is_not_a_click_target():
     assert "e1" in questions["type_text_target"]["criteria"]
 
 
+LISTING = {
+    **PAGE,
+    "elements": [
+        {"ref": "e1", "node": 1, "role": "combobox", "label": "Origin", "value": "Zur", "expanded": "true", "rect": {}},
+        {"ref": "e2", "node": 2, "role": "option", "label": "Zurich Airport (ZRH)", "rect": {}},
+        {"ref": "e3", "node": 3, "role": "button", "label": "Search flights", "rect": {}},
+    ],
+    "actions": [
+        {"id": "e1", "node": 1, "role": "combobox", "kind": "fill", "label": "Origin", "value": "Zur"},
+        {"id": "e1", "node": 1, "role": "combobox", "kind": "click", "label": "Open Origin", "value": "Zur"},
+        {"id": "e2", "node": 2, "role": "option", "kind": "click", "label": "Zurich Airport (ZRH)"},
+        {"id": "e3", "node": 3, "role": "button", "kind": "click", "label": "Search flights"},
+    ],
+}
+
+
+def test_a_combobox_that_says_its_list_is_open_is_not_a_click_target():
+    questions = build_questions(space_for(LISTING), "goal")
+    assert "e1" not in questions["click_target"]["criteria"]
+    assert {"e2", "e3"} <= set(questions["click_target"]["criteria"])
+    assert "e1" in questions["type_text_target"]["criteria"]
+
+
+def test_it_says_so_even_when_the_step_that_opened_it_is_out_of_reach():
+    # Google Flights replaces the field with the panel it opened, so the node the last step named
+    # is not on the page any more. The page's own expanded is what is left to read.
+    questions = build_questions(space_for(LISTING), "goal", opened={"node": 99, "controls": {98}, "listbox": True})
+    assert "e1" not in questions["click_target"]["criteria"]
+
+
+def test_an_expanded_control_with_no_options_up_is_still_a_click_target():
+    no_options = {**LISTING, "elements": [LISTING["elements"][0], LISTING["elements"][2]]}
+    assert "e1" in build_questions(space_for(no_options), "goal")["click_target"]["criteria"]
+
+
+def test_a_combobox_that_says_nothing_about_itself_stays_on_offer():
+    quiet = dict(LISTING)
+    quiet["elements"] = [{k: v for k, v in e.items() if k != "expanded"} for e in LISTING["elements"]]
+    assert "e1" in build_questions(space_for(quiet), "goal")["click_target"]["criteria"]
+
+
 def test_an_opened_panel_that_is_not_a_list_leaves_every_click_on_offer():
     questions = build_questions(space_for(), "goal", opened={"node": 1, "controls": {4}, "listbox": False})
     assert "e1" in questions["click_target"]["criteria"]
