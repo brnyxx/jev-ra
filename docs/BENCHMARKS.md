@@ -151,6 +151,41 @@ cause at a time (`af4247a..f581761`). GitHub's secondary rate limit, which block
 The 0.1.0 bar is this measurement, published. The 0.2 bar is 90 % on the corpus as it stands
 today, re-measured on a tagged commit. The two booking loops and the Seoul check are the open items.
 
+## The same corpus, browser-use on the other side
+
+ runs browser-use 0.13.10 (`flash_mode=True`, gemini-3-flash via OpenRouter,
+`use_vision=False`, the fastest configuration in the recorded baseline) on the same 40 tasks and judges
+every final page with the same `corpus.check` specs. One run per task on 2026-09-22 (raw rows:
+`docs/benchmarks/2026-09-18-v0.1/browser-use-corpus-1run.jsonl`). browser-use closes its tab inside
+`agent.run()`, so its page is judged from the text it extracted itself plus its final answer, which
+favours it: a FAIL here is a FAIL by its own account.
+
+| family | jev-ra (3 runs) | browser-use (1 run) |
+|---|---|---|
+| auth | 15 / 15 | 5 / 5 |
+| booking | 9 / 15 | 2 / 5 |
+| docs_spa | 14 / 15 | 4 / 5 |
+| ecommerce | 12 / 15 | 5 / 5 |
+| forms | 15 / 15 | 3 / 5 |
+| news | 12 / 15 | 4 / 5 |
+| portal | 10 / 15 | 2 / 5 |
+| search_read | 15 / 15 | 4 / 5 |
+| **all** | **102 / 120 = 85 %** | **29 / 40 = 72 %** |
+
+Wall time on passing tasks, median: jev-ra 3.1 s, browser-use 19.4 s
+(p90 5.7 s vs 35.3 s).
+
+The difference that matters most is not in the totals. On the 3 tasks that hold back a value
+on purpose (canvas_drawing, file_upload_picker, httpbin_form_missing_value), browser-use invented the missing input and submitted the form;
+jev-ra escalated `needs_value` every time. An agent that fills a customer name it was never given is
+not a pass, whatever the page says afterwards.
+
+Method notes, so the number can be trusted: 21 of the first pass's rows failed at browser-use's
+`BrowserStartEvent` after 19 back-to-back sessions on one shared Chrome, a harness artefact, not an
+agent failure; those tasks were rerun with a fresh Chrome per task and the reruns replace the broken
+rows. The port 9333 first chosen for that Chrome was held by Docker on 127.0.0.1, so Chrome bound
+IPv6 only; 9444 was used.
+
 ## Cost and latency per call
 
 | measurement | value |
