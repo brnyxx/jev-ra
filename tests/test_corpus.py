@@ -1,4 +1,5 @@
 import json
+from datetime import date
 from pathlib import Path
 from typing import ClassVar
 
@@ -363,3 +364,25 @@ def test_a_text_check_reads_typographic_punctuation_as_what_it_stands_for():
     assert corpus.check({"text_contains": ['the "new" release']}, row) == (True, "")
     assert corpus.check({"text_contains": ["3.14 - the"]}, row) == (True, "")
     assert corpus.check({"text_any": ["What's Old"]}, row)[0] is False
+
+
+def test_a_spec_date_written_as_today_plus_days_is_the_day_the_run_happens_on(tmp_path):
+    path = tmp_path / "sites.toml"
+    path.write_text(
+        """[[task]]
+name = "trip"
+family = "booking"
+url = "https://example.com"
+goal = "Fly out on {today+30}, back {today}."
+values = { departure_date = "{today+30}", note = "fixed" }
+"""
+    )
+    (task,) = corpus.load_tasks(path, today=date(2026, 9, 22))
+    assert task.goal == "Fly out on 2026-10-22, back 2026-09-22."
+    assert task.values == {"departure_date": "2026-10-22", "note": "fixed"}
+
+
+def test_the_flights_task_always_asks_for_a_departure_a_month_ahead():
+    task = next(t for t in corpus.load_tasks(today=date(2026, 9, 22)) if t.name == "flights_zrh_lon_oneway")
+    assert task.values["departure_date"] == "2026-10-22"
+    assert "2026-10-22" in task.goal

@@ -109,8 +109,8 @@ verify = { url_contains = ["search"], text_any = ["arXiv:", "Submitted"] }
 name = "flights_zrh_lon_oneway"
 family = "booking"
 url = "https://www.google.com/travel/flights"
-goal = "Search one-way flights from Zurich to London departing 2026-09-20 and show the list of results."
-values = { origin = "Zurich", destination = "London", departure_date = "2026-09-20" }
+goal = "Search one-way flights from Zurich to London departing {today+30} and show the list of results."
+values = { origin = "Zurich", destination = "London", departure_date = "{today+30}" }
 max_steps = 25
 expect = "done"
 verify = { url_contains = ["tfs="], text_any = ["취리히", "Zurich", "ZRH"] }

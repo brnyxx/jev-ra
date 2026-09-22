@@ -7,11 +7,12 @@ because a run that finishes fast without doing the task is a failure, not a time
 
 import json
 import logging
+import re
 import statistics
 import time
 import tomllib
 from dataclasses import dataclass, field
-from datetime import date
+from datetime import date, timedelta
 from pathlib import Path
 
 from .agent import Agent
@@ -82,10 +83,30 @@ class Task:
         return self.expect.split(":", 1)[1] if ":" in self.expect else None
 
 
-def load_tasks(path=None):
+DATED = re.compile(r"\{today([+-]\d+)?\}")
+
+
+def dated(value, today=None):
+    """A spec string with every `{today+N}` replaced by that day.
+
+    A booking task written with a fixed date stops being possible the day after it: a picker
+    offers no yesterday.
+    """
+    if not isinstance(value, str) or "{today" not in value:
+        return value
+    base = today or date.today()
+    return DATED.sub(lambda m: (base + timedelta(days=int(m.group(1) or 0))).isoformat(), value)
+
+
+def load_tasks(path=None, today=None):
     """Every task in the corpus file, in declaration order."""
     data = tomllib.loads(Path(path or SITES).read_text())
-    return [Task(**entry) for entry in data.get("task", [])]
+    tasks = []
+    for entry in data.get("task", []):
+        entry = dict(entry, goal=dated(entry["goal"], today))
+        entry["values"] = {key: dated(value, today) for key, value in entry.get("values", {}).items()}
+        tasks.append(Task(**entry))
+    return tasks
 
 
 def families(tasks):
