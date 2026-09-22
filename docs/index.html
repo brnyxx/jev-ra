@@ -235,7 +235,7 @@
 
   <header class="hero">
     <div>
-      <p class="hud"><i></i>v0.1 · MCP server + CLI · MIT</p>
+      <p class="hud"><i></i>v0.2 · MCP server + CLI · MIT</p>
       <h1>Browser use for coding agents.<br><span class="accent">3-5x faster than browser-use.</span></h1>
       <p class="sub">Claude Code, Codex or any MCP client sends a goal. TypeSafe Jev picks the next click or keystroke in about 300 ms. Your agent supplies the text to type, reads the page, and gets control back when jev-ra cannot continue.</p>
       <div class="cta">
@@ -280,7 +280,7 @@
       <div class="node"><div class="dot"><svg class="pi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2 4 14h7l-1 8 9-12h-7l1-8z"/></svg></div><h3>Decide</h3><p>one Jev request with five typed questions: operation, target, which value, did the last step work, is the goal done</p><span class="ms">~300 ms</span></div>
       <div class="node"><div class="dot"><svg class="pi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 3l14 8-6 1.5L9.5 19 5 3z"/></svg></div><h3>Act</h3><p>guard re-checked, geometry re-resolved, hit-tested, then a trusted <code>Input.dispatchMouseEvent</code> / <code>insertText</code></p><span class="ms">trusted input</span></div>
       <div class="node"><div class="dot"><svg class="pi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12.5 9.5 18 20 6.5"/></svg></div><h3>Verify</h3><p>url, title, text and field values diffed before vs after; loop detection on three unchanged pages</p><span class="ms">deterministic</span></div>
-      <div class="node"><div class="dot"><svg class="pi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6v5a4 4 0 0 1-4 4H5"/><path d="m9 11-4 4 4 4"/></svg></div><h3>Finish or return</h3><p><code>DONE</code> is accepted only with <code>goal_achieved ≥ 0.6</code> in the same answer; otherwise the run returns with a reason and the top candidates</p><span class="ms">8 reasons</span></div>
+      <div class="node"><div class="dot"><svg class="pi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6v5a4 4 0 0 1-4 4H5"/><path d="m9 11-4 4 4 4"/></svg></div><h3>Finish or return</h3><p><code>DONE</code> is accepted only with <code>goal_achieved ≥ 0.6</code> in the same answer; otherwise the run returns with a reason and the top candidates</p><span class="ms">10 reasons</span></div>
     </div>
 
     <div class="bars" aria-label="wall time per step">
@@ -408,7 +408,7 @@
       <div><code>too_many_controls</code>over 250 controls in view. Scroll or open the section first.</div>
       <div><code>blocked</code>login, captcha, empty results. Tell the user; do not retry blindly.</div>
       <div><code>invalid_decision</code>an answer not on the page, twice. Re-observe and drive one step yourself.</div>
-      <div><code>blocked_by_site</code>the site served a wall, not a page. It blocks automation; a retry from the same network will not help.</div>
+      <div><code>blocked_by_site</code>the site served a wall or an error page, not a page. An error page was already reloaded once; a wall blocks automation and a retry from the same network will not help.</div>
       <div><code>provider_error</code>the decision provider would not answer. Check the key and route with <code>jev-ra doctor</code>; do not retry the goal.</div>
     </div>
   </section>
@@ -426,6 +426,18 @@
       </tbody>
     </table></div>
     <p class="note" style="margin-top:14px">jev-ra columns are medians of 5 runs (5/5 success each); browser-use columns are the single baseline runs, and its own 5-run medians are slower (24.6 s / 73.8 s / 27.6 s). BENCHMARKS.md carries p90, cost per task and the per-step time breakdown.</p>
+    <div id="acc">
+      <h3 style="margin:36px 0 12px">Accuracy on real sites</h3>
+      <div class="tablewrap"><table>
+        <thead><tr><th>Corpus</th><th>tool</th><th>passed</th><th>rate</th><th>median</th></tr></thead>
+        <tbody>
+          <tr><td>83 tasks, 10 families, 3 runs each (0.2.4)</td><td>jev-ra</td><td class="win">213 / 249</td><td class="win">85.5 %</td><td>-</td></tr>
+          <tr><td>The same 40 tasks for both tools</td><td>jev-ra</td><td class="win">102 / 120</td><td class="win">85 %</td><td class="win">3.1 s</td></tr>
+          <tr><td>The same 40 tasks for both tools</td><td>browser-use flash_mode</td><td>29 / 40</td><td>72 %</td><td>19.4 s</td></tr>
+        </tbody>
+      </table></div>
+      <p class="note" style="margin-top:14px">Every task has a spec that checks the page the run left behind; a run that stops without doing the task is a failure. One three-run pass moves by about five tasks on site weather alone. On two held-back tasks browser-use typed values it was never given.</p>
+    </div>
   </section>
 
   <section id="install">
@@ -466,7 +478,7 @@ uvx jev-ra doctor</pre></div>
     <h2>Limits</h2>
     <p class="lead">These return an escalation with a reason.</p>
     <div class="limits">
-      <div><h3>Out of scope in v0.1</h3><ul><li>Cross-origin iframes (same-origin and open shadow roots work)</li><li>Canvas-drawn UIs</li><li>File uploads</li><li>Captchas, bot walls</li><li>Multi-tab workflows</li></ul></div>
+      <div><h3>Out of scope in v0.2</h3><ul><li>Cross-origin iframes (same-origin and open shadow roots work)</li><li>Canvas-drawn UIs</li><li>File uploads</li><li>Captchas, bot walls</li><li>Multi-tab workflows</li></ul></div>
       <div><h3>By design</h3><ul><li>Types only values your agent supplied; personal data is never guessed</li><li>Model output is never used as a selector or as JavaScript</li><li>Done is reported only after a visible check</li><li>Jev receives visible page text, not file bodies or screenshots</li></ul></div>
     </div>
   </section>
@@ -480,6 +492,7 @@ uvx jev-ra doctor</pre></div>
         <a href="https://www.npmjs.com/package/jev-ra" title="npm"><svg class="ic"><use href="#i-npm"/></svg></a>
       </div>
     </div>
+    <p><a href="https://github.com/brnyxx/jev-ra/blob/main/CHANGELOG.md">Changelog</a> · <a href="https://github.com/brnyxx/jev-ra/releases">Releases</a></p>
     <p>Brand icons from <a href="https://simpleicons.org/">Simple Icons</a> (CC0). Product names and logos belong to their owners and indicate compatibility, not endorsement.</p>
   </footer>
 </div>
