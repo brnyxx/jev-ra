@@ -12,6 +12,7 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
+from ..config import DEFAULT_LOCALE
 from ..errors import ChromeError
 
 logger = logging.getLogger(__name__)
@@ -238,6 +239,13 @@ def platform_flags(platform=None, env=None, uid=None, read=None, version=None):
     return tuple(flags)
 
 
+def locale_flags(locale=DEFAULT_LOCALE):
+    """What a browser is told so it asks sites for one language rather than the machine's."""
+    if not locale:
+        return ()
+    return (f"--lang={locale}", f"--accept-lang={locale}")
+
+
 def complaint(profile):
     """The last thing Chrome said before it gave up, if it said anything."""
     try:
@@ -248,7 +256,7 @@ def complaint(profile):
     return spoken[-1] if spoken else ""
 
 
-def launch(binary, profile, viewport=(1280, 900), env=None, flags=()):
+def launch(binary, profile, viewport=(1280, 900), env=None, flags=(), locale=DEFAULT_LOCALE):
     """Start Chrome on its own profile with an ephemeral debugging port."""
     profile = Path(profile)
     profile.mkdir(parents=True, exist_ok=True)
@@ -265,6 +273,7 @@ def launch(binary, profile, viewport=(1280, 900), env=None, flags=()):
         f"--user-data-dir={profile}",
         f"--window-size={viewport[0]},{viewport[1]}",
         *FLAGS,
+        *locale_flags(locale),
         *platform_flags(env=env, version=browser_version(binary)),
         *flags,
         "about:blank",
@@ -373,7 +382,7 @@ def remembered(url, profile):
     return port is not None and url == url_for(port)
 
 
-def ensure(env=None, viewport=(1280, 900), allow_launch=True, profile=None):
+def ensure(env=None, viewport=(1280, 900), allow_launch=True, profile=None, locale=DEFAULT_LOCALE):
     """Return (cdp_url, source) where source is 'BU_CDP_URL', 'reused' or 'launched'.
 
     A named profile is asked for because of the cookies in it, so it outranks an ambient
@@ -410,20 +419,21 @@ def ensure(env=None, viewport=(1280, 900), allow_launch=True, profile=None):
             "No Chrome, Chromium or Edge found. Install one, set JEV_RA_CHROME to its path, "
             "or start your own and export BU_CDP_URL."
         )
-    port = start(binary, profile, viewport)
+    port = start(binary, profile, viewport, locale)
     if not named:
         LAUNCHED_URL = url_for(port)
     env["BU_CDP_URL"] = url_for(port)
     return url_for(port), "launched"
 
 
-def start(binary, profile, viewport):
+def start(binary, profile, viewport, locale=DEFAULT_LOCALE):
     """Launch Chrome and return its port, giving up the sandbox only when Chrome asks us to."""
-    process = launch(binary, profile, viewport)
+    process = launch(binary, profile, viewport, locale=locale)
     try:
         return wait_for_port(profile, process)
     except ChromeError:
         if not sandbox_refused(profile):
             raise
     logger.warning("Chrome could not start its own sandbox on this machine; launching it without one")
-    return wait_for_port(profile, launch(binary, profile, viewport, flags=("--no-sandbox",)))
+    relaunched = launch(binary, profile, viewport, flags=("--no-sandbox",), locale=locale)
+    return wait_for_port(profile, relaunched)

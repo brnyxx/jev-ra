@@ -18,6 +18,11 @@ SERVE_PORT = 8765
 
 KEY_VARIABLES = ("JEV_RA_API_KEY", "TYPESAFE_API_KEY", "OPENROUTER_API_KEY")
 DEFAULT_TEXT_BASE_URL = "https://api.openai.com/v1"
+# A site serves the language the browser asks for, and the browser asks for the machine's. On a
+# Korean desktop flightaware.com and uniqlo.com answered a run in Korean, which is a different
+# page from the one the goal was written against. An operator who wants the machine's own
+# language back says so with a blank value.
+DEFAULT_LOCALE = "en-US"
 ENV_VARIABLES = (
     *KEY_VARIABLES,
     "JEV_RA_ENDPOINT",
@@ -25,6 +30,7 @@ ENV_VARIABLES = (
     "JEV_RA_CHROME",
     "BU_CDP_URL",
     "JEV_RA_VIEWPORT",
+    "JEV_RA_LOCALE",
     "JEV_RA_MAX_STEPS",
     "JEV_RA_MAX_DECISIONS",
     "JEV_RA_TIMEOUT_S",
@@ -95,6 +101,7 @@ class Config:
     api_key: str | None = None
     key_variable: str | None = None
     text_model: TextModel | None = None
+    locale: str = DEFAULT_LOCALE
     viewport: Viewport = field(default_factory=Viewport)
     budgets: Budgets = field(default_factory=Budgets)
     block_resources: bool = True
@@ -236,6 +243,14 @@ def read_text_model(env, stored):
     )
 
 
+def read_locale(env, stored):
+    """The locale the browser is asked for, or an empty string when the machine's own is wanted."""
+    value = env.get("JEV_RA_LOCALE")
+    if value is None:
+        value = stored.get("locale")
+    return DEFAULT_LOCALE if value is None else str(value).strip()
+
+
 def resolve_key(env, stored):
     """The first key the environment offers, and where it came from."""
     for name in KEY_VARIABLES:
@@ -268,6 +283,7 @@ def load(env=None, path=None):
         api_key=api_key,
         key_variable=key_variable,
         text_model=read_text_model(env, stored.get("text_model")),
+        locale=read_locale(env, stored),
         viewport=read_viewport(env.get("JEV_RA_VIEWPORT") or stored.get("viewport")),
         budgets=read_budgets(env, stored.get("budgets")),
         block_resources=read_flag(env.get("JEV_RA_BLOCK_RESOURCES", stored.get("block_resources")), True),

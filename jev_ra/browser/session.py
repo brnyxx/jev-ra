@@ -229,7 +229,9 @@ class Session:
         self.moved_from = None
         self.cache = {}
         viewport = self.config.viewport
-        self.cdp_url, self.chrome_source = ensure_chrome(viewport=(viewport.width, viewport.height), profile=profile)
+        self.cdp_url, self.chrome_source = ensure_chrome(
+            viewport=(viewport.width, viewport.height), profile=profile, locale=self.config.locale
+        )
         ensure_daemon()
         verify_attached(self.cdp_url)
         if self.chrome_source == "launched":
@@ -251,6 +253,7 @@ class Session:
             )
             # Keep rAF and menus rendering in an owned background tab without stealing focus.
             self.call("Emulation.setFocusEmulationEnabled", enabled=True)
+            self.speak(self.config.locale)
             self.blocked = self.block_resources() if self.config.block_resources else []
         except Exception:
             # Nobody else has the id of a target whose setup failed, so this is the only chance to
@@ -261,6 +264,31 @@ class Session:
                 except Exception:
                     logger.warning("Could not close target %s after its setup failed", self.target_id)
             raise
+
+    def speak(self, locale):
+        """Ask this target for one language, so an attached Chrome serves what a launched one does.
+
+        Two things say which language a page comes back in, and the launch flags only set them on
+        a Chrome jev-ra started itself. `Emulation.setLocaleOverride` moves this target's own
+        locale; the site's copy is chosen from `Accept-Language`, which the override leaves alone -
+        measured against a loopback echo, an overridden target still asked for the machine's
+        language. A browser that refuses either is still a browser that serves pages, so the
+        refusal is reported and the run goes on.
+        """
+        if not locale:
+            return False
+        spoken = True
+        for method, params in (
+            ("Emulation.setLocaleOverride", {"locale": locale}),
+            ("Network.enable", {}),
+            ("Network.setExtraHTTPHeaders", {"headers": {"Accept-Language": locale}}),
+        ):
+            try:
+                self.call(method, **params)
+            except (ChromeError, StalePage) as error:
+                logger.warning("The browser would not answer %s for %s: %s", method, locale, error)
+                spoken = False
+        return spoken
 
     def block_resources(self, urls=BLOCKED_URLS):
         """Stop this target fetching the given URL patterns."""

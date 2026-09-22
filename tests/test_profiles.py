@@ -46,7 +46,7 @@ def test_a_named_profile_is_launched_on_its_own_directory(monkeypatch, tmp_path)
     monkeypatch.setattr(chrome, "alive", lambda _url, timeout=2.0: False)
     monkeypatch.setattr(chrome, "find_browser", lambda **_k: "/opt/chrome")
     launched = []
-    monkeypatch.setattr(chrome, "launch", lambda binary, path, viewport: launched.append(path))
+    monkeypatch.setattr(chrome, "launch", lambda binary, path, viewport, **_k: launched.append(path))
     monkeypatch.setattr(chrome, "wait_for_port", lambda *_a, **_k: 45001)
     env = {"XDG_STATE_HOME": str(tmp_path)}
     assert chrome.ensure(env=env, profile="work") == ("http://127.0.0.1:45001", "launched")

@@ -93,7 +93,7 @@ def test_a_dead_profile_port_leads_to_a_launch(monkeypatch, tmp_path):
     monkeypatch.setattr(chrome, "alive", lambda _url, timeout=2.0: False)
     monkeypatch.setattr(chrome, "find_browser", lambda **_k: "/opt/chrome")
     launched = []
-    monkeypatch.setattr(chrome, "launch", lambda binary, path, viewport: launched.append(binary))
+    monkeypatch.setattr(chrome, "launch", lambda binary, path, viewport, **_k: launched.append(binary))
     monkeypatch.setattr(chrome, "wait_for_port", lambda *_a, **_k: 45000)
     env = {"XDG_STATE_HOME": str(tmp_path)}
     assert chrome.ensure(env=env) == ("http://127.0.0.1:45000", "launched")
@@ -111,7 +111,7 @@ def test_a_chrome_whose_sandbox_cannot_start_is_launched_once_more_without_it(mo
     )
     launches = []
 
-    def launch(binary, path, viewport=(1280, 900), flags=()):
+    def launch(binary, path, viewport=(1280, 900), flags=(), locale=""):
         launches.append(tuple(flags))
         return None
 
@@ -312,7 +312,7 @@ def test_a_remembered_url_that_is_dead_is_dropped_and_a_new_chrome_starts(monkey
     monkeypatch.setattr(chrome, "alive", lambda _url, timeout=2.0: False)
     monkeypatch.setattr(chrome, "find_browser", lambda **_k: "/opt/chrome")
     launched = []
-    monkeypatch.setattr(chrome, "launch", lambda binary, path, viewport: launched.append(binary))
+    monkeypatch.setattr(chrome, "launch", lambda binary, path, viewport, **_k: launched.append(binary))
     monkeypatch.setattr(chrome, "wait_for_port", lambda *_a, **_k: 45000)
     env = {"XDG_STATE_HOME": str(tmp_path), "BU_CDP_URL": "http://127.0.0.1:41234"}
     assert chrome.ensure(env=env) == ("http://127.0.0.1:45000", "launched")

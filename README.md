@@ -275,6 +275,7 @@ field and invents values. You can still configure one with `JEV_RA_TEXT_MODEL`.
 | `JEV_RA_CHROME` | path to the browser binary to launch |
 | `BU_CDP_URL` | an existing Chrome to drive instead of launching one |
 | `JEV_RA_VIEWPORT` | e.g. `1280x900` (the default) |
+| `JEV_RA_LOCALE` | the language the browser asks sites for; default `en-US`, blank for the machine's |
 | `JEV_RA_MAX_STEPS`, `JEV_RA_MAX_DECISIONS`, `JEV_RA_TIMEOUT_S` | budgets (40 / 80 / 120) |
 | `JEV_RA_BLOCK_RESOURCES` | `0` to stop blocking fonts and media |
 | `JEV_RA_ALLOW_FILE_URLS` | `1` to let a session open `file:` URLs |
