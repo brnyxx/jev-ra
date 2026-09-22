@@ -1,0 +1,15 @@
+.git
+.github
+.venv
+assets
+corpus
+docs
+examples
+npm
+scripts
+tests
+*.egg-info
+__pycache__
+.pytest_cache
+.ruff_cache
+uv.lock

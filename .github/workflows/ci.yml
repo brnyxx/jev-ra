@@ -80,3 +80,19 @@ jobs:
 
       - name: Browser tests must have run
         run: uv run pytest -q -m browser --no-cov
+
+  image:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build the image
+        run: docker build -t jev-ra:ci .
+
+      # No key here on purpose: the image is answering whether it found a Chrome of its own, and
+      # doctor exits 1 without a key after it has said so.
+      - name: The image finds its own Chrome
+        run: |
+          docker run --rm jev-ra:ci doctor --json > doctor.json || true
+          cat doctor.json
+          python -c "import json; assert json.load(open('doctor.json'))['chrome']['ok']"

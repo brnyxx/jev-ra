@@ -40,7 +40,7 @@ def test_the_workflow_is_well_formed():
     blocks(text)
     assert text.startswith("name: ci\n")
     assert re.search(r"^jobs:$", text, re.MULTILINE)
-    assert text.count("steps:") == 1
+    assert text.count("steps:") == 2
 
 
 def test_the_release_workflow_is_well_formed():

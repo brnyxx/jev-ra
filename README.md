@@ -71,6 +71,12 @@ There is no install step either way: `uvx` runs jev-ra straight from PyPI and re
 mcp` as the server command. For a permanent copy, `uv tool install jev-ra`. The key is forwarded
 from the variable you already exported and is never printed.
 
+No Chrome on the machine either? The repository's `Dockerfile` builds an image with a Chromium in
+it: `docker build -t jev-ra .` then `docker run --rm -e OPENROUTER_API_KEY jev-ra doctor`. Chrome's
+own sandbox needs a user namespace a container's seccomp profile usually refuses, so jev-ra
+launches it once, reads what it said, and starts it again without the sandbox when that is why it
+would not run.
+
 ## How it works
 
 ```

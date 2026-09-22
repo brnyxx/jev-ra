@@ -516,15 +516,17 @@ def cmd_doctor(args):
         f"model: {config.model}",
         f"text model: {report['text_model'] or 'none (host supplies values)'}",
     ]
-    if not config.api_key:
-        lines.append("Set JEV_RA_API_KEY, TYPESAFE_API_KEY or OPENROUTER_API_KEY, then run `jev-ra doctor` again.")
-        emit(args, report, lines)
-        return 1
+    # Chrome is checked before the key gate: whether a browser answers has nothing to do with a
+    # key, and an image or a fresh machine is worth checking before anyone has set one.
     ok, detail, source = chrome_check(config, getattr(args, "profile", None))
     report["chrome"] = {"ok": ok, "detail": detail, "source": source}
     lines.append(f"chrome: {'ok, ' + detail if ok else 'unreachable'}")
     if not ok:
         lines.append(chrome_hint(find_browser()))
+    if not config.api_key:
+        lines.append("Set JEV_RA_API_KEY, TYPESAFE_API_KEY or OPENROUTER_API_KEY, then run `jev-ra doctor` again.")
+        emit(args, report, lines)
+        return 1
     client = DecisionClient(config)
     started = time.perf_counter()
     try:

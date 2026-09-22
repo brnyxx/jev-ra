@@ -100,6 +100,60 @@ def test_a_dead_profile_port_leads_to_a_launch(monkeypatch, tmp_path):
     assert launched == ["/opt/chrome"]
 
 
+def test_a_chrome_whose_sandbox_cannot_start_is_launched_once_more_without_it(monkeypatch, tmp_path):
+    # A container is the case: the kernel would allow an unprivileged user namespace and the
+    # seccomp profile refuses the syscall, which nothing under /proc says in advance.
+    profile = tmp_path / "jev-ra" / "chrome-profile"
+    profile.mkdir(parents=True)
+    (profile / chrome.STDERR_LOG).write_text(
+        "Failed to move to new namespace: PID namespaces supported, but failed: errno = Operation not permitted\n"
+        "[7:7] FATAL:zygote_host_impl_linux.cc(213)] Zygote process exited prematurely with exit code 1\n"
+    )
+    launches = []
+
+    def launch(binary, path, viewport=(1280, 900), flags=()):
+        launches.append(tuple(flags))
+        return None
+
+    monkeypatch.setattr(chrome, "alive", lambda _url, timeout=2.0: False)
+    monkeypatch.setattr(chrome, "find_browser", lambda **_k: "/usr/bin/chromium")
+    monkeypatch.setattr(chrome, "launch", launch)
+    ports = iter([chrome.ChromeError("Chrome exited with code 1"), 46000])
+
+    def wait_for_port(*_args, **_kwargs):
+        outcome = next(ports)
+        if isinstance(outcome, Exception):
+            raise outcome
+        return outcome
+
+    monkeypatch.setattr(chrome, "wait_for_port", wait_for_port)
+    assert chrome.ensure(env={"XDG_STATE_HOME": str(tmp_path)}) == ("http://127.0.0.1:46000", "launched")
+    assert launches == [(), ("--no-sandbox",)]
+
+
+def test_every_way_chrome_blames_its_sandbox_is_recognised(tmp_path):
+    for complaint in ("No usable sandbox!", "Failed to move to new namespace", "Zygote process exited prematurely"):
+        (tmp_path / chrome.STDERR_LOG).write_text(f"[1:1] ERROR: {complaint} something\n")
+        assert chrome.sandbox_refused(tmp_path) is True
+    (tmp_path / chrome.STDERR_LOG).write_text("[1:1] ERROR: the display is not there\n")
+    assert chrome.sandbox_refused(tmp_path) is False
+    assert chrome.sandbox_refused(tmp_path / "gone") is False
+
+
+def test_a_chrome_that_failed_for_another_reason_is_not_relaunched(monkeypatch, tmp_path):
+    profile = tmp_path / "jev-ra" / "chrome-profile"
+    profile.mkdir(parents=True)
+    (profile / chrome.STDERR_LOG).write_text("[39:39] ERROR: the display is not there\n")
+    launches = []
+    monkeypatch.setattr(chrome, "alive", lambda _url, timeout=2.0: False)
+    monkeypatch.setattr(chrome, "find_browser", lambda **_k: "/usr/bin/chromium")
+    monkeypatch.setattr(chrome, "launch", lambda *_a, **kwargs: launches.append(kwargs.get("flags", ())))
+    monkeypatch.setattr(chrome, "wait_for_port", lambda *_a, **_k: (_ for _ in ()).throw(chrome.ChromeError("dead")))
+    with pytest.raises(chrome.ChromeError, match="dead"):
+        chrome.ensure(env={"XDG_STATE_HOME": str(tmp_path)})
+    assert launches == [()]
+
+
 def test_no_browser_anywhere_is_a_clear_error(monkeypatch, tmp_path):
     monkeypatch.setattr(chrome, "alive", lambda _url, timeout=2.0: False)
     monkeypatch.setattr(chrome, "find_browser", lambda **_k: None)

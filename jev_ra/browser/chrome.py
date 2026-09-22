@@ -248,7 +248,7 @@ def complaint(profile):
     return spoken[-1] if spoken else ""
 
 
-def launch(binary, profile, viewport=(1280, 900), env=None):
+def launch(binary, profile, viewport=(1280, 900), env=None, flags=()):
     """Start Chrome on its own profile with an ephemeral debugging port."""
     profile = Path(profile)
     profile.mkdir(parents=True, exist_ok=True)
@@ -266,6 +266,7 @@ def launch(binary, profile, viewport=(1280, 900), env=None):
         f"--window-size={viewport[0]},{viewport[1]}",
         *FLAGS,
         *platform_flags(env=env, version=browser_version(binary)),
+        *flags,
         "about:blank",
     ]
     logger.info("Launching %s on %s", binary, profile)
@@ -278,6 +279,30 @@ def launch(binary, profile, viewport=(1280, 900), env=None):
     # Its own session means nothing reaps it when we exit, so record who to stop later.
     (profile / PID_FILE).write_text(f"{process.pid}\n")
     return process
+
+
+# The three ways Chrome says its sandbox could not start, measured in a python:3.12-slim
+# container: without chromium-sandbox it names the sandbox, and with it the SUID helper dies on
+# the namespace the seccomp profile refuses, taking the zygote with it.
+SANDBOX_COMPLAINTS = (
+    "no usable sandbox",
+    "failed to move to new namespace",
+    "zygote process exited prematurely",
+)
+
+
+def sandbox_refused(profile):
+    """Whether the Chrome that just died blamed its own sandbox.
+
+    A container is the case this exists for: the kernel would allow an unprivileged user
+    namespace and the seccomp profile refuses the syscall, so nothing under /proc says in advance
+    that the sandbox cannot start. Chrome says it, once, on the way out.
+    """
+    try:
+        text = (Path(profile) / STDERR_LOG).read_text(errors="replace").lower()
+    except OSError:
+        return False
+    return any(phrase in text for phrase in SANDBOX_COMPLAINTS)
 
 
 def said(message, profile):
@@ -384,8 +409,18 @@ def ensure(env=None, viewport=(1280, 900), allow_launch=True, profile=None):
             "No Chrome, Chromium or Edge found. Install one, set JEV_RA_CHROME to its path, "
             "or start your own and export BU_CDP_URL."
         )
-    process = launch(binary, profile, viewport)
-    port = wait_for_port(profile, process)
+    port = start(binary, profile, viewport)
     LAUNCHED_URL = url_for(port)
     env["BU_CDP_URL"] = LAUNCHED_URL
     return LAUNCHED_URL, "launched"
+
+def start(binary, profile, viewport):
+    """Launch Chrome and return its port, giving up the sandbox only when Chrome asks us to."""
+    process = launch(binary, profile, viewport)
+    try:
+        return wait_for_port(profile, process)
+    except ChromeError:
+        if not sandbox_refused(profile):
+            raise
+    logger.warning("Chrome could not start its own sandbox on this machine; launching it without one")
+    return wait_for_port(profile, launch(binary, profile, viewport, flags=("--no-sandbox",)))
