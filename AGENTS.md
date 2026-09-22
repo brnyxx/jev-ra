@@ -89,6 +89,7 @@ Rules that keep it fast and safe:
 | `budget` | steps or time ran out. Narrow the goal or split it |
 | `too_many_controls` | more than 250 controls in view. Scroll or open the relevant section first, then retry |
 | `blocked` | nothing on the page can progress (login, captcha, empty results). Tell the user what you see; do not retry blindly |
+| `blocked_by_site` | the site served a wall instead of a page. Tell the user the site blocks automation; retrying from the same network will not help |
 | `invalid_decision` | the model answered with something that is not on the page, twice. Re-observe and drive the step yourself with `browser_click` |
 
 Report escalations to the user in one sentence with what you tried; do not loop more than twice on the same reason.

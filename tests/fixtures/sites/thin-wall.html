@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>.</title>
+<style>body { font: 14px/1.5 system-ui; margin: 0; padding: 48px; }</style>
+</head>
+<body>
+<!-- The other wall: no words at all, served for every address asked for. A single page this
+     thin is an ordinary login form; a host that answers every open this way is refusing. -->
+<a id="next" href="/sites/thin-wall.html?n=1">next</a>
+<script>
+  const seen = Number(new URLSearchParams(location.search).get('n') || 0);
+  document.getElementById('next').href = '/sites/thin-wall.html?n=' + (seen + 1);
+</script>
+</body>
+</html>

@@ -4,6 +4,7 @@ import logging
 import time
 import uuid
 from dataclasses import asdict, dataclass, field, replace
+from urllib.parse import urlsplit
 
 from .browser import actions
 from .browser.session import Session
@@ -34,6 +35,14 @@ LOOK_GAIN = 0.02
 # A ref names an element in the observation it came from. When the caller quotes that observation's
 # page_key, the ref is only honoured if the page still reads the same; otherwise observe again.
 STALE_OBSERVATION = "the page changed since that observation, observe again"
+# What a site says when it has decided the caller is a machine. None of it is something a
+# decision can act on, and reporting it as BLOCKED says the task was impossible rather than that
+# the site would not serve it. Matched lowercased, against everything the opened page says.
+WALL_PHRASES = ("captcha", "접속이 차단", "unusual traffic", "bots use", "access denied")
+# A wall that says nothing at all still says it every time. One thin page is an ordinary login
+# form; three opens in a row on one host that answer with nothing is the host answering.
+THIN_TEXT_CHARS = 200
+THIN_OPENS = 3
 
 
 @dataclass
@@ -126,6 +135,9 @@ class Agent:
         page = self.read(self.session.open, url) if url else self.read(self.session.observe)
         if page is None:
             return run.escalate("stale", BLANK_PAGE, detail={"error": "The page never settled to be read."})
+        wall = run.walled(page)
+        if wall:
+            return run.escalate("blocked_by_site", page, detail={"wall": wall})
         exclude, stale_retries, looks, reasked = set(), 0, 0, False
         best, waited, reasked_value = 0.0, False, False
         opened = None
@@ -266,6 +278,9 @@ class Agent:
             before, page = page, after
             run.record(decision, before, page, text, timer)
             opened = revealed(decision, before, page)
+            wall = run.walled(page, before)
+            if wall:
+                return run.escalate("blocked_by_site", page, decision, detail={"wall": wall})
             stuck = run.stuck(space)
             if stuck:
                 return run.escalate(stuck, page, decision)
@@ -363,6 +378,7 @@ class _Run:
         self.steps = []
         self.decisions = 0
         self.cost = 0.0
+        self.opens = ()
 
     def elapsed_ms(self):
         """Milliseconds since the run started."""
@@ -408,6 +424,30 @@ class _Run:
                 "page_changed": changed,
             }
         )
+
+    def walled(self, page, before=None):
+        """How this site is refusing to serve the machine, or an empty string.
+
+        Only a page the run opened is read this way. A wall answers a fresh address with a
+        challenge, a refusal, or with nothing at all, and it answers every address that way; a
+        page the run is still working on says nothing about the host.
+        """
+        text = page_text(page)
+        lowered = text.lower()
+        phrase = next((phrase for phrase in WALL_PHRASES if phrase in lowered), "")
+        if phrase:
+            return f"the page answered with {phrase!r}"
+        url = page.get("url", "")
+        if before is not None and url == before.get("url", ""):
+            return ""
+        host = urlsplit(url).hostname or ""
+        if not host or len(text.strip()) >= THIN_TEXT_CHARS:
+            self.opens = ()
+            return ""
+        self.opens = (*self.opens, host) if not self.opens or self.opens[-1] == host else (host,)
+        if len(self.opens) < THIN_OPENS:
+            return ""
+        return f"{host} answered {THIN_OPENS} opens with under {THIN_TEXT_CHARS} characters"
 
     def stuck(self, space):
         """The escalation reason if the run is going nowhere, else None."""

@@ -264,6 +264,49 @@ def test_a_scroll_never_claims_to_have_opened_anything():
     assert all("expanded" not in element for element in decide.seen[1][0]["elements"])
 
 
+def walled(text, url="http://127.0.0.1/wall.html"):
+    return {**page(0, url=url, text=text), "doc_text": text}
+
+
+def test_a_page_that_answers_with_a_refusal_is_the_site_refusing():
+    decide = decider([CLICK_SUBMIT])
+    agent = agent_with(decide, session=FakeSession([walled("Access Denied. Try again later.")]))
+    result = agent.run("search the shop")
+    assert (result.status, result.reason) == ("escalate", "blocked_by_site")
+    assert result.detail["wall"] == "the page answered with 'access denied'"
+    assert result.decisions == 0
+
+
+def test_every_listed_wall_phrase_is_read_as_one():
+    from jev_ra.agent import WALL_PHRASES
+
+    for phrase in WALL_PHRASES:
+        session = FakeSession([walled(f"Before {phrase.upper()} after")])
+        result = agent_with(decider([CLICK_SUBMIT]), session=session).run("search the shop")
+        assert result.reason == "blocked_by_site", phrase
+
+
+def test_three_opens_on_one_host_that_say_nothing_are_the_host_saying_it():
+    pages = [walled("nothing", url=f"http://127.0.0.1/{n}.html") for n in range(4)]
+    result = agent_with(decider([CLICK_SUBMIT]), session=FakeSession(pages)).run("search the shop")
+    assert (result.status, result.reason) == ("escalate", "blocked_by_site")
+    assert result.detail["wall"] == "127.0.0.1 answered 3 opens with under 200 characters"
+    assert len(result.steps) == 2
+
+
+def test_a_thin_page_the_run_never_left_is_not_a_wall():
+    result = agent_with(decider([CLICK_SUBMIT]), session=FakeSession([walled("nothing")] * 4)).run("search the shop")
+    assert result.reason != "blocked_by_site"
+
+
+def test_one_open_that_says_enough_clears_the_count():
+    long_enough = "word " * 60
+    pages = [walled("nothing", url="http://127.0.0.1/1.html"), walled(long_enough, url="http://127.0.0.1/2.html")]
+    pages += [walled("nothing", url=f"http://127.0.0.1/{n}.html") for n in (3, 4)]
+    result = agent_with(decider([CLICK_SUBMIT]), session=FakeSession(pages)).run("search the shop")
+    assert result.reason != "blocked_by_site"
+
+
 def test_blocked_is_reported_as_blocked_with_candidates():
     blocked = {
         "operation": answer("BLOCKED", {"BLOCKED": 0.7, "CLICK": 0.2, "TYPE_TEXT": 0.05, "WAIT": 0.05}),
