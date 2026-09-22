@@ -44,6 +44,21 @@ packages = ["jev_ra"]
 [tool.hatch.build.targets.wheel.force-include]
 "AGENTS.md" = "jev_ra/AGENTS.md"
 
+# The brand assets, landing page and npm launcher are for the repository and the site, not a
+# source tarball: listing what an sdist carries keeps it a package rather than the whole repo.
+[tool.hatch.build.targets.sdist]
+include = [
+    "jev_ra/**",
+    "tests/**",
+    "scripts/**",
+    "corpus/**",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md",
+    "AGENTS.md",
+    "pyproject.toml",
+]
+
 [dependency-groups]
 # pillow renders the side-by-side benchmark GIFs in scripts/; it is not a runtime dependency.
 dev = ["pytest>=8.4,<9", "pytest-cov>=6,<8", "ruff>=0.14,<1", "ty>=0.0.82,<0.1", "pillow>=11,<14"]

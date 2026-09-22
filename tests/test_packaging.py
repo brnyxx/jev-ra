@@ -56,6 +56,22 @@ def test_the_package_ships_its_data_files():
     ]
 
 
+def test_the_sdist_ships_the_package_and_not_the_brand():
+    targets = tomllib.loads(PYPROJECT.read_text())["tool"]["hatch"]["build"]["targets"]
+    assert targets["sdist"]["include"] == [
+        "jev_ra/**",
+        "tests/**",
+        "scripts/**",
+        "corpus/**",
+        "README.md",
+        "LICENSE",
+        "CHANGELOG.md",
+        "AGENTS.md",
+        "pyproject.toml",
+    ]
+    assert not any(pattern.startswith(("assets", "docs", "npm")) for pattern in targets["sdist"]["include"])
+
+
 def test_the_social_preview_is_the_size_github_wants():
     from PIL import Image
 
