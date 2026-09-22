@@ -8,7 +8,7 @@
   <img alt="Python" src="https://img.shields.io/badge/python-3.12%20%7C%203.13%20%7C%203.14-blue"">
   <img alt="MCP" src="https://img.shields.io/badge/MCP-stdio-111"">
   <img alt="Chrome" src="https://img.shields.io/badge/Chrome-CDP-111"">
-  <a href="LICENSE"><img alt="License" src="https://img.shields.io/badge/license-MIT-green""></a>
+  <a href="../../LICENSE"><img alt="License" src="https://img.shields.io/badge/license-MIT-green"></a>
 </p>
 
 [![jev-ra: 코딩 에이전트를 위한 브라우저 조작, browser-use보다 3-5× 빠르다](../../assets/hero.png)](../BENCHMARKS.md)
@@ -176,6 +176,10 @@ Jev가 *당신이 준* 값 중 어느 것이 그 필드에 들어갈지 고른�
 검증은 결정론적이다. 매 행동 뒤 url, title, text, 필드 상태를 비교하고, `page_changed`는 모델의
 의견이 아니라 페이지의 의미 기반 marker에서 나온다.
 
+에러 페이지로 답하는 사이트(HTTP 5xx·429, 또는 스스로 에러라고 말하는 짧은 페이지)는 무엇도 결정하기 전에
+2초 기다렸다가 한 번 다시 불러온다. 그래도 에러면 실행은 `blocked_by_site`로 멈추고 `detail.wall`에
+상태(`"http 502"`)를 적는다. 사이트가 잠깐 앓는 순간을 조작할 페이지로 착각하지 않는다.
+
 ## 벤치마크
 
 다섯 과제, 각 5회 실행, 모든 실행을 남긴 페이지 기준으로 검증했다:
@@ -202,6 +206,15 @@ Jev가 *당신이 준* 값 중 어느 것이 그 필드에 들어갈지 고른�
 ![browser-use가 아직 티켓 유형 메뉴를 여는 동안 jev-ra는 항공편 검색을 끝낸다](../../assets/demo/flights-side-by-side.gif)
 
 과제를 해내지 못하고 끝난 실행은 시간이 아니라 실패로 센다.
+
+### 실제 사이트 정확도
+
+코퍼스는 열 개 계열(검색, 쇼핑, 예약, 폼, 문서, 뉴스, 포털, 로그인 벽, 일본어·중국어 사이트)의 실제
+사이트 과제 83개이고, 과제마다 실행이 남긴 페이지를 검사하는 명세가 있다. 0.2.4에서 과제당 세 번:
+**213 / 249 = 85.5 %**. 두 도구에 똑같이 준 과제 40개에서 browser-use 0.13.10 `flash_mode`는
+**29 / 40 = 72 %**, 중앙값 **19.4 s**였고 jev-ra는 **102 / 120 = 85 %**, 중앙값 **3.1 s**였다.
+세 번 돌리는 한 판은 사이트 사정만으로 다섯 과제쯤 흔들리므로, 변경은 과제별 재실행이 같은 결과를 낼 때만
+득실로 센다. [과제별 행과 흔들림 측정](https://github.com/brnyxx/jev-ra/blob/main/docs/BENCHMARKS.md).
 
 ## 하지 않는 것
 
@@ -265,3 +278,5 @@ MIT 라이선스. [기여 안내](../../CONTRIBUTING.md) · [보안](../../SECUR
 [에이전트 가이드](../../AGENTS.md) · [사용 레퍼런스](../USAGE.md)
 
 [English](../../README.md) · **한국어** · [日本語](README.ja.md) · [简体中文](README.zh-CN.md)
+
+[변경 내역](../../CHANGELOG.md) · [릴리스](https://github.com/brnyxx/jev-ra/releases)

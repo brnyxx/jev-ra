@@ -215,6 +215,11 @@ as it should read with that input applied and nothing else changed. If the settl
 anything the guess did not, the answer is thrown away and the question asked again.
 `Result.speculations` and `Result.prefetched` count how often that paid off.
 
+A site that answers with an error page (HTTP 5xx or 429, or a short page that says so) is waited out
+for two seconds and reloaded once before anything is decided on it; if it still answers with an
+error, the run stops with `blocked_by_site` and `detail.wall` names the status (`"http 502"`), so a
+site's bad minute is never mistaken for a page to act on.
+
 ## Benchmarks
 
 Five tasks, five runs each, every run verified against the page it left behind:
@@ -241,6 +246,16 @@ jev-ra on the left, browser-use `flash_mode` on the right, same task, same Chrom
 ![jev-ra finishes the Google Flights search while browser-use is still opening the trip-type menu](https://raw.githubusercontent.com/brnyxx/jev-ra/main/assets/demo/flights-side-by-side.gif)
 
 A run that finishes without doing the task counts as a failure, not as a time.
+
+### Accuracy on real sites
+
+The corpus is 83 tasks on real sites in ten families (search, e-commerce, booking, forms, docs,
+news, portals, auth walls, Japanese and Chinese sites), each with a spec that checks the page the
+run left behind. On 0.2.4, three runs each: **213 / 249 = 85.5 %**. On the forty tasks both tools
+were given, browser-use 0.13.10 `flash_mode` passed **29 / 40 = 72 %** with a median of **19.4 s**;
+jev-ra passed **102 / 120 = 85 %** with a median of **3.1 s**. A single three-run pass moves by
+about five tasks on site weather alone, so a change counts only when a per-task rerun agrees.
+[Per-task rows and the noise measurement](https://github.com/brnyxx/jev-ra/blob/main/docs/BENCHMARKS.md).
 
 ## What it will not do
 
@@ -310,3 +325,5 @@ See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
 MIT licensed. [Contributing](https://github.com/brnyxx/jev-ra/blob/main/CONTRIBUTING.md) · [Security](https://github.com/brnyxx/jev-ra/blob/main/SECURITY.md) · [Agent guide](https://github.com/brnyxx/jev-ra/blob/main/AGENTS.md) ·
 [Usage reference](https://github.com/brnyxx/jev-ra/blob/main/docs/USAGE.md) · [한국어](https://github.com/brnyxx/jev-ra/blob/main/docs/i18n/README.ko.md)
+
+[Changelog](https://github.com/brnyxx/jev-ra/blob/main/CHANGELOG.md) · [Releases](https://github.com/brnyxx/jev-ra/releases)

@@ -172,6 +172,10 @@ escalate 还会带上按概率排序的前八个
 校验是确定性的：每次操作后都会比较 url、title、text 和字段状态，`page_changed` 来自页面的语义
 marker，而不是来自模型。
 
+以错误页应答的站点(HTTP 5xx、429，或自称出错的短页面)，在做出任何决定之前先等待 2 秒并重新加载一次；
+若仍是错误，运行以 `blocked_by_site` 停止，并在 `detail.wall` 中写明状态(`"http 502"`)。站点短暂的故障
+不会被当作可以操作的页面。
+
 ## 基准测试
 
 五个任务，各跑 5 次，每次运行都对照它留下的页面做了校验：
@@ -197,6 +201,14 @@ PASS/FAIL。[方法、browser-use 原始数据与复现步骤](../BENCHMARKS.md)
 ![browser-use 还在打开航程类型菜单时，jev-ra 已经完成了航班搜索](../../assets/demo/flights-side-by-side.gif)
 
 没有完成任务就结束的运行计为失败，而不是计入时间。
+
+### 真实站点上的准确率
+
+语料库是十个类别(搜索、电商、预订、表单、文档、新闻、门户、登录墙、日文与中文站点)中的 83 个真实站点任务，
+每个任务都有检查运行结束页面的规格。0.2.4 上每个任务 3 次：**213 / 249 = 85.5 %**。在两款工具都拿到的
+40 个任务上，browser-use 0.13.10 `flash_mode` 通过 **29 / 40 = 72 %**，中位数 **19.4 s**；
+jev-ra 通过 **102 / 120 = 85 %**，中位数 **3.1 s**。一轮 3 次的测量仅因站点状况就会浮动约 5 个任务，
+因此只有逐任务重跑结果一致时，变更才算得失。[逐任务数据与波动测量](https://github.com/brnyxx/jev-ra/blob/main/docs/BENCHMARKS.md)。
 
 ## 不做的事
 
@@ -257,3 +269,5 @@ MIT 许可证。[贡献指南](../../CONTRIBUTING.md) · [安全](../../SECURITY
 [智能体指南](../../AGENTS.md) · [使用参考](../USAGE.md)
 
 [English](../../README.md) · [한국어](README.ko.md) · [日本語](README.ja.md) · **简体中文**
+
+[变更记录](../../CHANGELOG.md) · [发布](https://github.com/brnyxx/jev-ra/releases)
