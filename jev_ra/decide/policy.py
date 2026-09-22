@@ -3,7 +3,7 @@
 import json
 from dataclasses import dataclass, field
 
-from ..browser.actions import LIST_ROLES, element_view
+from ..browser.actions import LIST_ROLES, calendar_control, element_view
 from .questions import (
     CANDIDATES,
     GOAL_ACHIEVED,
@@ -94,15 +94,15 @@ def offered_targets(space, exclude=()):
 
 
 def expanded_controls(space, opened):
-    """The nodes whose suggestion list is open: what the last step opened, and what says so.
+    """The nodes whose list or calendar is open: what the last step opened, and what says so.
 
-    The step that opened a list is the first evidence, and it runs out: a field can be replaced by
-    the panel it opened, and a panel's own field can be pressed without anything new appearing. The
-    second evidence is the page's, and it does not run out - a combobox marked expanded on a page
-    that is showing options has its list up, whatever the last step was.
+    The step that opened a list or calendar is the first evidence, and it runs out: a field can be
+    replaced by the panel it opened, and a panel's own field can be pressed without anything new
+    appearing. The second evidence is the page's, and it does not run out - an expanded combobox
+    on a page showing options has its list up, whatever the last step was.
     """
-    nodes = {opened["node"]} if opened and opened.get("listbox") else set()
-    if any(element.get("role") in LIST_ROLES for element in space.elements):
+    nodes = {opened["node"]} if opened and (opened.get("listbox") or opened.get("calendar")) else set()
+    if any(element.get("role") in LIST_ROLES or calendar_control(element) for element in space.elements):
         nodes |= {
             element.get("node")
             for element in space.elements
@@ -112,18 +112,23 @@ def expanded_controls(space, opened):
 
 
 def reopened(space, opened):
-    """The CLICK on a control whose own suggestion list is open.
+    """Actions on the field that opened a list or calendar while its controls remain visible.
 
-    A field with its suggestions up has already done what pressing it does. Offered again it reads
-    like the obvious next step - it is the thing the last action was about - and taking it closes
-    the list the goal needs, so the run types, presses, types again and gets nowhere.
+    A field with its suggestions or calendar up has already done what pressing it does. Offered
+    again it reads like the obvious next step, and taking it closes the controls the goal needs.
     """
     nodes = expanded_controls(space, opened)
-    if not nodes:
-        return set()
-    return {
+    excluded = {
         ("CLICK", target) for target, action in space.targets.get("CLICK", {}).items() if action.get("node") in nodes
     }
+    if opened and opened.get("calendar"):
+        label = opened.get("label")
+        excluded |= {
+            ("TYPE_TEXT", target)
+            for target, action in space.targets.get("TYPE_TEXT", {}).items()
+            if action.get("node") == opened.get("node") or (label and action.get("label") == label)
+        }
+    return excluded
 
 
 def build_questions(space, goal, history=(), values=None, exclude=(), opened=None):
@@ -164,6 +169,9 @@ def state_elements(elements, opened):
     controls = opened["controls"]
     fresh = [element for element in elements if element.get("node") in controls]
     rest = [element for element in elements if element.get("node") not in controls]
+    if opened.get("calendar"):
+        dates = [element for element in fresh if calendar_control(element)]
+        fresh = [*dates, *(element for element in fresh if not calendar_control(element))]
     views = []
     for element in (*fresh, *rest):
         view = element_view(element)
@@ -183,12 +191,18 @@ def last_step_effect(space, opened):
     """
     if not opened:
         return ""
-    fresh = [element for element in space.elements if element.get("node") in opened["controls"]]
+    opened_controls = [element for element in space.elements if element.get("node") in opened["controls"]]
+    fresh = (
+        [element for element in opened_controls if calendar_control(element)]
+        if opened.get("calendar")
+        else opened_controls
+    )
     if not fresh:
         return ""
     control = next((element for element in space.elements if element.get("node") == opened["node"]), None)
-    what = "suggestions" if opened.get("listbox") else "controls"
-    where = f" under {control['label']}" if control and control.get("label") else ""
+    label = control.get("label") if control else opened.get("label")
+    what = "dates" if opened.get("calendar") else "suggestions" if opened.get("listbox") else "controls"
+    where = f" under {label}" if label else ""
     return f"the last step opened {len(fresh)} {what}{where}, listed first below"
 
 

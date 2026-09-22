@@ -8,7 +8,7 @@ from dataclasses import asdict, dataclass, field, replace
 from urllib.parse import urlsplit
 
 from .browser import actions
-from .browser.actions import LIST_ROLES
+from .browser.actions import LIST_ROLES, calendar_control
 from .browser.session import Session
 from .config import load, redact
 from .decide.client import DecisionClient
@@ -724,6 +724,18 @@ def revealed(decision, before, after):
     if not fresh:
         return None
     controls = {element.get("node") for element in fresh}
+    dates = [element for element in fresh if calendar_control(element)]
+    if len(dates) >= 2:
+        opener = next(
+            (element for element in before.get("elements") or () if element.get("node") == decision.action.get("node")),
+            {},
+        )
+        return {
+            "node": decision.action.get("node"),
+            "controls": controls,
+            "calendar": True,
+            "label": opener.get("label", ""),
+        }
     if any(element.get("role") in LIST_ROLES for element in fresh):
         # Options that were not there a moment ago are the whole evidence. Counting the page's
         # actions is not: a second origin field opens its own list as the first one's closes, and
@@ -737,15 +749,19 @@ def revealed(decision, before, after):
 
 
 def suggesting(opened, page):
-    """The suggestion list an earlier step opened, while its own options are still on the page.
+    """The list or calendar an earlier step opened, while its controls remain on the page.
 
-    A list stays open across the steps that read it, and the field under it stays the wrong thing
-    to press for exactly that long. What proves it is still open is its options, not the step that
-    opened them: once one is chosen the list closes and the field is an ordinary control again.
+    A list or calendar stays open across the steps that read it, and its opener stays the wrong
+    thing to press for exactly that long. What proves it is still open is the controls it exposed:
+    once one is chosen, they disappear and the field is an ordinary control again.
     """
-    if not opened or not opened.get("listbox"):
+    if not opened or not (opened.get("listbox") or opened.get("calendar")):
         return None
-    shown = {element.get("node") for element in page.get("elements") or () if element.get("role") in LIST_ROLES}
+    shown = (
+        {element.get("node") for element in page.get("elements") or () if calendar_control(element)}
+        if opened.get("calendar")
+        else {element.get("node") for element in page.get("elements") or () if element.get("role") in LIST_ROLES}
+    )
     return opened if opened["controls"] & shown else None
 
 

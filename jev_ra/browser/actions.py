@@ -23,6 +23,12 @@ ACCEPT_ROLES = frozenset({"button", "link"})
 # practice the options are the list; it is named here because a page that offers one is saying
 # the same thing.
 LIST_ROLES = frozenset({"listbox", "option"})
+CALENDAR_ROLES = frozenset({"gridcell"})
+DATE_BUTTON = re.compile(
+    r"\b(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|"
+    r"aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\s+\d{1,2},\s+\d{4}\b",
+    re.IGNORECASE,
+)
 
 
 @dataclass(frozen=True)
@@ -143,3 +149,10 @@ def element_view(element):
         if key in element:
             view[key] = element[key]
     return view
+
+
+def calendar_control(element):
+    """Whether an element is a semantic grid cell or a button named with a calendar date."""
+    return element.get("role") in CALENDAR_ROLES or (
+        element.get("role") == "button" and DATE_BUTTON.search(element.get("label") or "") is not None
+    )

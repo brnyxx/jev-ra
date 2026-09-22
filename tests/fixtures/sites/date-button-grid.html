@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Choose a departure date</title>
+<style>
+  body { font: 16px/1.5 system-ui; margin: 24px; }
+  [role="dialog"] { border: 1px solid #888; margin-top: 12px; padding: 12px; width: 360px; }
+  #days { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  button { min-height: 40px; }
+</style>
+</head>
+<body>
+<label for="departure">Departure</label>
+<input id="departure" type="text" aria-label="Departure" autocomplete="off">
+<div id="calendar" role="dialog" aria-label="Departure dates" hidden>
+  <button id="next" type="button" aria-label="Next month">Next</button>
+  <div id="days">
+    <button type="button" aria-label="September 19, 2026">19</button>
+    <button type="button" aria-label="September 20, 2026">20</button>
+    <button type="button" aria-label="September 21, 2026">21</button>
+    <button type="button" aria-label="September 22, 2026">22</button>
+  </div>
+</div>
+<p id="selected"></p>
+<script>
+  const departure = document.getElementById('departure');
+  const calendar = document.getElementById('calendar');
+  departure.addEventListener('click', () => { calendar.hidden = false; });
+  for (const day of document.querySelectorAll('#days button')) {
+    day.addEventListener('click', () => {
+      departure.value = day.getAttribute('aria-label');
+      calendar.hidden = true;
+      document.getElementById('selected').textContent = `Selected departure: ${departure.value}`;
+    });
+  }
+</script>
+</body>
+</html>
