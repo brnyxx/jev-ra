@@ -25,6 +25,7 @@ logger = logging.getLogger(__name__)
 
 __all__ = [
     "PASS_RATE",
+    "VERIFY_KEYS",
     "Task",
     "check",
     "classify",
@@ -49,6 +50,17 @@ QUOTES = "\u2018\u2019\u201a\u201b\u2032\u201c\u201d\u201e\u201f\u2033"
 DASHES = "\u2010\u2011\u2012\u2013\u2014\u2212"
 SPACES = "\u00a0\u202f\u2009"
 TYPESET = str.maketrans(QUOTES + DASHES + SPACES, "'" * 5 + '"' * 5 + "-" * 6 + " " * 3)
+# Every key `check` reads. A spec that carries anything else is a typo that proves nothing and
+# passes silently, so the review script compares a task's spec against this list.
+VERIFY_KEYS = (
+    "url_contains",
+    "url_not_contains",
+    "text_contains",
+    "text_any",
+    "label_any",
+    "active_label",
+    "min_text",
+)
 
 
 @dataclass(frozen=True)

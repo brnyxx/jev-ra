@@ -199,13 +199,17 @@ verify = { text_any = ["browser-use", "Repositories"] }
 
 # ---------------------------------------------------------------- news and pagination
 
+# The url check used to read `bbc.com`, which the index the task starts on already satisfies: a
+# run that opened nothing passed it, and only min_text did any work. Every story on the news
+# index lives under /news/ (articles and videos alike), and the index itself is /news with no
+# slash, so the trailing slash is what says a story was opened. Tighter, and the goal is the same.
 [[task]]
 name = "bbc_open_story"
 family = "news"
 url = "https://www.bbc.com/news"
 goal = "Open the first news story on this page."
 expect = "done"
-verify = { url_contains = ["bbc.com"], min_text = 400 }
+verify = { url_contains = ["bbc.com/news/"], min_text = 400 }
 
 [[task]]
 name = "naver_news_section"
@@ -319,13 +323,19 @@ goal = "Open the conditions beginning with the letter B."
 expect = "done"
 verify = { text_any = ["Back pain", "conditions beginning with B", "B "] }
 
+# The goal used to say "the 공고 list", and 서울소식 has several: 입찰공고, 고시공고, 수의계약내역,
+# 채용시험, 서울시보. It also has a 새소식 list at /realmnews/ whose articles mention 공고 without
+# being it, which is what the old spec demanded and what made two of three runs fail on a run that
+# had done as much as the goal asked. Widening the spec to accept /realmnews/ as well would have
+# accepted a page that is not a 공고 list at all, and the goal never said that. So the goal names
+# the list it wants, and the spec proves that one.
 [[task]]
 name = "seoul_go_kr_notice"
 family = "portal"
 url = "https://www.seoul.go.kr/main/index.jsp"
-goal = "Open the 공고 list from the 서울소식 section."
+goal = "Open the 입찰공고 list from the 서울소식 section."
 expect = "done"
-verify = { url_contains = ["realmnews"], text_any = ["공고"] }
+verify = { url_contains = ["news_tender"], text_any = ["입찰공고"] }
 
 # ---------------------------------------------------------------- auth walls, which must escalate
 
