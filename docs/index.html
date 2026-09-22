@@ -50,6 +50,12 @@
   .hud i{width:7px;height:7px;border-radius:50%;background:var(--amber)}
   h1{font-size:clamp(40px,6.4vw,84px);line-height:1.02;letter-spacing:-.045em;margin:0 auto 20px;font-weight:700;max-width:16ch;text-wrap:balance}
   h1 .accent{color:var(--amber);display:block}
+  h1 .nw{display:inline-block}
+  :lang(ko) body{word-break:keep-all}
+  :lang(ko) h1,:lang(ko) h2{letter-spacing:-.03em}
+  :lang(ja) h1,:lang(zh-CN) h1{max-width:12em;letter-spacing:-.02em;word-break:auto-phrase;line-height:1.12}
+  :lang(ja) h2,:lang(zh-CN) h2{letter-spacing:-.01em;word-break:auto-phrase;max-width:none}
+  :lang(ja) .sub,:lang(zh-CN) .sub,:lang(ja) .lead,:lang(zh-CN) .lead{word-break:auto-phrase}
   .sub{font-size:clamp(17px,1.6vw,20px);color:var(--muted);margin:0 auto 40px;max-width:60ch;text-wrap:pretty}
   .taskbar{display:flex;justify-content:center;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 18px}
   .taskbar button{font:inherit;font-size:14px;color:var(--muted);background:transparent;border:1px solid var(--hair);border-radius:99px;padding:8px 16px;cursor:pointer;transition:all .25s var(--ease)}
