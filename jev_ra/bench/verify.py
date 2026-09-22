@@ -1,13 +1,25 @@
 """Outcome predicates. A run that finishes fast without doing the task is a failure, not a time."""
 
 import re
+from datetime import date, timedelta
 
 # Google Flights answers in the browser's locale, so every signal has to be language-agnostic.
 DURATION = re.compile(r"\b\d{1,2}\s*hr\b|\b\d{1,2}\s*h\s*\d{1,2}\b|\d{1,2}\s*시간", re.IGNORECASE)
 PRICE = re.compile(r"[$€£₩]\s?\d|\d[\d,]*\s?(?:USD|EUR|CHF|GBP|KRW|원)")
 ORIGIN = re.compile(r"\bZRH\b|Z(?:u|ü)rich|취리히", re.IGNORECASE)
 DESTINATION = re.compile(r"\b(?:LON|LHR|LGW|STN|LTN|LCY)\b|London|런던", re.IGNORECASE)
-DEPARTURE = re.compile(r"2026-09-20|\b(?:Sep(?:tember)?)\s*20\b|9월\s*20일")
+# A fixed day stops being bookable the day after it; the recorded task always asks for a month ahead.
+DEPART = date.today() + timedelta(days=30)
+
+
+def departure(day):
+    """The day as Google Flights may print it: ISO, English month and day, or Korean."""
+    month = day.strftime("%b")
+    full = day.strftime("%B")
+    return re.compile(rf"{day.isoformat()}|\b(?:{month}|{full})\s*{day.day}\b|{day.month}월\s*{day.day}일")
+
+
+DEPARTURE = departure(DEPART)
 ACTIVE = {"true", "page", "step", "location", "date", "time", "on"}
 
 

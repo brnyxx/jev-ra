@@ -1,18 +1,21 @@
 """Outcome predicates and the statistics built on top of them."""
 
+from datetime import date
+
 import pytest
 
 from jev_ra import bench
 from jev_ra.bench import verify
 
+DAY = verify.DEPART
 FLIGHT_TEXT = (
-    "Zurich to London\nSep 20, 2026\nOne way\n"
+    f"Zurich to London\n{DAY.strftime('%b')} {DAY.day}, {DAY.year}\nOne way\n"
     "7:05 AM - 8:15 AM\nSWISS\n1 hr 40 min\nNonstop\n$182\n"
     "9:30 AM - 10:40 AM\nBritish Airways\n1 hr 40 min\nNonstop\n$204"
 )
 FLIGHT_URL = "https://www.google.com/travel/flights/search?tfs=CBwQAhooEgoyMDI2LTA5LTIw"
 KOREAN_FLIGHT_TEXT = (
-    "영국항공\n1시간 45분\n직항\n₩316,695\n2026-09-20 취리히에서 출발하여 런던에 도착하는 항공편 가격 추적"
+    f"영국항공\n1시간 45분\n직항\n₩316,695\n{DAY.isoformat()} 취리히에서 출발하여 런던에 도착하는 항공편 가격 추적"
 )
 
 
@@ -34,7 +37,9 @@ def test_flights_wants_the_search_the_cities_the_date_and_a_result_card():
     # The form filled in but never submitted.
     assert not verify.flights({"url": "https://www.google.com/travel/flights", "text": FLIGHT_TEXT})
     # Submitted, but nothing came back.
-    assert not verify.flights({"url": FLIGHT_URL, "text": "Zurich to London\nSep 20, 2026\nNo results"})
+    assert not verify.flights(
+        {"url": FLIGHT_URL, "text": f"Zurich to London\n{DAY.strftime('%b')} {DAY.day}, {DAY.year}\nNo results"}
+    )
     # The wrong route.
     assert not verify.flights({"url": FLIGHT_URL, "text": FLIGHT_TEXT.replace("London", "Lisbon")})
     assert not verify.flights({"url": "", "text": ""})
@@ -192,3 +197,17 @@ def test_the_markdown_table_renders_the_columns_it_is_given():
         "|---|---|---|",
         "| wikipedia | 2200 |  |",
     ]
+
+
+def test_the_recorded_flight_asks_for_a_day_a_site_still_offers():
+    assert date.today() < verify.DEPART
+    task = next(t for t in bench.LIVE_TASKS if t.key == "flights")
+    assert verify.DEPART.isoformat() in task.goal
+    assert task.values["departure_date"] == verify.DEPART.isoformat()
+
+
+def test_the_departure_reads_in_every_form_the_page_prints_it():
+    pattern = verify.departure(date(2026, 10, 22))
+    for text in ("2026-10-22", "Oct 22", "October 22", "10월 22일"):
+        assert pattern.search(text)
+    assert not pattern.search("Oct 2")

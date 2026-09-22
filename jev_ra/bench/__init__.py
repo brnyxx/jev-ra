@@ -92,8 +92,11 @@ LIVE_TASKS = (
     LiveTask(
         key="flights",
         url="https://www.google.com/travel/flights",
-        goal=("Search one-way flights from Zurich to London departing 2026-09-20 and show the list of results."),
-        values={"origin": "Zurich", "destination": "London", "departure_date": "2026-09-20"},
+        goal=(
+            "Search one-way flights from Zurich to London departing "
+            f"{predicates.DEPART.isoformat()} and show the list of results."
+        ),
+        values={"origin": "Zurich", "destination": "London", "departure_date": predicates.DEPART.isoformat()},
         verify=predicates.flights,
     ),
     LiveTask(
