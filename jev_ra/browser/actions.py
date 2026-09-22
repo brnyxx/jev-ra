@@ -12,6 +12,13 @@ HOSTNAME = re.compile(r"\b(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,}\b", re
 # Labels that belong to the registry rather than to anyone: seoul.go.kr and busan.go.kr are two
 # sites, and www.seoul.go.kr is one site with the front page of seoul.go.kr.
 SHARED_LABELS = frozenset({"ac", "co", "com", "edu", "go", "gov", "ne", "net", "or", "org"})
+# What a wall's way through is called. The ASCII words need their own boundaries - "Cookies"
+# carries "ok" inside it - and the CJK ones are words wherever they appear, so 同意する matches
+# on 同意. Reject, Manage and Choose are deliberately not here: they are the other way out.
+ACCEPT = re.compile(r"\b(accept|agree|ok)\b|同意|동의", re.IGNORECASE)
+# A wall is taken by pressing something. A checkbox that says "I agree" is a field in a form, not
+# the way past a wall, and narrowing a page down to one would strand the run on it.
+ACCEPT_ROLES = frozenset({"button", "link"})
 
 
 @dataclass(frozen=True)
@@ -68,6 +75,21 @@ def elsewhere(page, elements, goal):
     return {element["ref"] for element in elements if element.get("host") and site(element["host"]) not in home}
 
 
+def consent(elements):
+    """The refs of the accept-like controls of a wall standing in front of the page.
+
+    An overlay - a modal dialog, or something pinned over most of the viewport - is a page in
+    front of the page, and one that offers to be accepted is a consent wall: the goal is behind
+    it and nothing else on offer leads anywhere. Scrolling past it is the ordinary failure, so
+    while it is up there is nothing else to choose.
+    """
+    return {
+        element["ref"]
+        for element in elements
+        if element.get("overlay") and element.get("role") in ACCEPT_ROLES and ACCEPT.search(element.get("label") or "")
+    }
+
+
 def build(page, max_elements=MAX_ELEMENTS, goal=""):
     """Group an observed page into per-operation targets and page controls."""
     elements, seen = [], set()
@@ -95,6 +117,10 @@ def build(page, max_elements=MAX_ELEMENTS, goal=""):
         else:
             target = ref
         targets.setdefault(operation, {})[target] = action
+    accept = consent(elements)
+    if accept:
+        taken = {target: action for target, action in targets.get("CLICK", {}).items() if target in accept}
+        return ActionSpace(elements=elements, targets={"CLICK": taken}, controls={}, omitted=omitted)
     away = elsewhere(page, elements, goal)
     ordered = {
         operation: dict(sorted(candidates.items(), key=lambda item: item[1]["id"] in away))

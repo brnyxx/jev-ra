@@ -160,6 +160,24 @@
     }
     return false;
   };
+  // A page in front of the page: a modal dialog, or something pinned over a large part of the
+  // viewport. A consent wall is the common one - the goal is behind it and the way through is one
+  // of its own buttons - and what is inside it is all a run can reach while it is up. The pinned
+  // kind is found by hit test rather than by walking the document, because a wall is by
+  // definition the thing a pointer lands on, and five aims cost five ancestor walks.
+  const area=innerWidth*innerHeight, covers=[];
+  for (const root of cache.roots())
+    for (const e of root.querySelectorAll('dialog[open],[role="dialog"],[aria-modal="true"]'))
+      if (rendered(e)) covers.push(e);
+  for (const [fx,fy] of [[.5,.5],[.25,.25],[.75,.25],[.25,.75],[.75,.75]]) {
+    for (let node=cache.deepest(document,innerWidth*fx,innerHeight*fy); node; node=node.parentElement) {
+      const position=getComputedStyle(node).position;
+      if (position!=='fixed' && position!=='sticky') continue;
+      const r=node.getBoundingClientRect();
+      if (r.width*r.height>area*0.4 && !covers.includes(node)) covers.push(node);
+    }
+  }
+  const covered=e=>covers.some(cover=>cover===e || cover.contains(e));
   const observed=[];
   for (const root of cache.roots()) {
     for (const e of root.querySelectorAll(selector)) {
@@ -184,6 +202,7 @@
         if (value!==null) element[key]=value;
       }
       if (current(e)) element.current='true';
+      if (covered(e)) element.overlay='true';
       // Where a link goes, when that is somewhere else. An anchor resolves its own href, so a
       // relative one answers with this page's host and says nothing; mailto: and javascript:
       // have no host at all. Only a link that leaves the site says so.

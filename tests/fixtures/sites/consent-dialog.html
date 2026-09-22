@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Search trains</title>
+<style>
+  body { font: 14px/1.5 system-ui; margin: 0; padding: 16px; }
+  form { display: flex; gap: 8px; margin-top: 12px; }
+  input { padding: 6px 8px; }
+  #cookies { position: fixed; right: 16px; bottom: 16px; width: 320px;
+             background: #fff; border: 1px solid #ccc; padding: 16px; }
+  #cookies.gone { display: none; }
+</style>
+</head>
+<body>
+<!-- The other shape a consent wall takes: a small modal card in a corner. It covers almost none
+     of the page and hides none of it, so the form under it is observed and perfectly clickable -
+     and aria-modal says the site means everything else to be unreachable until it is answered.
+     A run that starts filling the form here has done nothing the site will keep. -->
+<h1>Buy train tickets</h1>
+<form onsubmit="event.preventDefault(); out.textContent = 'searching ' + origin.value;">
+  <input id="origin" name="origin" type="search" aria-label="From" placeholder="From">
+  <button type="submit">Find cheap tickets</button>
+</form>
+<p id="out"></p>
+
+<div id="cookies" role="dialog" aria-modal="true" aria-label="Cookies on this site">
+  <p>We and our partners store and access information on your device.</p>
+  <button type="button" onclick="document.getElementById('cookies').classList.add('gone')">Accept Cookies</button>
+  <button type="button" onclick="document.getElementById('cookies').classList.add('gone')">Choose Cookies</button>
+</div>
+</body>
+</html>

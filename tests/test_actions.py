@@ -138,3 +138,59 @@ def test_a_goal_that_names_a_host_brings_that_host_home():
 def test_the_goal_is_read_for_hostnames_only():
     assert actions.home_sites("https://en.wikipedia.org/wiki/Zebra", "Open the Korean version") == {"wikipedia.org"}
     assert "iana.org" in actions.home_sites("", "Open iana.org and read it.")
+
+
+def walled_page(*labels, role="button"):
+    """A form with a consent wall over it, the wall's controls carrying the labels given."""
+    elements = [element("e1", 1, "City", role="textbox", value=""), element("e2", 2, "Search flights")]
+    action_list = [
+        {"id": "e1", "node": 1, "role": "textbox", "kind": "fill", "label": "City", "value": ""},
+        click("e2", 2, "Search flights"),
+        {"id": "scroll_down", "kind": "scroll", "label": "Scroll down", "delta": 560},
+        {"id": "wait", "kind": "wait", "label": "Wait for the page to update"},
+    ]
+    for index, label in enumerate(labels, start=3):
+        ref = f"e{index}"
+        elements.append(element(ref, index, label, role=role, overlay="true"))
+        action_list.append(click(ref, index, label, role=role))
+    return page_with(elements, action_list)
+
+
+def offered_labels(space):
+    return [action["label"] for candidates in space.targets.values() for action in candidates.values()]
+
+
+def test_a_wall_that_can_be_accepted_leaves_only_its_accept_on_offer():
+    space = actions.build(walled_page("Accept Cookies", "Choose Cookies"))
+    assert space.offered() == ["CLICK"]
+    assert offered_labels(space) == ["Accept Cookies"]
+
+
+def test_the_accept_may_be_said_in_the_language_of_the_site():
+    for label in ("同意する", "동의", "I agree", "OK"):
+        space = actions.build(walled_page(label, "Reject"))
+        assert offered_labels(space) == [label], label
+
+
+def test_a_wall_that_only_refuses_changes_nothing():
+    space = actions.build(walled_page("Reject all", "Manage choices"))
+    assert "TYPE_TEXT" in space.offered()
+    assert "SCROLL_DOWN" in space.offered()
+
+
+def test_cookies_is_not_an_ok():
+    space = actions.build(walled_page("Cookies on this site", "Bookmark"))
+    assert "TYPE_TEXT" in space.offered()
+
+
+def test_a_checkbox_that_agrees_is_a_field_not_a_way_through():
+    space = actions.build(walled_page("I agree to the terms", role="checkbox"))
+    assert "TYPE_TEXT" in space.offered()
+
+
+def test_an_accept_that_is_not_on_a_wall_changes_nothing():
+    page = walled_page("Accept Cookies")
+    for item in page["elements"]:
+        item.pop("overlay", None)
+    space = actions.build(page)
+    assert "TYPE_TEXT" in space.offered()
