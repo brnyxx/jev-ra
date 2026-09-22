@@ -1,6 +1,7 @@
 """MCP stdio server. One browser session per process, shared by every tool."""
 
 import logging
+import signal
 import time
 
 from mcp.server.mcpserver import Image, MCPServer
@@ -277,7 +278,19 @@ def build_server(browser=None):
     return mcp
 
 
+def terminate(_number, _frame):
+    """End the run the way a clean exit does, so what the server holds is still released."""
+    raise SystemExit(0)
+
+
 def main():
     """Run the stdio MCP server."""
     logging.basicConfig(level=logging.WARNING)
-    build_server().run("stdio")
+    browser = Browser()
+    # A client that goes away sends SIGTERM and nothing else. Without this the process dies where
+    # it stands and leaves its Chrome and its target behind for whoever looks at the machine next.
+    signal.signal(signal.SIGTERM, terminate)
+    try:
+        build_server(browser).run("stdio")
+    finally:
+        browser.close()

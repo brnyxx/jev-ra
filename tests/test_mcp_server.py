@@ -1,12 +1,13 @@
 import asyncio
 import json
 import re
+import signal
 from pathlib import Path
 
 import pytest
 from mcp import Client
 
-from jev_ra import config
+from jev_ra import config, mcp_server
 from jev_ra.decide import Reply
 from jev_ra.errors import ChromeError
 from jev_ra.mcp_server import Browser, build_server
@@ -230,3 +231,44 @@ def test_a_session_that_cannot_be_built_says_why():
     assert failed.is_error
     assert "No Chrome, Chromium or Edge found" in failed.content[0].text
     assert "jev-ra doctor" in failed.content[0].text
+
+
+class FakeBrowser:
+    def __init__(self):
+        self.closed = 0
+
+    def close(self):
+        self.closed += 1
+
+
+def served(monkeypatch, run):
+    """Run main() with a fake Browser and a fake server, and return the two of them."""
+    browser = FakeBrowser()
+    handlers = {}
+
+    class FakeServer:
+        def run(self, transport):
+            assert transport == "stdio"
+            run(handlers)
+
+    monkeypatch.setattr(mcp_server, "Browser", lambda: browser)
+    monkeypatch.setattr(mcp_server, "build_server", lambda given: FakeServer())
+    monkeypatch.setattr(mcp_server.signal, "signal", lambda number, handler: handlers.setdefault(number, handler))
+    return browser, handlers
+
+
+def test_the_server_closes_its_browser_when_the_client_disconnects(monkeypatch):
+    browser, _handlers = served(monkeypatch, lambda _handlers: None)
+    mcp_server.main()
+    assert browser.closed == 1
+
+
+def test_sigterm_ends_the_run_so_the_browser_is_closed(monkeypatch):
+    def terminated(handlers):
+        handlers[signal.SIGTERM](signal.SIGTERM, None)
+
+    browser, handlers = served(monkeypatch, terminated)
+    with pytest.raises(SystemExit):
+        mcp_server.main()
+    assert signal.SIGTERM in handlers
+    assert browser.closed == 1
