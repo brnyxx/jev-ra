@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.2.2 - 2026-09-22
+
+### Added
+- `scripts/check_no_invented_input.py` fails a corpus results file in which any typed string was
+  not one of the task's values; `scripts/soak.py` runs one task many times on one session and
+  reports pass count, median and p95 seconds, decisions and the reasons seen; `scripts/check_site.py`
+  says whether a corpus site is reachable, walled, and how many controls it shows.
+
+### Changed
+- Every row of `docs/QUALITY_BAR.md` names the check that proves it; the Debt list is empty.
+- The corpus names the address gov.kr now serves (plus.gov.kr; still walled, 3/3), and
+  `corpus/egress.md` records oliveyoung's bot check as the eighth wall.
+- Browser-backed test coverage is 95.6 % (925 tests); a target whose setup fails is closed whatever
+  listens on 9222.
+
 ## 0.2.1 - 2026-09-22
 
 ### Changed
