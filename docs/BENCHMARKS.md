@@ -175,10 +175,12 @@ favours it: a FAIL here is a FAIL by its own account.
 Wall time on passing tasks, median: jev-ra 3.1 s, browser-use 19.4 s
 (p90 5.7 s vs 35.3 s).
 
-The difference that matters most is not in the totals. On the 3 tasks that hold back a value
-on purpose (canvas_drawing, file_upload_picker, httpbin_form_missing_value), browser-use invented the missing input and submitted the form;
-jev-ra escalated `needs_value` every time. An agent that fills a customer name it was never given is
-not a pass, whatever the page says afterwards.
+The difference that matters most is not in the totals. Two tasks hold back a value on purpose
+(`httpbin_form_missing_value`, `file_upload_picker`): browser-use invented the missing input and
+submitted; jev-ra escalated `needs_value` both times. One task cannot be done at all
+(`canvas_drawing`, a canvas with no controls): browser-use reported success; jev-ra escalated
+`blocked`. An agent that fills in a customer name it was never given, or says it drew on a canvas
+it cannot see, is not a pass, whatever the page says afterwards.
 
 Method notes, so the number can be trusted: 21 of the first pass's rows failed at browser-use's
 `BrowserStartEvent` after 19 back-to-back sessions on one shared Chrome, a harness artefact, not an
