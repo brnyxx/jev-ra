@@ -1,6 +1,7 @@
 """The loop: observe, decide once, verify deterministically, and hand back control when stuck."""
 
 import logging
+import threading
 import time
 import uuid
 from dataclasses import asdict, dataclass, field, replace
@@ -61,6 +62,80 @@ THIN_OPENS = 3
 # it is answered on: the leaderboards' own top entries end on one sentence. These are the openings
 # a question takes when it does not end in a question mark.
 QUESTION_STARTS = ("what", "which", "how many", "when", "who", "find the")
+# The page controls a snapshot offers beside the elements, which no input of its own removes.
+CONTROL_ACTIONS = ("scroll_down", "scroll_up", "wait")
+# An answer nobody is waiting for is worth the moment it takes to price it, and no longer.
+DISCARD_WAIT_S = 1.0
+
+
+class Speculation:
+    """One decision asked while the page was still settling, and the request it answers."""
+
+    def __init__(self, decide, state, questions):
+        self.state = state
+        self.questions = questions
+        self.reply = None
+        self.thread = threading.Thread(target=self.ask, args=(decide, state, questions), daemon=True)
+        self.thread.start()
+
+    def ask(self, decide, state, questions):
+        """Ask in a thread and keep what came back. A speculation that fails is simply no answer.
+
+        Nothing here may raise: this thread's failure is a question that has to be asked again,
+        never a run that ends, and a run that ends first closes the client under it.
+        """
+        try:
+            self.reply = decide(state, questions)
+        except Exception as error:
+            logger.info("A speculative decision went unanswered: %s", error)
+
+    def take(self, state, questions):
+        """The prefetched reply, when the settled page asks exactly this, else None.
+
+        Identical questions are not enough: the same question over a different state is a
+        different question to ask. What is accepted is the request the settled page would have
+        sent, character for character, which is an answer to it and not to a guess.
+        """
+        if (state, questions) != (self.state, self.questions):
+            return None
+        self.thread.join()
+        return self.reply
+
+    def discard(self, wait=DISCARD_WAIT_S):
+        """Wait briefly for a speculation nobody used, and report what it cost anyway."""
+        self.thread.join(wait)
+        return self.reply.cost if self.reply is not None else 0.0
+
+
+def speculate(page, action, text):
+    """The page as it reads once this input has landed and nothing else has happened, or None.
+
+    Only typing has an effect a guess can get right. The field holds what was typed, a field
+    holding something offers the key that submits it, and the page has moved, because the field
+    state is part of the marker every reading is compared on. What a click does to a page is
+    exactly what the settled reading is for, so a click is not guessed at.
+    """
+    if action.get("kind") != "fill" or not isinstance(text, str):
+        return None
+    node = action.get("node")
+    elements = [dict(item, value=text) if item.get("node") == node else item for item in page.get("elements", [])]
+    offered = [
+        item for item in page.get("actions", []) if item["id"] not in CONTROL_ACTIONS and item["kind"] != "press"
+    ]
+    offered = [dict(item, value=text) if item.get("node") == node else item for item in offered]
+    label = next((item.get("label", "") for item in elements if item.get("node") == node), "")
+    if text.strip():
+        offered.append(
+            {
+                "id": "press_enter",
+                "node": node,
+                "kind": "press",
+                "key": "Enter",
+                "label": f"Press Enter to submit {label or 'the focused field'}",
+            }
+        )
+    controls = [item for item in page.get("actions", []) if item["id"] in CONTROL_ACTIONS]
+    return {**page, "elements": elements, "actions": [*offered, *controls]}
 
 
 @dataclass
@@ -75,6 +150,8 @@ class Result:
     final_answer: str | None = None
     steps: list = field(default_factory=list)
     decisions: int = 0
+    speculations: int = 0
+    prefetched: int = 0
     text_calls: list = field(default_factory=list)
     elapsed_ms: int = 0
     cost: float = 0.0
@@ -90,10 +167,12 @@ class Result:
 class Agent:
     """The loop: observe, decide once, verify, and hand control back when stuck."""
 
-    def __init__(self, session=None, config=None, decide=None, client=None):
+    def __init__(self, session=None, config=None, decide=None, client=None, prefetch=True):
         self.config = config or load()
         self.session = session or Session(self.config)
         self.run_id = None
+        # A decider that answers from a script rather than from the questions cannot be asked twice.
+        self.prefetch = prefetch
         self._client = client
         self._run_id = ""
         if decide is None:
@@ -160,6 +239,7 @@ class Agent:
         exclude, stale_retries, looks, reasked = set(), 0, 0, False
         best, waited, reasked_value = 0.0, False, False
         opened = None
+        guess, guessed = None, None
         while True:
             over = run.over_budget(limit, budgets, len(run.steps))
             if over:
@@ -171,7 +251,8 @@ class Agent:
                 state = build_state(page, space, goal, run.history, binder.available(), opened)
             try:
                 with timer.measure("decide"):
-                    reply = self.decide(state, questions)
+                    guessed = guess.take(state, questions) if guess is not None else None
+                    reply = guessed if guessed is not None else self.decide(state, questions)
             except JevBadResponse as error:
                 run.decisions += 1
                 if reasked:
@@ -186,6 +267,10 @@ class Agent:
                 # reason, with the provider's own words and next step, redacted.
                 run.decisions += 1
                 return run.escalate("provider_error", page, detail={"error": self.said(error)})
+            finally:
+                if guess is not None:
+                    run.speculated(guess, guessed)
+                    guess = None
             run.decisions += 1
             run.cost += reply.cost
             try:
@@ -288,6 +373,21 @@ class Agent:
             if value is not None:
                 # Only now is the value really on the page; a stale retry must not burn it.
                 binder.spend(value)
+            # The page is about to spend up to a whole settle budget doing whatever it does with
+            # that input. Ask the next question now, against the page as it should read once the
+            # input has landed and nothing else has happened. If the settled reading would have
+            # asked anything else at all, the answer is thrown away and the question asked again.
+            pending = speculate(page, decision.action, text) if self.prefetch else None
+            if pending is not None and run.room(limit, budgets):
+                moves = self.space(pending)
+                story = [*run.history, entry(decision, text, True)]
+                guess = run.speculating(
+                    Speculation(
+                        self.decide,
+                        build_state(pending, moves, goal, story, binder.available()),
+                        build_questions(moves, goal, story, binder.available()),
+                    )
+                )
 
             after = self.read(self.session.observe, timer)
             if after is None:
@@ -295,7 +395,7 @@ class Agent:
                     "stale", page, decision, detail={"error": "The page never settled after that action."}
                 )
             before, page = page, after
-            run.record(decision, before, page, text, timer)
+            run.record(decision, before, page, text, timer, guessed is not None)
             opened = revealed(decision, before, page)
             wall = run.walled(page, before)
             if wall:
@@ -396,12 +496,33 @@ class _Run:
         self.history = []
         self.steps = []
         self.decisions = 0
+        self.speculations = 0
+        self.prefetched = 0
+        self.pending = None
         self.cost = 0.0
         self.opens = ()
 
     def elapsed_ms(self):
         """Milliseconds since the run started."""
         return round((time.perf_counter() - self.started) * 1000)
+
+    def room(self, limit, budgets):
+        """Whether this run could still take another step, which is what a speculation is for."""
+        return self.over_budget(limit, budgets, len(self.steps) + 1) is None
+
+    def speculating(self, guess):
+        """Hold the speculation in flight, so a run that ends before it lands still pays for it."""
+        self.pending = guess
+        return guess
+
+    def speculated(self, guess, used):
+        """Count one speculation, and charge a discarded one to the run that paid for it."""
+        self.pending = None
+        self.speculations += 1
+        if used is not None:
+            self.prefetched += 1
+            return
+        self.cost += guess.discard()
 
     def over_budget(self, limit, budgets, taken):
         """The budget this run has exhausted, or None."""
@@ -413,7 +534,7 @@ class _Run:
             return f"timeout_s ({budgets.timeout_s}) reached"
         return None
 
-    def record(self, decision, before, after, text, timer=None):
+    def record(self, decision, before, after, text, timer=None, prefetched=False):
         """Record one executed step and what the page did about it."""
         changed = after.get("marker") != before.get("marker")
         profile = timer.result() if timer is not None else dict.fromkeys((*CATEGORIES, "total_ms"), 0)
@@ -421,6 +542,7 @@ class _Run:
             {
                 **profile,
                 "n": len(self.steps) + 1,
+                "prefetched": prefetched,
                 "operation": decision.operation,
                 "target": decision.target,
                 "target_label": decision.action.get("label", ""),
@@ -435,14 +557,7 @@ class _Run:
                 "verified": verification(before, after),
             }
         )
-        self.history.append(
-            {
-                "action": decision.action.get("label", ""),
-                "kind": decision.action.get("kind", ""),
-                "text": text,
-                "page_changed": changed,
-            }
-        )
+        self.history.append(entry(decision, text, changed))
 
     def walled(self, page, before=None):
         """How this site is refusing to serve the machine, or an empty string.
@@ -517,6 +632,8 @@ class _Run:
         final_answer, unanswered = self.answer(page)
         if unanswered:
             detail["final_answer"] = unanswered
+        if self.pending is not None:
+            self.speculated(self.pending, None)
         result = Result(
             status=status,
             reason=reason,
@@ -526,6 +643,8 @@ class _Run:
             final_answer=final_answer,
             steps=self.steps,
             decisions=self.decisions,
+            speculations=self.speculations,
+            prefetched=self.prefetched,
             text_calls=self.binder.calls,
             elapsed_ms=self.elapsed_ms(),
             cost=round(self.cost, 6),
@@ -555,6 +674,14 @@ def question_shaped(goal):
     if said.endswith("?"):
         return True
     return said in QUESTION_STARTS or said.startswith(tuple(f"{start} " for start in QUESTION_STARTS))
+def entry(decision, text, changed):
+    """One line of the history a decision is given: what was done and whether the page moved."""
+    return {
+        "action": decision.action.get("label", ""),
+        "kind": decision.action.get("kind", ""),
+        "text": text,
+        "page_changed": changed,
+    }
 
 
 def unsupplied_field(decision, space, binder, goal):

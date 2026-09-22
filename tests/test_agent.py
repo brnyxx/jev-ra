@@ -2,7 +2,7 @@ import httpx
 import pytest
 
 from jev_ra import config
-from jev_ra.agent import Agent
+from jev_ra.agent import Agent, speculate
 from jev_ra.browser.session import StalePage
 from jev_ra.decide import DecisionClient, JevBadResponse, Reply
 from jev_ra.errors import Escalated
@@ -943,3 +943,63 @@ def test_without_a_page_key_the_ref_is_matched_on_a_fresh_observation(session, f
     fresh_ref = next(element["ref"] for element in after_open["elements"] if element["role"] == "textbox")
     agent.type(fresh_ref, "help")
     assert session.evaluate("document.getElementById('q').value") == "help"
+
+
+TYPE_CITY = {
+    "operation": answer("TYPE_TEXT"),
+    "type_text_target": answer("e1"),
+    "value_for_field": answer("city"),
+    "goal_achieved": {"noul": 0.1},
+}
+
+
+def filled(marker, text="London"):
+    """The page as it really reads once the field holds what was typed."""
+    one = page(marker)
+    elements = [dict(one["elements"][0], value=text), one["elements"][1]]
+    actions = [
+        dict(one["actions"][0], value=text),
+        dict(one["actions"][1], value=text),
+        one["actions"][2],
+        {"id": "press_enter", "node": 1, "kind": "press", "key": "Enter", "label": "Press Enter to submit City"},
+        one["actions"][3],
+    ]
+    return {**one, "elements": elements, "actions": actions}
+
+
+def test_a_typed_field_is_speculated_holding_what_was_typed():
+    before = page(0)
+    guessed = speculate(before, FORM_ACTIONS[0], "London")
+    assert [element.get("value") for element in guessed["elements"]] == ["London", None]
+    assert guessed["actions"][-2]["id"] == "press_enter"
+    assert guessed["actions"][-1]["id"] == "wait"
+    assert speculate(before, FORM_ACTIONS[2], None) is None
+
+
+def test_the_next_decision_is_asked_while_the_page_is_still_settling():
+    decide = decider([TYPE_CITY, DONE])
+    agent = agent_with(decide, session=FakeSession([page(0), filled(1)]))
+    result = agent.run("search for a city", values={"city": "London"})
+    assert (result.status, result.reason) == ("done", "goal_achieved")
+    assert (result.speculations, result.prefetched) == (1, 1)
+    assert result.decisions == 2
+    assert len(decide.seen) == 2
+    assert result.steps[0]["prefetched"] is False
+
+
+def test_a_speculation_the_settled_page_does_not_match_is_thrown_away():
+    decide = decider([TYPE_CITY, DONE])
+    agent = agent_with(decide, session=FakeSession([page(0), page(1)]))
+    result = agent.run("search for a city", values={"city": "London"})
+    assert (result.status, result.reason) == ("done", "goal_achieved")
+    assert (result.speculations, result.prefetched) == (1, 0)
+    assert len(decide.seen) == 3
+    assert result.cost == pytest.approx(0.0006)
+
+
+def test_a_decider_that_answers_by_position_is_never_asked_ahead_of_time():
+    decide = decider([TYPE_CITY, DONE])
+    agent = Agent(session=FakeSession([page(0), filled(1)]), config=config.load({}), decide=decide, prefetch=False)
+    result = agent.run("search for a city", values={"city": "London"})
+    assert (result.speculations, result.prefetched) == (0, 0)
+    assert len(decide.seen) == 2

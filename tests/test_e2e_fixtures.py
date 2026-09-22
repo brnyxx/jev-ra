@@ -58,7 +58,7 @@ def scripted(plan):
 
 def test_a_scripted_run_fills_selects_and_submits_a_real_form(session, fixture_server):
     decide = scripted(PLAN)
-    agent = Agent(session=session, config=config.load({}), decide=decide)
+    agent = Agent(session=session, config=config.load({}), decide=decide, prefetch=False)
     result = agent.run(
         "Place an order for Ada Lovelace with express shipping.",
         values={"name": "Ada Lovelace", "email": "ada@example.com"},
@@ -74,7 +74,7 @@ def test_a_scripted_run_fills_selects_and_submits_a_real_form(session, fixture_s
 
 
 def test_the_typed_values_are_on_the_confirmation_page(session, fixture_server):
-    agent = Agent(session=session, config=config.load({}), decide=scripted(PLAN))
+    agent = Agent(session=session, config=config.load({}), decide=scripted(PLAN), prefetch=False)
     result = agent.run(
         "Place an order for Ada Lovelace with express shipping.",
         values={"name": "Ada Lovelace", "email": "ada@example.com"},
@@ -90,7 +90,7 @@ def test_the_typed_values_are_on_the_confirmation_page(session, fixture_server):
 
 def test_every_executed_target_came_from_an_observed_node(session, fixture_server):
     decide = scripted(PLAN)
-    agent = Agent(session=session, config=config.load({}), decide=decide)
+    agent = Agent(session=session, config=config.load({}), decide=decide, prefetch=False)
     agent.run(
         "Place an order for Ada Lovelace with express shipping.",
         values={"name": "Ada Lovelace", "email": "ada@example.com"},

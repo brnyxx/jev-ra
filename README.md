@@ -209,6 +209,11 @@ takes from the page the run finished on, whatever the run ended as. With no text
 Verification is deterministic: after every action jev-ra compares url, title, text and field state,
 and `page_changed` comes from a semantic page marker, not from the model.
 
+While the page settles after an action, jev-ra asks Jev the next question already, against the page
+as it should read with that input applied and nothing else changed. If the settled page offers
+anything the guess did not, the answer is thrown away and the question asked again.
+`Result.speculations` and `Result.prefetched` count how often that paid off.
+
 ## Benchmarks
 
 Five tasks, five runs each, every run verified against the page it left behind:

@@ -303,7 +303,9 @@ def run_offline(config=None, tasks=OFFLINE_TASKS, session=None, runs=1):
         with serve() as base:
             for _attempt in range(runs):
                 for task in tasks:
-                    agent = Agent(session=session, config=config, decide=scripted(task.plan))
+                    # A scripted plan answers by position, so asking it a question ahead of time
+                    # would spend a step of the plan on a page that has not happened yet.
+                    agent = Agent(session=session, config=config, decide=scripted(task.plan), prefetch=False)
                     measured.append(measure(agent, task, f"{base}/{task.page}", task.values, task.max_steps))
     finally:
         if owned:

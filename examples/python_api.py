@@ -33,7 +33,8 @@ PLAN = (
 
 def place_order(url, decide=None, config=None):
     """Run the checkout goal at `url` and return the Result."""
-    with Agent(config=config or load(), decide=decide) as agent:
+    # A scripted plan answers by position, so it must not be asked the next question early.
+    with Agent(config=config or load(), decide=decide, prefetch=decide is None) as agent:
         return agent.run(GOAL, values=VALUES, url=url)
 
 
