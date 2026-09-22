@@ -1,5 +1,52 @@
 # Changelog
 
+## 0.2.0 - 2026-09-22
+
+Nine lanes landed on top of 0.1.3, measured on the eighty-task corpus and on the public
+benchmarks. Numbers and raw runs are in `docs/BENCHMARKS.md`; what still stands between this
+release and the product bar is in `docs/DEFINITION_OF_DONE.md`.
+
+### Added
+- `jev-ra serve` exposes the same fourteen tools over HTTP and SSE; `jev-ra trace <run_id>` renders
+  a run; `jev-ra profile` prints where a run's time went; `jev-ra clean` stops what jev-ra started
+  and empties its profile.
+- Named profiles keep their cookies (`--profile`), and a run id and a log level an operator can set
+  (`JEV_RA_RUN_ID`, `JEV_RA_LOG_LEVEL`).
+- `JEV_RA_LOCALE` reaches the launched Chrome and an attached one; `JEV_RA_PROXY` puts the browser
+  behind an egress, and `corpus/egress.md` records what the seven walled sites answered through it.
+- Two escalation reasons: `provider_error` when the decision provider will not answer, and
+  `blocked_by_site` when a site serves a wall instead of a page, at the first request as well.
+- A question-shaped goal ends with a one-line final answer.
+- A container image (`Dockerfile`), and CI jobs for the image, macOS, Windows and a cold start
+  against a real Chrome.
+- `bench/public/`: an act/observe adapter any harness can drive, with Online-Mind2Web and
+  WebVoyager runners judged by the benchmarks' own harnesses; `scripts/bu_corpus.py` runs
+  browser-use on the same corpus under the same verify specs.
+- Forty more corpus tasks, every verify spec reviewed against the goal it proves.
+
+### Changed
+- The page is settled by mutation rather than by budget, the observation after an action rides the
+  action's own round trip, and the next decision is prefetched while the page settles.
+- The state names what the last step opened; a control that opened a panel is shown as expanded
+  with the panel first; a control whose suggestions are open is not offered again while they are
+  up; links off the current site are offered last unless the goal names a site.
+- A consent wall is accepted before anything else is tried; a hash route counts as a navigation;
+  a link that asks for a new tab is followed in the tab this run drives.
+- The MCP server runs one tool at a time on the shared session, caps tool arguments at the edge,
+  closes its browser on SIGTERM and on exit, and exits instead of hanging when terminated.
+- Only web schemes are opened; `file:` needs an opt-in.
+- The sdist carries the package, not the brand assets (3.2 MB to 208 KB).
+
+### Fixed
+- A dead session is dropped so the next open starts over; a remembered CDP url is probed before it
+  is trusted; a target is closed when its setup fails.
+- The post-input settle waits as long as any other evaluate, and stillness is measured on a timer
+  as well as on animation frames, so a background target on Linux is not read too early.
+- A page that mentions a captcha is not a page that serves one.
+- `browser_search` lists each url once and leaves the session as it found it.
+- A direct press goes through the same focus check as a decided one; a ref names the observation
+  it came from; `doctor` reports Chrome before it asks for a key.
+
 ## 0.1.3 - 2026-09-22
 
 ### Added
