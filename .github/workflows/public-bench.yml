@@ -1,0 +1,97 @@
+name: public-bench
+
+# On demand only. Every run spends a key and drives real websites, so nothing here may fire on a
+# push. What it proves is that the path still works end to end - fetch the pinned task files, run
+# the adapter against a real Chrome, write both submission layouts - not what jev-ra scores: a
+# headless browser on a datacentre address is walled by many of these sites, and the runs it
+# uploads say so. Scores come from `bench/public/README.md`, measured on a desktop.
+on:
+  workflow_dispatch:
+    inputs:
+      tasks:
+        description: "Tasks per benchmark"
+        default: "3"
+      judge:
+        description: "Also run each benchmark's own judge"
+        type: boolean
+        default: false
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      BU_CDP_URL: http://127.0.0.1:9222
+      OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+      JEV_RA_TEXT_MODEL: openai/gpt-4o-mini
+      JEV_RA_TEXT_BASE_URL: https://openrouter.ai/api/v1
+      JEV_RA_TEXT_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+      JEV_RA_LOG_LEVEL: INFO
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Require a key
+        run: |
+          if [ -z "$OPENROUTER_API_KEY" ]; then
+            echo "This job needs the OPENROUTER_API_KEY repository secret." >&2
+            exit 1
+          fi
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: uv sync --locked
+
+      - name: Install Chrome
+        uses: browser-actions/setup-chrome@v1
+        with:
+          chrome-version: stable
+
+      - name: Start Chrome with remote debugging
+        run: |
+          profile="$(mktemp -d)"
+          chrome --headless=new \
+            --remote-debugging-port=9222 \
+            --remote-debugging-address=127.0.0.1 \
+            --user-data-dir="$profile" \
+            --no-first-run \
+            --no-default-browser-check \
+            --disable-gpu \
+            --window-size=1280,900 \
+            --lang=en-US \
+            --no-sandbox \
+            about:blank &
+          for _ in $(seq 1 30); do
+            if curl -sf "$BU_CDP_URL/json/version" >/dev/null; then
+              curl -sf "$BU_CDP_URL/json/version"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "Chrome did not answer on $BU_CDP_URL" >&2
+          exit 1
+
+      - name: Online-Mind2Web
+        run: |
+          uv run python -m bench.public.om2w \
+            --tasks "${{ inputs.tasks }}" \
+            --out bench/public/runs/ci-om2w \
+            ${{ inputs.judge && '--judge' || '' }}
+
+      - name: WebVoyager
+        run: |
+          uv run python -m bench.public.webvoyager \
+            --tasks "${{ inputs.tasks }}" \
+            --out bench/public/runs/ci-webvoyager \
+            ${{ inputs.judge && '--judge' || '' }}
+
+      - name: Upload the trajectories
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: public-bench-${{ github.run_id }}
+          path: bench/public/runs/
+          retention-days: 14
