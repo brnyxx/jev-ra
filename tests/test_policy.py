@@ -153,6 +153,18 @@ def test_a_panel_below_its_button_is_hoisted_above_it():
     assert state["elements"][1]["expanded"] == "true"
 
 
+def test_a_field_with_its_list_open_is_not_a_click_target():
+    questions = build_questions(space_for(), "goal", opened={"node": 1, "controls": {4}, "listbox": True})
+    assert "e1" not in questions["click_target"]["criteria"]
+    assert "e3" in questions["click_target"]["criteria"]
+    assert "e1" in questions["type_text_target"]["criteria"]
+
+
+def test_an_opened_panel_that_is_not_a_list_leaves_every_click_on_offer():
+    questions = build_questions(space_for(), "goal", opened={"node": 1, "controls": {4}, "listbox": False})
+    assert "e1" in questions["click_target"]["criteria"]
+
+
 def test_without_an_opened_panel_the_table_keeps_its_document_order():
     state = build_state(PAGE, space_for(), "goal")
     assert [element["ref"] for element in state["elements"]] == ["e1", "e2", "e3"]

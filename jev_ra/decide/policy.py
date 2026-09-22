@@ -93,9 +93,25 @@ def offered_targets(space, exclude=()):
     return kept
 
 
-def build_questions(space, goal, history=(), values=None, exclude=()):
+def reopened(space, opened):
+    """The CLICK on a control whose own suggestion list is open.
+
+    A field with its suggestions up has already done what pressing it does. Offered again it reads
+    like the obvious next step - it is the thing the last action was about - and taking it closes
+    the list the goal needs, so the run types, presses, types again and gets nowhere.
+    """
+    if not opened or not opened.get("listbox"):
+        return set()
+    return {
+        ("CLICK", target)
+        for target, action in space.targets.get("CLICK", {}).items()
+        if action.get("node") == opened["node"]
+    }
+
+
+def build_questions(space, goal, history=(), values=None, exclude=(), opened=None):
     """Every question this step asks, in one request."""
-    excluded = set(exclude)
+    excluded = set(exclude) | reopened(space, opened)
     targets = offered_targets(space, excluded)
     operations = {operation: OPERATION_LABELS[operation] for operation in targets}
     operations.update({key: control["label"] for key, control in space.controls.items() if (key, None) not in excluded})

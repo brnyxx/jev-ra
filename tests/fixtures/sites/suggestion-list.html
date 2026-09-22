@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Search flights</title>
+<style>
+  body { font: 14px/1.5 system-ui; margin: 0; padding: 32px; }
+  #suggestions { display: none; list-style: none; margin: 4px 0 0; padding: 0; border: 1px solid #ccc; width: 260px; }
+  body.open #suggestions { display: block; }
+  #suggestions li { padding: 6px 10px; }
+</style>
+</head>
+<body>
+<!-- What an airline's origin field does: typing opens a list of places under it, and the field
+     itself stays right where it was. Read in document order the field comes first, so the model
+     sees the box it already filled before it sees the suggestions filling it produced. The field
+     announces nothing about the list - plenty of real ones do not - so the only evidence that the
+     list is open is that the options were not there a moment ago. -->
+<h1>Search flights</h1>
+<label for="origin">Origin</label>
+<input id="origin" role="combobox" aria-controls="suggestions" autocomplete="off">
+<ul id="suggestions" role="listbox">
+  <li role="option" id="zrh">Zurich Airport (ZRH)</li>
+  <li role="option" id="zhb">Zurich HB</li>
+  <li role="option" id="qzl">Zurich, Switzerland</li>
+</ul>
+<button type="button" id="search">Search flights</button>
+<script>
+  const field = document.getElementById('origin');
+  field.addEventListener('input', () => document.body.classList.add('open'));
+  for (const option of document.querySelectorAll('[role="option"]')) {
+    option.addEventListener('click', () => {
+      field.value = option.textContent;
+      document.body.classList.remove('open');
+    });
+  }
+</script>
+</body>
+</html>

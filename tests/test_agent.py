@@ -264,6 +264,81 @@ def test_a_scroll_never_claims_to_have_opened_anything():
     assert all("expanded" not in element for element in decide.seen[1][0]["elements"])
 
 
+SUGGESTION_ACTIONS = [
+    *FORM_ACTIONS,
+    {"id": "e3", "node": 3, "role": "option", "kind": "click", "label": "Zurich Airport (ZRH)"},
+    {"id": "e4", "node": 4, "role": "option", "kind": "click", "label": "Zurich HB"},
+]
+
+SUGGESTION_ELEMENTS = [
+    *FORM_ELEMENTS,
+    {"ref": "e3", "node": 3, "role": "option", "label": "Zurich Airport (ZRH)", "rect": {}},
+    {"ref": "e4", "node": 4, "role": "option", "label": "Zurich HB", "rect": {}},
+]
+
+TYPE_CITY = {
+    "operation": answer("TYPE_TEXT"),
+    "type_text_target": answer("e1"),
+    "value_for_field": answer("city"),
+    "goal_achieved": {"noul": 0.1},
+}
+
+
+def suggesting_pages(count=4):
+    """Typing into the city field opens a list of places under it, and it stays open."""
+    listed = {**page(1), "elements": SUGGESTION_ELEMENTS, "actions": SUGGESTION_ACTIONS}
+    return [page(0), *[{**listed, "marker": index} for index in range(1, count)]]
+
+
+def clicks_offered(questions):
+    return list(questions.get("click_target", {}).get("criteria", {}).values())
+
+
+def run_over_suggestions(script, pages=None):
+    decide = decider(script)
+    agent = agent_with(decide, session=FakeSession(pages or suggesting_pages()))
+    result = agent.run("search for a city", values={"city": "Zurich"})
+    return decide, result
+
+
+def test_the_suggestions_typing_opened_lead_the_next_states_element_table():
+    decide, _result = run_over_suggestions([TYPE_CITY, DONE])
+    state = decide.seen[1][0]
+    assert [element["label"] for element in state["elements"]][:2] == ["Zurich Airport (ZRH)", "Zurich HB"]
+    field = next(element for element in state["elements"] if element["label"] == "City")
+    assert field["expanded"] == "true"
+
+
+def test_the_field_under_an_open_list_is_not_offered_for_clicking():
+    decide, _result = run_over_suggestions([TYPE_CITY, DONE])
+    offered = clicks_offered(decide.seen[1][1])
+    assert any("Zurich Airport (ZRH)" in text for text in offered)
+    assert not any("Open City" in text for text in offered)
+
+
+def test_the_field_stays_off_the_click_list_while_its_options_are_on_the_page():
+    script = [TYPE_CITY, {"operation": answer("WAIT"), "goal_achieved": {"noul": 0.1}}, DONE]
+    decide, _result = run_over_suggestions(script)
+    assert not any("Open City" in text for text in clicks_offered(decide.seen[2][1]))
+
+
+def test_the_field_is_offered_again_once_the_options_are_gone():
+    pages = suggesting_pages()
+    pages[2] = page(2)
+    script = [TYPE_CITY, {"operation": answer("WAIT"), "goal_achieved": {"noul": 0.1}}, DONE]
+    decide, _result = run_over_suggestions(script, pages)
+    assert any("Open City" in text for text in clicks_offered(decide.seen[2][1]))
+
+
+def test_typing_that_opened_no_list_opens_nothing():
+    decide = decider([TYPE_CITY, DONE])
+    agent = agent_with(decide, session=FakeSession([page(0), page(1), page(1)]))
+    agent.run("search for a city", values={"city": "Zurich"})
+    state = decide.seen[1][0]
+    assert all("expanded" not in element for element in state["elements"])
+    assert any("Open City" in text for text in clicks_offered(decide.seen[1][1]))
+
+
 def walled(text, url="http://127.0.0.1/wall.html"):
     return {**page(0, url=url, text=text), "doc_text": text}
 
