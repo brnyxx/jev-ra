@@ -398,7 +398,7 @@
   <section id="escalate">
     <p class="kicker">Escalation</p>
     <h2>When a run stops early</h2>
-    <p class="lead">A run that cannot finish returns one of eight reasons, the top candidates and the page text, so the agent can act without observing again.</p>
+    <p class="lead">A run that cannot finish returns one of ten reasons, the top candidates and the page text, so the agent can act without observing again.</p>
     <div class="esc">
       <div><code>needs_value</code>a field needs a string you did not supply. Add it to <code>values</code>, call again.</div>
       <div><code>stuck_loop</code>three steps, no page change. Read the text, click one candidate, continue.</div>
@@ -408,6 +408,8 @@
       <div><code>too_many_controls</code>over 250 controls in view. Scroll or open the section first.</div>
       <div><code>blocked</code>login, captcha, empty results. Tell the user; do not retry blindly.</div>
       <div><code>invalid_decision</code>an answer not on the page, twice. Re-observe and drive one step yourself.</div>
+      <div><code>blocked_by_site</code>the site served a wall, not a page. It blocks automation; a retry from the same network will not help.</div>
+      <div><code>provider_error</code>the decision provider would not answer. Check the key and route with <code>jev-ra doctor</code>; do not retry the goal.</div>
     </div>
   </section>
 
