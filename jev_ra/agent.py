@@ -59,6 +59,21 @@ WALL_TEXT_CHARS = 1500
 # form; three opens in a row on one host that answer with nothing is the host answering.
 THIN_TEXT_CHARS = 200
 THIN_OPENS = 3
+# A site's hiccup is the site's, not the task's: the same address a moment later is often the
+# working page. One retry is spent before any decision is made on an error answer, and a site
+# that is still serving it after that is reported as the site refusing, never as blocked.
+SITE_RETRY_S = 2.0
+# An error page is a short page, and that is what keeps an article about an outage from reading
+# as one. The phrases are what a site says when the number is missing or rewritten.
+SITE_ERROR_CHARS = 600
+SITE_ERROR_PHRASES = (
+    "502 bad gateway",
+    "503 service unavailable",
+    "504 gateway time-out",
+    "too many requests",
+    "application error",
+    "service temporarily unavailable",
+)
 # A goal can be an instruction or a question, and a question wants an answer as well as the page
 # it is answered on: the leaderboards' own top entries end on one sentence. These are the openings
 # a question takes when it does not end in a question mark.
@@ -227,6 +242,24 @@ class Agent:
         """The action space of an observed page, as this goal reads it."""
         return actions.build(page, self.session.max_elements, goal)
 
+    def site(self, page, run, timer=None):
+        """The page after one reload when the site answered an error, and the wall still there.
+
+        A decision made on a site's error page is a decision about nothing. Spend one reload on
+        it - the site's bad minute should cost a retry, not the task - and report what the reload
+        cannot fix as the site refusing, with the status it kept answering with.
+        """
+        wall = site_error(page)
+        if wall is None:
+            return page, None
+        run.site_error = True
+        logger.info("[%s] The site answered %s; reloading once in %s s", run.run_id, wall, SITE_RETRY_S)
+        time.sleep(SITE_RETRY_S)
+        reloaded = self.read(self.session.reload, timer)
+        if reloaded is None:
+            return page, wall
+        return reloaded, site_error(reloaded)
+
     def run(self, goal, values=None, max_steps=None, url=None):
         """Pursue a goal until it is done, blocked, escalated or out of budget."""
         started = time.perf_counter()
@@ -251,6 +284,9 @@ class Agent:
                 return run.finish("budget", over, page)
             timer = StepTimer()
             with timer.measure("actions"):
+                page, wall = self.site(page, run, timer)
+                if wall:
+                    return run.escalate("blocked_by_site", page, detail={"wall": wall})
                 space = self.space(page, goal)
                 questions = build_questions(space, goal, run.history, binder.available(), exclude, opened)
                 state = build_state(page, space, goal, run.history, binder.available(), opened)
@@ -504,6 +540,7 @@ class _Run:
         self.pending = None
         self.cost = 0.0
         self.opens = ()
+        self.site_error = False
 
     def elapsed_ms(self):
         """Milliseconds since the run started."""
@@ -775,6 +812,24 @@ def page_text(page):
         return whole
     shown = set(seen.split("\n"))
     return "\n".join([seen, *(line for line in whole.split("\n") if line not in shown)])
+
+
+def site_error(page):
+    """The wall a site's own error answer is, or None.
+
+    A status of 5xx or 429 is the site saying it could not serve this request. A short page that
+    says so in words is the same answer when the number is missing or was rewritten, and the
+    length limit is what keeps an article about an outage from reading as one.
+    """
+    status = page.get("http_status")
+    if isinstance(status, int) and (status >= 500 or status == 429):
+        return f"http {status}"
+    said = f"{page.get('title', '')}\n{page_text(page)}".lower()
+    if len(said) <= SITE_ERROR_CHARS:
+        phrase = next((phrase for phrase in SITE_ERROR_PHRASES if phrase in said), "")
+        if phrase:
+            return f"the page answered {phrase!r}"
+    return None
 
 
 def verification(before, after):

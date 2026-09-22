@@ -488,6 +488,15 @@ class Session:
             self.wait_out({"kind": "navigate"}, was, None)
         return self.observe()
 
+    def reload(self, timer=None):
+        """Ask for the current document again, wait for it, and observe."""
+        self.after_input = None
+        self.invalidate()
+        self.call("Page.reload", timeout=NAVIGATE_TIMEOUT_S)
+        self.load()
+        self.paint()
+        return self.observe(timer)
+
     def quiet(self, budget_s, after=None, quiet_ms=QUIET_MS):
         """Wait in the page until it stops changing, and say whether it did.
 
