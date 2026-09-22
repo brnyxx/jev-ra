@@ -140,10 +140,12 @@ def test_an_action_that_never_landed_leaves_no_frame_behind(tmp_path):
     assert [entry["step"] for entry in result["trajectory"]] == [0, 1]
 
 
-def test_the_answer_is_the_text_of_the_page_the_run_finished_on(tmp_path):
+def test_the_page_text_is_carried_beside_whatever_answer_there_is(tmp_path):
     with adapter_for([DONE], tmp_path / "t") as adapter:
         result = adapter.run("find the lasagna recipe", url="https://example.test/")
-    assert result["final_answer"] == "Results for lasagna"
+    assert result["final_page_text"] == "Results for lasagna"
+    # No text helper is configured in these runs, so the question gets no sentence of its own.
+    assert result["final_answer"] is None
     assert result["cost"] == pytest.approx(0.0001)
 
 
@@ -151,6 +153,7 @@ def test_a_blank_page_answers_nothing_rather_than_an_empty_string(tmp_path):
     session = FakeSession(pages=[page(0, text="")])
     with adapter_for([DONE], tmp_path / "t", session=session) as adapter:
         result = adapter.run("find the lasagna recipe", url="https://example.test/")
+    assert result["final_page_text"] is None
     assert result["final_answer"] is None
 
 

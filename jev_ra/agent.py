@@ -47,6 +47,10 @@ WALL_TEXT_CHARS = 1500
 # form; three opens in a row on one host that answer with nothing is the host answering.
 THIN_TEXT_CHARS = 200
 THIN_OPENS = 3
+# A goal can be an instruction or a question, and a question wants an answer as well as the page
+# it is answered on: the leaderboards' own top entries end on one sentence. These are the openings
+# a question takes when it does not end in a question mark.
+QUESTION_STARTS = ("what", "which", "how many", "when", "who", "find the")
 
 
 @dataclass
@@ -58,6 +62,7 @@ class Result:
     run_id: str = ""
     url: str = ""
     title: str = ""
+    final_answer: str | None = None
     steps: list = field(default_factory=list)
     decisions: int = 0
     text_calls: list = field(default_factory=list)
@@ -488,14 +493,25 @@ class _Run:
             "omitted": space.omitted,
         }
 
+    def answer(self, page):
+        """One sentence for a question-shaped goal, and why there is none when there is not."""
+        if not question_shaped(self.goal):
+            return None, ""
+        return self.binder.answer(self.goal, page)
+
     def result(self, status, reason, page, decision=None, detail=None):
         """Assemble the Result for this run and store it under its id."""
+        detail = dict(detail or {})
+        final_answer, unanswered = self.answer(page)
+        if unanswered:
+            detail["final_answer"] = unanswered
         result = Result(
             status=status,
             reason=reason,
             run_id=self.run_id,
             url=page.get("url", ""),
             title=page.get("title", ""),
+            final_answer=final_answer,
             steps=self.steps,
             decisions=self.decisions,
             text_calls=self.binder.calls,
@@ -503,7 +519,7 @@ class _Run:
             cost=round(self.cost, 6),
             final_page=self.final_page(page),
             candidates=decision.candidates[:CANDIDATES] if decision else [],
-            detail=detail or {},
+            detail=detail,
         )
         store_run(result)
         return result
@@ -517,6 +533,16 @@ class _Run:
         detail = dict(detail or {})
         detail["page_text"] = page.get("text", "")[:ESCALATION_TEXT_CHARS]
         return self.result(status, reason, page, decision, detail)
+
+
+def question_shaped(goal):
+    """Whether this goal reads as a question rather than an instruction."""
+    said = " ".join(goal.split()).lower()
+    if not said:
+        return False
+    if said.endswith("?"):
+        return True
+    return said in QUESTION_STARTS or said.startswith(tuple(f"{start} " for start in QUESTION_STARTS))
 
 
 def unsupplied_field(decision, space, binder, goal):

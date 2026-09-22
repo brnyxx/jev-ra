@@ -201,6 +201,11 @@ the key and the route rather than retrying the goal. An escalation
 also carries the top eight operation/target candidates with their probabilities, and up to 3,000
 characters of page text — enough to decide what to do without observing again.
 
+A goal that reads as a question — it ends in a question mark, or opens with what, which, how many,
+when, who or find the — also gets `Result.final_answer`: one sentence the configured text helper
+takes from the page the run finished on, whatever the run ended as. With no text helper it stays
+`null` and `detail` says so, and a goal that is an instruction never asks for one.
+
 Verification is deterministic: after every action jev-ra compares url, title, text and field state,
 and `page_changed` comes from a semantic page marker, not from the model.
 

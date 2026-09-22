@@ -136,8 +136,9 @@ def messages(task, result):
 
 
 def answer(result):
-    """The answer the evaluator is shown: the page jev-ra finished on, with no brackets in it."""
-    text = " ".join((result.get("final_answer") or "").split())
+    """What the evaluator is shown: jev-ra's own sentence, else the page it finished on."""
+    said = result.get("final_answer") or result.get("final_page_text") or ""
+    text = " ".join(said.split())
     return text.replace("[", "(").replace("]", ")")[:ANSWER_CHARS] or "no answer; the run ended on the page above"
 
 
@@ -163,6 +164,7 @@ def run_task(task, out, config, max_steps=MAX_STEPS, session=None, decide=None):
         result = {
             "final_url": task["web"],
             "final_answer": None,
+            "final_page_text": None,
             "trajectory": [],
             "status": "error",
             "reason": type(error).__name__,
@@ -196,6 +198,7 @@ def run_task(task, out, config, max_steps=MAX_STEPS, session=None, decide=None):
         "cost": result["cost"],
         "elapsed_ms": result["elapsed_ms"],
         "final_url": result["final_url"],
+        "final_answer": result["final_answer"],
         "frames": len(frames),
     }
 

@@ -116,9 +116,31 @@ def test_the_answer_carries_no_bracket_that_would_truncate_it(tmp_path):
 
 
 def test_a_run_that_answered_nothing_still_says_so_in_the_evaluators_grammar(tmp_path):
-    result = {"status": "blocked", "final_answer": None, "trajectory": []}
+    result = {"status": "blocked", "final_answer": None, "final_page_text": None, "trajectory": []}
     spoken = webvoyager.messages(TASKS[0], result)
     assert spoken[-1]["content"].endswith("[no answer; the run ended on the page above]")
+
+
+def test_a_one_sentence_answer_is_what_the_evaluator_is_shown(tmp_path):
+    result = {
+        "status": "done",
+        "final_answer": "The recipe takes 1 hour 20 minutes.",
+        "final_page_text": "Lasagna. Total 1 hour 20 minutes. Ingredients ...",
+        "trajectory": [],
+    }
+    spoken = webvoyager.messages(TASKS[0], result)
+    assert spoken[-1]["content"].endswith("[The recipe takes 1 hour 20 minutes.]")
+
+
+def test_without_a_sentence_the_page_it_finished_on_is_still_shown(tmp_path):
+    result = {
+        "status": "blocked",
+        "final_answer": None,
+        "final_page_text": "Lasagna. Total 1 hour 20 minutes.",
+        "trajectory": [],
+    }
+    spoken = webvoyager.messages(TASKS[0], result)
+    assert spoken[-1]["content"].endswith("[Lasagna. Total 1 hour 20 minutes.]")
 
 
 def test_the_evaluators_own_output_is_read_back_per_task():

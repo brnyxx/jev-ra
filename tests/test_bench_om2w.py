@@ -112,13 +112,29 @@ def test_the_navigation_is_step_zero_and_names_the_page_it_landed_on(tmp_path):
     assert first["url"] == "https://example.test/"
 
 
-def test_no_answer_is_claimed_and_no_reasoning_is_put_in_the_history(tmp_path):
-    """The benchmark asks for factual actions only, and jev-ra writes no prose to claim."""
+def test_no_answer_is_claimed_without_a_text_helper_and_no_reasoning_is_ever_put_in_the_history(tmp_path):
+    """A run with no text helper has no sentence to offer, and jev-ra never writes a thought."""
     run_one(TASKS[0], tmp_path, [CLICK, DONE])
     result = json.loads((tmp_path / "aaa111" / "result.json").read_text())
     assert result["agent_final_answer"] is None
     assert all(step["thought"] is None for step in result["action_history"])
     assert result["action_history"][-1]["action"] == "TASK_COMPLETE"
+
+
+def test_an_answered_question_is_carried_in_the_field_the_schema_gives_it(tmp_path):
+    answered = {
+        "final_url": "https://a.test/recipe",
+        "final_answer": "The lasagna recipe takes 1 hour 20 minutes.",
+        "final_page_text": "Lasagna. Total 1 hour 20 minutes.",
+        "trajectory": [],
+        "status": "done",
+    }
+    written = om2w.submission(TASKS[0], answered, ["0000.jpg"])
+    assert written["agent_final_answer"] == "The lasagna recipe takes 1 hour 20 minutes."
+    last = written["action_history"][-1]
+    assert last["action"] == "TASK_COMPLETE; ANSWER: The lasagna recipe takes 1 hour 20 minutes."
+    assert last["action_status"] is None
+    assert last["thought"] is None
 
 
 def test_an_action_the_page_ignored_is_recorded_as_failed(tmp_path):

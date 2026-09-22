@@ -173,12 +173,13 @@ def submission(task, result, frames):
                 "thought": None,
             }
         )
+    answer = result.get("final_answer")
     history.append(
         {
             "step": len(history),
             "screenshot": frames[-1],
             "url": result["final_url"] or None,
-            "action": "TASK_COMPLETE",
+            "action": f"TASK_COMPLETE; ANSWER: {answer}" if answer else "TASK_COMPLETE",
             "action_status": None,
             "thought": None,
         }
@@ -187,9 +188,9 @@ def submission(task, result, frames):
         "schema_version": SCHEMA_VERSION,
         "task": task["confirmed_task"],
         "task_id": task["task_id"],
-        # jev-ra has no model that writes prose, and the benchmark asks for factual actions only.
-        # An answer here would have to be page text relabelled as the agent's words, so there is none.
-        "agent_final_answer": None,
+        # One sentence from jev-ra's text helper, on a goal that reads as a question, taken from
+        # the page the run finished on. No helper, or no question, and there is nothing to claim.
+        "agent_final_answer": answer,
         "reference_length": task["reference_length"],
         "action_history": history,
     }
@@ -219,6 +220,7 @@ def run_task(task, out, config, max_steps=MAX_STEPS, session=None, decide=None):
         result = {
             "final_url": task["website"],
             "final_answer": None,
+            "final_page_text": None,
             "trajectory": [],
             "status": "error",
             "reason": type(error).__name__,
@@ -253,7 +255,8 @@ def run_task(task, out, config, max_steps=MAX_STEPS, session=None, decide=None):
         "cost": result["cost"],
         "elapsed_ms": result["elapsed_ms"],
         "final_url": result["final_url"],
-        "final_page_text": result["final_answer"],
+        "final_answer": result["final_answer"],
+        "final_page_text": result["final_page_text"],
         "frames": len(frames),
     }
 

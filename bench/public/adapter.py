@@ -19,8 +19,9 @@ from jev_ra.config import load
 logger = logging.getLogger(__name__)
 
 MAX_STEPS = 25
-# What the harness gets as the run's answer. jev-ra has no model that writes prose, so the answer
-# is the page it finished on; a few hundred characters is what a judge reads before the screenshot.
+# The page a run finished on, for a judge that is shown it beside the screenshot. It is not an
+# answer: a question-shaped goal gets one sentence of its own from jev-ra's text helper, and a
+# goal that is an instruction gets none at all.
 ANSWER_CHARS = 600
 IMAGES = {"jpg": "jpeg", "png": "png"}
 NAVIGATE = "NAVIGATE"
@@ -123,7 +124,8 @@ class Adapter:
         text = (result.final_page.get("text") or "").strip()
         return {
             "final_url": result.url,
-            "final_answer": text[:ANSWER_CHARS] or None,
+            "final_answer": result.final_answer,
+            "final_page_text": text[:ANSWER_CHARS] or None,
             "trajectory": self.trajectory(result),
             "status": result.status,
             "reason": result.reason,
@@ -208,7 +210,7 @@ class Adapter:
 def evidence(result):
     """The first words of the page a run ended on, which is what a `blocked` has to be read against."""
     detail = result.get("detail") or {}
-    text = detail.get("error") or detail.get("page_text") or result.get("final_answer") or ""
+    text = detail.get("error") or detail.get("page_text") or result.get("final_page_text") or ""
     return " ".join(text.split())[:200]
 
 
