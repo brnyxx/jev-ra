@@ -734,6 +734,8 @@ def test_a_rejected_key_is_its_own_reason_and_never_carries_the_key():
     assert key not in result.detail["error"]
     assert session.acted == []
     assert result.decisions == 1
+
+
 def test_a_scripted_run_carries_a_stable_run_id():
     result = agent_with(decider([CLICK_SUBMIT, DONE])).run("find flights")
     assert len(result.run_id) == 12

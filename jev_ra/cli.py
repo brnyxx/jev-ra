@@ -17,7 +17,17 @@ from .agent import Agent
 from .browser import MAX_ELEMENTS, actions
 from .browser.chrome import alive, find_browser, forget_pid, forget_port, profile_dir, read_pid, read_port, url_for
 from .browser.session import Session
-from .config import MAX_PAGES_LIMIT, MAX_STEPS_LIMIT, SERVE_HOST, SERVE_PORT, clamp, load, redact, require_browser, state_path
+from .config import (
+    MAX_PAGES_LIMIT,
+    MAX_STEPS_LIMIT,
+    SERVE_HOST,
+    SERVE_PORT,
+    clamp,
+    load,
+    redact,
+    require_browser,
+    state_path,
+)
 from .decide.client import DecisionClient
 from .errors import JevError, JevRaError, StalePage, render
 from .extract import MODES, extract
@@ -547,12 +557,12 @@ def cmd_doctor(args):
     # Chrome is checked before the key gate: whether a browser answers has nothing to do with a
     # key, and an image or a fresh machine is worth checking before anyone has set one.
     ok, detail, source = chrome_check(config, getattr(args, "profile", None))
+    report["chrome"] = {"ok": ok, "detail": detail, "source": source}
+    lines.append(f"chrome: {'ok, ' + detail if ok else 'unreachable'}")
     if not config.api_key and not require_browser():
         lines.append("Set JEV_RA_API_KEY, TYPESAFE_API_KEY or OPENROUTER_API_KEY, then run `jev-ra doctor` again.")
         emit(args, report, lines)
         return 1
-    report["chrome"] = {"ok": ok, "detail": detail, "source": source}
-    lines.append(f"chrome: {'ok, ' + detail if ok else 'unreachable'}")
     if not ok:
         lines.append(chrome_hint(find_browser()))
     if not config.api_key:

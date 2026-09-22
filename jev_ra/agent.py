@@ -13,7 +13,6 @@ from .decide.policy import InvalidDecision, build_questions, build_state, read_a
 from .decide.questions import CANDIDATES, GOAL_ACHIEVED_THRESHOLD
 from .errors import Escalated, JevBadResponse, JevError, StalePage, render
 from .profile import CATEGORIES, StepTimer
-from .runs import new_id
 from .runs import write as store_run
 from .text import NeedsValue, ValueBinder
 
@@ -352,12 +351,11 @@ class _Run:
         self.agent = agent
         # A host that already named this run - `jev-ra serve` logs the id before the tools run -
         # spends that name here, so its log line and the stored run are the same run.
-        self.run_id = agent.run_id or new_id()
+        self.run_id = agent.run_id or agent.identify()
         agent.run_id = None
         self.goal = goal
         self.binder = binder
         self.started = started
-        self.run_id = agent.identify()
         self.history = []
         self.steps = []
         self.decisions = 0
