@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.2.1 - 2026-09-22
+
+### Changed
+- The release workflow publishes to PyPI with the maintainer's API token (`PYPI_API_TOKEN`), and a
+  re-run of the job skips files that are already there. Trusted publishing failed every run with
+  `invalid-publisher`; `docs/RELEASING.md` keeps its values in case it is revisited.
+- The suggestion-list and proxy tests read what CI reads: the settled state with the prefetch off,
+  and a caller flag that the Linux sandbox flag cannot shadow.
+- `docs/DEFINITION_OF_DONE.md` says where every gate stands on this release and what remains, in
+  the order it pays off.
+
 ## 0.2.0 - 2026-09-22
 
 Nine lanes landed on top of 0.1.3, measured on the eighty-task corpus and on the public
