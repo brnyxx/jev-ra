@@ -14,6 +14,7 @@ from jev_ra.decide import Reply
 from jev_ra.errors import ChromeError
 from jev_ra.mcp_server import Browser, build_server
 from tests.test_agent import FakeSession, answer, page
+from tests.test_search import CONTENT_PAGE, SERP_PAGE, FakeTab, greedy_decide
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -343,3 +344,55 @@ def test_the_session_is_free_again_once_the_first_tool_finishes():
         worker.join(timeout=5)
     assert finished == ["slow"]
     assert browser.guarded(lambda: "third") == "third"
+
+
+class Untouched(FakeSession):
+    """The shared session, recording anything a tool does to it."""
+
+    def __init__(self):
+        super().__init__()
+        self.opened = []
+        self.calls = []
+
+    def open(self, url):
+        self.opened.append(url)
+        return super().open(url)
+
+    def call(self, method, **params):
+        self.calls.append(method)
+        return {}
+
+    def evaluate(self, _expression):
+        return None
+
+
+def test_a_search_runs_on_its_own_target_and_leaves_the_shared_session_as_it_was():
+    # A SERP is a page the caller never asked for, and search blocks images for the whole tab it
+    # reads in. On the shared session that navigates the caller's own page away and leaves the
+    # blocking behind for every tool after it.
+    shared = Untouched()
+    tabs = []
+
+    def factory():
+        if not tabs:
+            tabs.append(shared)
+            return shared
+        page = SERP_PAGE if len(tabs) == 1 else CONTENT_PAGE
+        tab = FakeTab(page=page, hrefs={1: "https://one.test/", 2: "https://two.test/"})
+        tabs.append(tab)
+        return tab
+
+    server = build_server(Browser(config=config.load({}), session_factory=factory, decide=greedy_decide))
+    call(server, "browser_open", url="http://127.0.0.1/form.html")
+    was = shared.observe()["url"]
+    shared.opened.clear()
+    shared.calls.clear()
+
+    found = payload(call(server, "browser_search", query="godel", max_pages=1))
+
+    assert [item["url"] for item in found["results"]] == ["https://one.test/"]
+    assert shared.opened == []
+    assert shared.calls == []
+    assert shared.observe()["url"] == was
+    assert shared.closed is False
+    assert tabs[1:] and all(tab.closed for tab in tabs[1:])

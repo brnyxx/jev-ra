@@ -138,8 +138,10 @@ def search(
     goal = goal or query
     started = time.perf_counter()
     owned = session is None
-    session = session or Session(config)
     session_factory = session_factory or (lambda: Session(config))
+    # The SERP is a page the caller never asked to see, and the tab it is read in keeps the image
+    # blocking for as long as it lives. Both belong on a target this search owns and then closes.
+    session = session or session_factory()
     try:
         block_resources(session)
         page = session.open(engine_url(query, engine))

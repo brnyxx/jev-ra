@@ -192,9 +192,17 @@ def build_server(browser=None):
     def browser_search(query: str, goal: str | None = None, max_pages: int = MAX_PAGES) -> dict:
         """Search the web, read the best results in parallel tabs, and rank them against the goal."""
         started = time.perf_counter()
-        session = browser.open()
         decide = browser.decider()
-        payload = guarded(lambda: search(query, goal, max_pages, config=browser.config, decide=decide, session=session))
+        payload = guarded(
+            lambda: search(
+                query,
+                goal,
+                max_pages,
+                config=browser.config,
+                decide=decide,
+                session_factory=browser.session_factory,
+            )
+        )
         payload["elapsed_ms"] = round((time.perf_counter() - started) * 1000)
         return payload
 
