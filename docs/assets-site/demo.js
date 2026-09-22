@@ -21,8 +21,26 @@
   const el = (tag, attrs, parent) => { const n = document.createElementNS(NS, tag); for (const k in attrs) n.setAttribute(k, attrs[k]); if (parent) parent.appendChild(n); return n; };
   const txt = (parent, x, y, s, cls, attrs) => { const t = el("text", Object.assign({ x, y, class: cls || "" }, attrs || {}), parent); t.textContent = s; return t; };
   const wrap = (s, maxUnits) => { const lines = []; let cur = "", units = 0; for (const w of s.split(" ")) { const u = [...w].reduce((a, c) => a + (c.charCodeAt(0) > 0x2e80 ? 1.9 : 1), 0); if (units + u + 1 > maxUnits && cur) { lines.push(cur); cur = w; units = u; } else { cur = cur ? cur + " " + w : w; units += u + 1; } } if (cur) lines.push(cur); return lines; };
+  // Lines are broken at the width the browser actually renders, not at a guessed character count:
+  // Japanese and Chinese have no spaces to break at, so a CJK character is a break point of its own,
+  // and closing punctuation never starts a line.
+  const CJK = "\u2e80-\u2fff\u3000-\u30ff\u3400-\u9fff\uf900-\ufaff\uff00-\uffef";
+  const TOKEN = new RegExp(`[${CJK}]|\\s+|[^\\s${CJK}]+`, "g");
+  const NOSTART = /^[、。，．：；！？」』）〉》】・ー々,.:;!?)\]]/;
+  const fit = (textEl, str, maxW) => {
+    const probe = el("tspan", {}, textEl); const width = (v) => { probe.textContent = v; return probe.getComputedTextLength(); };
+    const out = []; let cur = "";
+    for (const tk of String(str).match(TOKEN) || []) {
+      const next = cur + tk;
+      if (cur.trim() && !NOSTART.test(tk) && width(next.trimEnd()) > maxW) { out.push(cur.trimEnd()); cur = tk.trimStart(); } else cur = next;
+    }
+    if (cur.trim()) out.push(cur.trimEnd());
+    probe.remove(); return out;
+  };
+  const setLines = (textEl, x, str, maxW, lh) => { textEl.replaceChildren(); const ls = fit(textEl, str, maxW); ls.forEach((ln, i) => { const t = el("tspan", { x, dy: i ? lh : 0 }, textEl); t.textContent = ln; }); return ls.length; };
   const lines = (parent, x, y, s, cls, maxUnits, lh) => { const t = el("text", { x, y, class: cls }, parent); wrap(s, maxUnits).forEach((ln, i) => { const ts = el("tspan", { x, dy: i ? lh : 0 }, t); ts.textContent = ln; }); return t; };
 
+  const TERM_W = 614;
   const norm = (h) => { h = (h || "en").toLowerCase(); return h.startsWith("ko") ? "ko" : h.startsWith("ja") ? "ja" : h.startsWith("zh") ? "zh-CN" : "en"; };
   let run, timed, elapsed, T, locale = norm(document.documentElement.lang), t0 = 0, raf = 0, S = {};
   const now = () => performance.now();
@@ -40,8 +58,8 @@
     const svg = el("svg", { viewBox: "0 0 1920 1080", class: "jd", role: "img", "aria-label": "jev-ra demo: a recorded Google Flights run replayed" }, host);
     const style = el("style", {}, svg);
     style.textContent = `
-      .jd{font-family:ui-sans-serif,-apple-system,"Space Grotesk","Inter","Apple SD Gothic Neo","Noto Sans CJK KR","Hiragino Sans","PingFang SC",Arial,sans-serif;display:block;width:100%;height:auto;background:#070A0F}
-      .jd .m{font-family:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,"Apple SD Gothic Neo","Noto Sans CJK KR",monospace}
+      .jd{font-family:ui-sans-serif,-apple-system,"Geist","Inter","Apple SD Gothic Neo","Noto Sans CJK KR","Hiragino Sans","PingFang SC",Arial,sans-serif;display:block;width:100%;height:auto;background:#070A0F}
+      .jd .m{font-family:"Geist Mono",ui-monospace,SFMono-Regular,Menlo,"Apple SD Gothic Neo","Noto Sans CJK KR",monospace}
       .jd .paper{fill:#F6F4EF}.jd .amber{fill:#FFB703}.jd .cyan{fill:#3DE8FF}.jd .muted{fill:#AEB6C2}.jd .dim{fill:#6B7482}.jd .green{fill:#5BE49B}.jd .ink{fill:#070A0F}
       .jd .g-text{fill:#e8eaed}.jd .g-sub{fill:#9aa0a6}
       .jd .fade{transition:opacity .35s}.jd .hid{opacity:0}
@@ -75,9 +93,10 @@
     const term = el("g", { id: "term", transform: "translate(140 140)" }, sess);
     el("rect", { width: 640, height: 760, rx: 10, fill: "rgba(4,7,11,.92)", stroke: "rgba(246,244,239,.14)" }, term);
     txt(term, 26, 44, "claude · ~/work", "m dim", { "font-size": 15 });
-    const prompt = el("text", { x: 26, y: 82, class: "m paper", "font-size": 19 }, term);
+    const prompt = el("text", { x: 26, y: 82, class: "m paper", "font-size": 19 }, term); S.promptText = prompt;
     S.promptArrow = el("tspan", { class: "amber" }, prompt); S.promptArrow.textContent = "❯ ";
-    S.prompt = el("tspan", {}, prompt); S.caret = el("tspan", { class: "caret" }, prompt); S.caret.textContent = "▍";
+    S.promptMeasure = el("text", { x: 0, y: 0, class: "m", "font-size": 19, visibility: "hidden" }, term);
+    S.promptSpans = []; S.caret = el("tspan", { class: "caret" }, prompt); S.caret.textContent = "▍";
     S.tool = el("g", { class: "fade hid" }, term);
     const tl = el("text", { x: 26, y: 150, class: "m", "font-size": 19 }, S.tool);
     const dot = el("tspan", { class: "green" }, tl); dot.textContent = "⏺ "; const nm = el("tspan", { class: "paper" }, tl); nm.textContent = "jev-ra"; const mc = el("tspan", { class: "dim" }, tl); mc.textContent = " · MCP";
@@ -150,31 +169,43 @@
     const tools = document.createElement("div"); tools.className = "demo-tools"; host.parentElement.insertBefore(tools, host);
     S.replay = document.createElement("button"); S.replay.className = "replay"; tools.appendChild(S.replay); S.replay.addEventListener("click", restart);
     applyLocale();
+    // Line breaks are measured, so they are measured again once the real font has arrived.
+    if (document.fonts) document.fonts.ready.then(applyLocale);
   }
 
   function applyLocale() {
     const s = L[locale] || L.en; const v = { steps: run.steps.length, decisions: run.decisions, s: (elapsed / 1000).toFixed(1), cost: run.cost.toFixed(4) };
-    S.recorded.replaceChildren(); wrap(s.recorded, 150).forEach((ln, i) => { const t = el("tspan", { x: 140, dy: i ? 24 : 0 }, S.recorded); t.textContent = ln; });
-    S.doneLine.replaceChildren(); wrap(fmt(s.done, v), 62).forEach((ln, i) => { const t = el("tspan", { x: 26, dy: i ? 21 : 0 }, S.doneLine); t.textContent = ln; });
-    S.summary.replaceChildren(); wrap(s.summary, 66).forEach((ln, i) => { const t = el("tspan", { x: 42, dy: i ? 26 : 0 }, S.summary); t.textContent = ln; });
+    setLines(S.recorded, 140, s.recorded, 1640, 24);
+    setLines(S.doneLine, 26, fmt(s.done, v), TERM_W - 26, 21);
+    setLines(S.summary, 42, s.summary, TERM_W - 42, 26);
+    const rn = setLines(S.running, 26, s.running, TERM_W - 26, 18); S.running.setAttribute("y", 738 - (rn - 1) * 18);
+    S.promptLines = fit(S.promptMeasure, s.request, TERM_W - 26 - S.promptArrow.getComputedTextLength());
+    S.promptSpans.forEach((t) => t.remove()); S.promptSpans = S.promptLines.map(() => el("tspan", {}, S.promptText)); S.promptText.appendChild(S.caret);
     S.cmpTitle.textContent = s.compareTitle; S.speed.textContent = s.speed; S.bu.sub.textContent = BROWSER_USE.steps + " " + s.steps; S.jr.sub.textContent = run.steps.length + " " + s.steps;
-    S.cmpNote.replaceChildren(); wrap(fmt(s.compareNote, v), 150).forEach((ln, i) => { const t = el("tspan", { x: 140, dy: i ? 30 : 0 }, S.cmpNote); t.textContent = ln; });
+    setLines(S.cmpNote, 140, fmt(s.compareNote, v), 1640, 30);
     S.replay.textContent = "↻ " + s.replay;
   }
 
   const show = (n, on) => n.classList.toggle("hid", !on);
   let logged = 0, rippled = -1;
-  function reset() { logged = 0; rippled = -1; S.log.replaceChildren(); S.prompt.textContent = ""; show(S.tool, false); show(S.open, false); show(S.doneLine, false); show(S.summary, false); show(S.summaryBar, false); show(S.browser, false); S.browser.style.transform = "translate(60px,0)"; show(S.pg, false); show(S.loading, true); show(S.menu, false); show(S.menuHi, false); show(S.sugO.g, false); show(S.sugD.g, false); show(S.cal, false); show(S.results, false); show(S.placeholder, true); show(S.cursor, false); show(S.chipLabel, false); show(S.compare, false); show(S.outro, false); show(S.session, true); show(S.ratio, false); S.url.textContent = "google.com/travel/flights"; S.chip.textContent = "왕복 ▾"; [S.origin, S.dest, S.date].forEach((f) => { f.t.textContent = f.ph; f.t.setAttribute("class", "g-sub"); f.box.classList.remove("focus"); }); S.day20.setAttribute("fill", "none"); S.d20.setAttribute("fill", "#e8eaed"); S.search.classList.remove("focus"); S.confirm.classList.remove("focus"); S.chipBox.classList.remove("focus"); S.sugO.b.classList.remove("focus"); S.sugD.b.classList.remove("focus"); S.bu.fill.setAttribute("width", 0); S.jr.fill.setAttribute("width", 0); }
+  function reset() { logged = 0; rippled = -1; S.log.replaceChildren(); S.promptSpans.forEach((t) => { t.textContent = ""; }); show(S.tool, false); show(S.open, false); show(S.doneLine, false); show(S.summary, false); show(S.summaryBar, false); show(S.browser, false); S.browser.style.transform = "translate(60px,0)"; show(S.pg, false); show(S.loading, true); show(S.menu, false); show(S.menuHi, false); show(S.sugO.g, false); show(S.sugD.g, false); show(S.cal, false); show(S.results, false); show(S.placeholder, true); show(S.cursor, false); show(S.chipLabel, false); show(S.compare, false); show(S.outro, false); show(S.session, true); show(S.ratio, false); S.url.textContent = "google.com/travel/flights"; S.chip.textContent = "왕복 ▾"; [S.origin, S.dest, S.date].forEach((f) => { f.t.textContent = f.ph; f.t.setAttribute("class", "g-sub"); f.box.classList.remove("focus"); }); S.day20.setAttribute("fill", "none"); S.d20.setAttribute("fill", "#e8eaed"); S.search.classList.remove("focus"); S.confirm.classList.remove("focus"); S.chipBox.classList.remove("focus"); S.sugO.b.classList.remove("focus"); S.sugD.b.classList.remove("focus"); S.bu.fill.setAttribute("width", 0); S.jr.fill.setAttribute("width", 0); }
 
   function frame() {
     const t = now() - t0; const s = L[locale] || L.en;
     if (t >= T.total) { restart(); return; }
     // terminal
-    const typedN = Math.max(0, Math.floor(((t - T.typing) / 1000) * 30)); S.prompt.textContent = s.request.slice(0, typedN);
+    let typedN = Math.max(0, Math.floor(((t - T.typing) / 1000) * 30));
+    const indent = 26 + S.promptArrow.getComputedTextLength();
+    S.promptLines.forEach((ln, i) => {
+      const part = ln.slice(0, Math.max(0, typedN)); typedN -= ln.length; const span = S.promptSpans[i];
+      if (span.textContent === part) return;
+      span.textContent = part;
+      if (i && part) { span.setAttribute("x", indent); span.setAttribute("dy", 26); } else { span.removeAttribute("x"); span.removeAttribute("dy"); }
+    });
     show(S.tool, t >= T.tool); show(S.open, t >= T.runStart);
     if (t >= T.browserIn) { show(S.browser, true); S.browser.style.transform = "translate(0,0)"; }
     const ms = t - T.runStart;
-    S.running.textContent = ms >= 0 && ms < elapsed ? s.running : "";
+    show(S.running, ms >= 0 && ms < elapsed);
     S.foot.textContent = s.realTime + " · Chrome 1280×900";
     if (ms >= 0) {
       S.timer.textContent = (Math.min(elapsed, ms) / 1000).toFixed(2) + " s"; S.timer.setAttribute("class", ms >= elapsed ? "m amber" : "m paper");
@@ -183,7 +214,9 @@
       const loading = ms < timed[0].startMs; show(S.loading, loading); show(S.pg, !loading); show(S.cursor, !loading);
       while (logged < timed.length && ms >= timed[logged].decidedMs) {
         const st = timed[logged]; const y = 300 + logged * 22; const line = el("text", { x: 26, y, class: "m muted", "font-size": 15 }, S.log);
-        const a = el("tspan", { class: "dim" }, line); a.textContent = "⎿ "; const b = el("tspan", { class: "paper" }, line); b.textContent = s.step + " " + st.n; const c = el("tspan", {}, line); c.textContent = " · "; const d = el("tspan", { class: "amber" }, line); d.textContent = st.operation; const e = el("tspan", {}, line); e.textContent = ' "' + clean(st.target_label).slice(0, 24) + '"'; if (st.text) { const f = el("tspan", {}, line); f.textContent = " ← "; const g = el("tspan", { class: "cyan" }, line); g.textContent = st.text; } const h = el("tspan", {}, line); h.textContent = " · " + st.latency_ms + " ms"; logged++;
+        const a = el("tspan", { class: "dim" }, line); a.textContent = "⎿ "; const b = el("tspan", { class: "paper" }, line); b.textContent = s.step + " " + st.n; const c = el("tspan", {}, line); c.textContent = " · "; const d = el("tspan", { class: "amber" }, line); d.textContent = st.operation; const e = el("tspan", {}, line); e.textContent = ' "' + clean(st.target_label).slice(0, 24) + '"'; if (st.text) { const f = el("tspan", {}, line); f.textContent = " ← "; const g = el("tspan", { class: "cyan" }, line); g.textContent = st.text; } const h = el("tspan", {}, line); h.textContent = " · " + st.latency_ms + " ms";
+        for (let keep = 23; keep > 3 && line.getComputedTextLength() > TERM_W - 26; keep -= 2) e.textContent = ' "' + clean(st.target_label).slice(0, keep) + '…"';
+        logged++;
         while (S.log.children.length > 7) S.log.removeChild(S.log.firstChild); [...S.log.children].forEach((c2, i) => c2.setAttribute("y", 300 + i * 22));
       }
       const typed = (n, text) => { const st = timed[n - 1]; if (ms < st.decidedMs) return ""; return text.slice(0, Math.min(text.length, Math.floor(((ms - st.decidedMs) / st.act_ms) * text.length) + 1)); };
@@ -197,7 +230,7 @@
       const calOpen = has(7) && !has(9); show(S.cal, calOpen); show(S.placeholder, !calOpen && !(ms >= timed[9].actedMs + 450));
       const pick = has(8) || (cur && cur.n === 8); S.day20.setAttribute("fill", pick ? "#8ab4f8" : "none"); S.d20.setAttribute("fill", pick ? "#202124" : "#e8eaed"); S.day20.classList.toggle("focus", cur && cur.n === 8); S.confirm.classList.toggle("focus", cur && cur.n === 9); S.search.classList.toggle("focus", cur && cur.n === 10);
       const results = ms >= timed[9].actedMs + 450; show(S.results, results); S.url.textContent = results ? "google.com/travel/flights/search?tfs=CBwQAhojEgoyMDI2LTA5LTIw…" : "google.com/travel/flights";
-      if (cur) { const r = CTRL[cur.n]; S.cursor.style.transform = `translate(${r[0] + r[2] * 0.55}px,${r[1] + r[3] * 0.55}px)`; show(S.chipLabel, ms >= cur.startMs + cur.snapshot_ms); const label = "[" + cur.target + "] " + clean(cur.target_label).slice(0, 30); S.chipTxt.textContent = label; const w = [...label].reduce((a2, c2) => a2 + (c2.charCodeAt(0) > 0x2e80 ? 15 : 8.6), 0) + 16; S.chipBg.setAttribute("width", w); S.chipLabel.setAttribute("transform", `translate(${r[0] + r[2] + 12} ${r[1] + r[3] / 2 - 12})`); S.chipTxt.setAttribute("x", 8); S.chipTxt.setAttribute("y", 17);
+      if (cur) { const r = CTRL[cur.n]; S.cursor.style.transform = `translate(${r[0] + r[2] * 0.55}px,${r[1] + r[3] * 0.55}px)`; show(S.chipLabel, ms >= cur.startMs + cur.snapshot_ms); const label = "[" + cur.target + "] " + clean(cur.target_label).slice(0, 30); S.chipTxt.textContent = label; const w = S.chipTxt.getComputedTextLength() + 16; S.chipBg.setAttribute("width", w); S.chipLabel.setAttribute("transform", `translate(${r[0] + r[2] + 12} ${r[1] + r[3] / 2 - 12})`); S.chipTxt.setAttribute("x", 8); S.chipTxt.setAttribute("y", 17);
         if (cur.operation === "CLICK" && ms >= cur.decidedMs && rippled !== cur.n) { rippled = cur.n; S.ripple.classList.remove("go"); void S.ripple.getBBox(); S.ripple.classList.add("go"); }
       } else if (!loading) { show(S.chipLabel, false); S.cursor.style.transform = "translate(560px,420px)"; }
       show(S.doneLine, t >= T.done); if (t >= T.done) { const y = 300 + Math.min(logged, 7) * 22 + 10; S.doneLine.setAttribute("y", y); [...S.doneLine.children].forEach((c2, i) => c2.setAttribute("y", y + i * 21)); const sy = y + 46; S.summaryBar.setAttribute("y", sy - 18); S.summaryBar.setAttribute("height", S.summary.children.length * 26 + 8); S.summary.setAttribute("y", sy); [...S.summary.children].forEach((c2, i) => c2.setAttribute("y", sy + i * 26)); }
