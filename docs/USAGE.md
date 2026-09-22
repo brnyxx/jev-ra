@@ -172,6 +172,7 @@ positional arguments:
     screenshot  save a JPEG of the viewport
     close       close the session kept by `open`
     clean       stop what jev-ra started and empty its profile
+    trace       render a stored run by its run id
     mcp         run the MCP stdio server
     serve       run the same tools over HTTP and SSE
     skill       print the agent guide, for saving as a skill file

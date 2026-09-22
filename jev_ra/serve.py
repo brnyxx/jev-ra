@@ -140,6 +140,7 @@ class Meter:
 
     def __init__(self):
         self.decisions = 0
+        self.run_id = None
 
     def count(self, decide):
         """The same decision callable, counted."""
@@ -162,6 +163,12 @@ class MeteredBrowser(Browser):
     def decider(self):
         """The decision callable the tools share, counted by this server's meter."""
         return self.meter.count(super().decider())
+
+    def agent(self):
+        """An agent that runs under the id this request was already logged with."""
+        agent = super().agent()
+        agent.run_id = self.meter.run_id
+        return agent
 
 
 class JsonFormatter(logging.Formatter):
@@ -217,7 +224,13 @@ class Gate:
                 return
         spent = self.meter.decisions
         status = [0]
-        await self.app(scope, receive, self.stamped(send, run_id, status))
+        # The tools run inside this call, so what the meter gains is what this request spent, and
+        # a run started here is stored under the id the line below reports.
+        self.meter.run_id = run_id
+        try:
+            await self.app(scope, receive, self.stamped(send, run_id, status))
+        finally:
+            self.meter.run_id = None
         decisions = self.meter.decisions - spent
         if identity is not None:
             self.quota.spend(identity, decisions)

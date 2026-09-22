@@ -133,6 +133,7 @@ Every response carries `elapsed_ms`, and `decisions` plus `cost` whenever Jev wa
 | `screenshot [PATH]` | save a JPEG of the viewport |
 | `close` | close the session kept by `open` |
 | `clean [--dry-run] [--keep-profile] [--daemons]` | stop what jev-ra started and empty its profile |
+| `trace RUN_ID [--html PATH]` | render a stored run by its run id |
 | `mcp` | run the MCP stdio server |
 | `serve [--host ADDR] [--port N] [--quota N]` | run the same tools over HTTP and SSE |
 | `skill` | print the agent guide, for saving as a skill file |
@@ -143,6 +144,10 @@ Every response carries `elapsed_ms`, and `decisions` plus `cost` whenever Jev wa
 
 `open` … `close` share one browser across invocations through a target id in
 `$XDG_STATE_HOME/jev-ra/session.json`. Add `--json` to any command for the raw payload.
+
+Every run is stored under its own id in `$XDG_STATE_HOME/jev-ra/runs/`, newest 200 kept.
+`jev-ra trace RUN_ID` prints its step table; `--html` writes a single-file page - the run's own
+JSON inline, nothing to fetch - to send to whoever asked what the run did.
 
 `--profile NAME` gives a run a Chrome user-data-dir of its own under
 `$XDG_STATE_HOME/jev-ra/chrome-profiles/NAME`, so a login done once on that profile is still

@@ -205,6 +205,18 @@ def test_every_answered_request_is_one_json_line_with_a_run_id(tmp_path, quiet_l
     assert KEY not in stream.getvalue()
 
 
+def test_the_logged_run_id_is_the_id_the_run_is_stored_under(tmp_path, quiet_logging, monkeypatch):
+    monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "state"))
+    stream = io.StringIO()
+    serve.configure_logging(stream)
+    app, _quota = app_with(tmp_path)
+    with_client(app, open_and_run)
+    lines = [json.loads(line) for line in stream.getvalue().splitlines()]
+    spent = [line["run_id"] for line in lines if line.get("event") == "request" and line["decisions"]]
+    stored = [path.stem for path in (tmp_path / "state" / "jev-ra" / "runs").glob("*.json")]
+    assert spent == stored
+
+
 def test_a_refused_request_is_logged_too(tmp_path, quiet_logging):
     stream = io.StringIO()
     serve.configure_logging(stream)

@@ -12,6 +12,8 @@ from .decide.policy import InvalidDecision, build_questions, build_state, read_a
 from .decide.questions import CANDIDATES, GOAL_ACHIEVED_THRESHOLD
 from .errors import Escalated, JevBadResponse, JevError, StalePage, render
 from .profile import CATEGORIES, StepTimer
+from .runs import new_id
+from .runs import write as store_run
 from .text import NeedsValue, ValueBinder
 
 logger = logging.getLogger(__name__)
@@ -37,6 +39,7 @@ class Result:
 
     status: str
     reason: str = ""
+    run_id: str = ""
     url: str = ""
     title: str = ""
     steps: list = field(default_factory=list)
@@ -59,6 +62,7 @@ class Agent:
     def __init__(self, session=None, config=None, decide=None, client=None):
         self.config = config or load()
         self.session = session or Session(self.config)
+        self.run_id = None
         self._client = client
         if decide is None:
             self._client = client or DecisionClient(self.config)
@@ -325,6 +329,10 @@ class _Run:
 
     def __init__(self, agent, goal, binder, started):
         self.agent = agent
+        # A host that already named this run - `jev-ra serve` logs the id before the tools run -
+        # spends that name here, so its log line and the stored run are the same run.
+        self.run_id = agent.run_id or new_id()
+        agent.run_id = None
         self.goal = goal
         self.binder = binder
         self.started = started
@@ -410,10 +418,11 @@ class _Run:
         }
 
     def result(self, status, reason, page, decision=None, detail=None):
-        """Assemble the Result for this run."""
-        return Result(
+        """Assemble the Result for this run and store it under its id."""
+        result = Result(
             status=status,
             reason=reason,
+            run_id=self.run_id,
             url=page.get("url", ""),
             title=page.get("title", ""),
             steps=self.steps,
@@ -425,6 +434,8 @@ class _Run:
             candidates=decision.candidates[:CANDIDATES] if decision else [],
             detail=detail or {},
         )
+        store_run(result)
+        return result
 
     def finish(self, status, reason, page, decision=None):
         """End the run with a terminal status."""

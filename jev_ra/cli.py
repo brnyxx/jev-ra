@@ -727,6 +727,18 @@ def cmd_skill(args):
     return 0
 
 
+def cmd_trace(args):
+    """Render a stored run by its id."""
+    from . import runs, trace
+
+    payload = runs.read(args.run_id)
+    if args.html is None:
+        return emit(args, payload, trace.table(payload))
+    path = Path(args.html) if args.html else Path(f"{args.run_id}.html")
+    path.write_text(trace.page(payload))
+    return emit(args, {"run_id": args.run_id, "path": str(path)}, [str(path)])
+
+
 def cmd_mcp(_args):
     """Run the MCP stdio server."""
     from .mcp_server import main as stdio
@@ -832,6 +844,12 @@ def build_parser():
     clean.add_argument("--keep-profile", action="store_true", help="leave the Chrome profile where it is")
     clean.add_argument("--daemons", action="store_true", help="also stop the browser-harness daemons it lists")
     clean.set_defaults(handler=cmd_clean)
+    traced = add_json(sub.add_parser("trace", help="render a stored run by its run id"))
+    traced.add_argument("run_id")
+    traced.add_argument(
+        "--html", nargs="?", const="", metavar="PATH", help="write a single-file page (default <run_id>.html)"
+    )
+    traced.set_defaults(handler=cmd_trace)
 
     sub.add_parser("mcp", help="run the MCP stdio server").set_defaults(handler=cmd_mcp)
 
