@@ -19,6 +19,8 @@ class Bare(session_module.Session):
         self.before_input = None
         self.moved_from = None
         self.max_elements = 250
+        self.http_status = None
+        self.frame_id = None
 
 
 @pytest.fixture

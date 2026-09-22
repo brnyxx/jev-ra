@@ -24,6 +24,8 @@ def session_for(env, monkeypatch):
     made.cache = {}
     made.session_id = "stub"
     made.after_input = None
+    made.http_status = None
+    made.frame_id = None
     return made
 
 

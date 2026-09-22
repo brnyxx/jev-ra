@@ -8,7 +8,7 @@ import time
 from urllib.parse import urlsplit
 
 from browser_harness.admin import ensure_daemon
-from browser_harness.helpers import cdp
+from browser_harness.helpers import cdp, drain_events
 
 from ..config import load
 from ..errors import BadUrl, ChromeError, StalePage
@@ -307,6 +307,8 @@ class Session:
         self.moved_from = None
         self.settled = None
         self.cache = {}
+        self.http_status = None
+        self.frame_id = None
         viewport = self.config.viewport
         self.cdp_url, self.chrome_source = ensure_chrome(
             viewport=(viewport.width, viewport.height),
@@ -430,16 +432,52 @@ class Session:
         except StalePage:
             return None
 
+    def read_status(self):
+        """The HTTP status of this session's main document, from the events the browser queued.
+
+        A 502 is served as a body like any other, so the page itself cannot say which status it
+        arrived with; the network events can. Only this session's main-frame document responses
+        count, and the last one wins, so a redirect chain ends on the answer the site settled on.
+        """
+        try:
+            events = drain_events()
+        except (RuntimeError, TimeoutError, OSError) as error:
+            logger.info("The browser would not report its network events: %s", error)
+            return self.http_status
+        for event in events:
+            if event.get("session_id") != self.session_id or event.get("method") != "Network.responseReceived":
+                continue
+            params = event.get("params") or {}
+            if params.get("type") != "Document" or (self.frame_id and params.get("frameId") != self.frame_id):
+                continue
+            status = (params.get("response") or {}).get("status")
+            if isinstance(status, int):
+                self.http_status = status
+        return self.http_status
+
+    def observed(self, page):
+        """One snapshot payload with the status the site answered its document with."""
+        return {**page, "http_status": self.read_status()}
+
     def open(self, url):
         """Navigate, wait for the load to finish, and observe."""
         url = check_url(url, self.config)
         self.after_input = None
+        # Events still queued belong to the page this call is leaving; the status that matters is
+        # what the new document is served with, and read_status only keeps the latest answer.
+        self.read_status()
         # An address that names a fragment may be answered by the router of the document already
         # open rather than by a new one, and then there is a view to wait for. Read where the page
         # stands before asking for it; an address without a fragment never pays for this.
         was = self.reading() if urlsplit(url).fragment else None
         self.invalidate()
         moved = self.call("Page.navigate", timeout=NAVIGATE_TIMEOUT_S, url=url)
+        self.frame_id = moved.get("frameId") or self.frame_id
+        if moved.get("errorText"):
+            # A navigation the browser itself refused never had a response, so no status of an
+            # earlier document may stand in for it.
+            logger.info("The browser could not open %s: %s", url, moved["errorText"])
+            self.http_status = None
         self.load()
         self.paint()
         # A same-document navigation is answered without a loader: nothing reloaded, so the
@@ -616,14 +654,14 @@ class Session:
         with timer.measure("snapshot"):
             settled, self.settled = self.settled, None
             if settled is not None:
-                return settled
+                return self.observed(settled)
             for attempt in range(SETTLE_ATTEMPTS):
                 try:
                     page = self.evaluate(snapshot_expression(self.max_elements))
                 except StalePage:
                     page = None
                 if page is not None:
-                    return page
+                    return self.observed(page)
                 if attempt < SETTLE_ATTEMPTS - 1:
                     time.sleep(WAIT_SLEEP_S if attempt else 0.02)
         raise StalePage("Page did not settle")
