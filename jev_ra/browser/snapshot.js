@@ -219,11 +219,19 @@
   const omitted=Math.max(0,observed.length-limit);
   observed.splice(limit);
   const elements=[], actions=[];
+  // An address with nothing after its `#` is the address without it: `href="#"` is a handler
+  // wearing a link's clothes, and it goes nowhere.
+  const address=u=>u.endsWith('#') ? u.slice(0,-1) : u;
   observed.forEach(({element:e, view}, index) => {
     const ref='e'+(index+1);
     view.ref=ref;
     elements.push(view);
     const shared={id:ref,node:view.node,role:view.role};
+    // Where a web link would take the page, when that is somewhere else. A click on a link is
+    // answered by an address, and a client router may push it well after the click, so the wait
+    // after the click has to know which address it is waiting for.
+    if (e.tagName==='A' && /^https?:/i.test(e.href) && address(e.href)!==address(location.href))
+      shared.href=e.href;
     if (e.tagName==='SELECT') {
       view.value=[...e.selectedOptions].map(o=>o.label).join(', ');
       for (const o of e.options) if (!o.selected && !o.disabled && !o.closest('optgroup[disabled]'))

@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>News</title>
+<style>
+  body { font: 16px/1.5 system-ui; margin: 24px; }
+  nav a, nav button { margin-right: 12px; }
+  #menu { border: 1px solid #888; padding: 8px; margin-top: 8px; }
+  #menu[hidden] { display: none; }
+</style>
+</head>
+<body>
+<!-- A section bar the way NHK draws it: the pointer arriving on a section opens that section's
+     menu, and the click asks a client router for the section, which fetches before it pushes the
+     address. The page has answered the pointer long before it answers the click. `?delay=` is how
+     long the router takes; NHK measured 1.0-1.5 s. -->
+<nav>
+  <a id="society" href="/sites/late-route-menu.html?genre=society">Society</a>
+  <button id="toggle" type="button" aria-expanded="false" aria-controls="menu">Open the Society menu</button>
+  <a id="business" href="/sites/late-route-menu.html?genre=business">Business</a>
+</nav>
+<div id="menu" hidden>
+  <a href="/sites/late-route-menu.html?genre=society&amp;topic=courts">Courts</a>
+  <a href="/sites/late-route-menu.html?genre=society&amp;topic=schools">Schools</a>
+</div>
+<h1 id="view">Top stories</h1>
+<p id="body">Today's headlines.</p>
+<script>
+  const delay = Number(new URLSearchParams(location.search).get('delay') || 1200);
+  const society = document.getElementById('society');
+  const toggle = document.getElementById('toggle');
+  society.addEventListener('mouseenter', () => {
+    document.getElementById('menu').hidden = false;
+    toggle.setAttribute('aria-expanded', 'true');
+    toggle.textContent = 'Close the Society menu';
+  });
+  society.addEventListener('click', event => {
+    event.preventDefault();
+    setTimeout(() => {
+      history.pushState({}, '', society.href);
+      document.title = 'Society news';
+      document.getElementById('view').textContent = 'Society';
+      document.getElementById('body').textContent = 'Society headlines.';
+    }, delay);
+  });
+  document.getElementById('business').addEventListener('click', event => event.preventDefault());
+</script>
+</body>
+</html>
