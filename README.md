@@ -109,9 +109,9 @@ One decision per step. The only text typed into the page is text you supplied.
 | `browser_act` | instruction, values? | Take one decided step towards an instruction. |
 | `browser_observe` | max_elements? | List the observed controls and the visible text. |
 | `browser_extract` | mode? | Structured page data: `text`, `elements`, `links`, `tables`, `main`. |
-| `browser_click` | ref | Click one observed element by its ref. |
-| `browser_type` | ref, text | Type into one observed field. |
-| `browser_select` | ref, option | Select an observed dropdown option. |
+| `browser_click` | ref, page_key? | Click one observed element by its ref. |
+| `browser_type` | ref, text, page_key? | Type into one observed field. |
+| `browser_select` | ref, option, page_key? | Select an observed dropdown option. |
 | `browser_scroll` | direction? | Scroll one viewport step up or down. |
 | `browser_press` | key | Press Enter, Escape or Tab. |
 | `browser_wait` | - | Wait a moment and observe again. |
@@ -119,6 +119,9 @@ One decision per step. The only text typed into the page is text you supplied.
 | `browser_close` | - | Close the session held by the server. |
 
 Every response carries `elapsed_ms`, and `decisions` plus `cost` whenever Jev was called.
+
+`browser_observe` returns a `page_key`; pass it back to `browser_click`, `browser_type` or
+`browser_select` and a ref from a page that has changed since is refused as `stale` instead.
 
 ## CLI
 

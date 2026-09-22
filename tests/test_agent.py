@@ -793,3 +793,47 @@ def test_an_unknown_log_level_falls_back_to_warning():
     assert logs.level({}) == "WARNING"
     assert logs.level({"JEV_RA_LOG_LEVEL": "debug"}) == "DEBUG"
     assert logs.level({"JEV_RA_LOG_LEVEL": "loud"}) == "WARNING"
+
+
+def test_a_click_quoted_with_a_stale_page_key_is_refused():
+    session = FakeSession()
+    agent = agent_with(decider([DONE]), session=session)
+    stale = session.observe()["page_key"]
+    session.pages = [{**page(1), "page_key": [9, "http://elsewhere"]}]
+    with pytest.raises(StalePage, match="the page changed since that observation"):
+        agent.click("e2", page_key=stale)
+    assert session.acted == []
+
+
+def test_without_a_page_key_the_click_is_matched_on_the_fresh_page():
+    session = FakeSession()
+    agent = agent_with(decider([DONE]), session=session)
+    session.pages = [{**page(1), "page_key": [9, "http://elsewhere"]}]
+    agent.click("e2")
+    assert session.acted == [("e2", "click", None)]
+
+
+def never(_state, _questions):
+    """A decider the direct tools must never reach."""
+    raise AssertionError("no decision expected")
+
+
+@pytest.mark.browser
+def test_a_ref_quoted_with_a_page_key_is_refused_after_a_lazy_panel_mounts(session, fixture_server):
+    agent = Agent(session=session, config=config.load({}), decide=never)
+    opened = agent.open(f"{fixture_server}/sites/late-panel.html")
+    old_key = opened["page_key"]
+    after_open = agent.click("e1")
+    fresh_ref = next(element["ref"] for element in after_open["elements"] if element["role"] == "textbox")
+    with pytest.raises(StalePage, match="the page changed since that observation"):
+        agent.type(fresh_ref, "help", page_key=old_key)
+
+
+@pytest.mark.browser
+def test_without_a_page_key_the_ref_is_matched_on_a_fresh_observation(session, fixture_server):
+    agent = Agent(session=session, config=config.load({}), decide=never)
+    agent.open(f"{fixture_server}/sites/late-panel.html")
+    after_open = agent.click("e1")
+    fresh_ref = next(element["ref"] for element in after_open["elements"] if element["role"] == "textbox")
+    agent.type(fresh_ref, "help")
+    assert session.evaluate("document.getElementById('q').value") == "help"

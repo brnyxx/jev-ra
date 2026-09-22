@@ -20,13 +20,14 @@ Hints: read-only no, destructive no, idempotent no, open-world yes.
 
 ### `browser_click`
 
-Click one observed element by its ref.
+Click one observed element by its ref. Pass the page_key from browser_observe to refuse a stale ref.
 
 Hints: read-only no, destructive no, idempotent no, open-world yes.
 
 | argument | type | required | default |
 |---|---|---|---|
 | `ref` | str | yes | - |
+| `page_key` | list[any] \| none | no | - |
 
 ### `browser_close`
 
@@ -121,7 +122,7 @@ Hints: read-only no, destructive no, idempotent yes, open-world yes.
 
 ### `browser_select`
 
-Select an observed dropdown option by its value or label.
+Select an observed dropdown option by its value or label, refusing a stale ref.
 
 Hints: read-only no, destructive no, idempotent yes, open-world yes.
 
@@ -129,10 +130,11 @@ Hints: read-only no, destructive no, idempotent yes, open-world yes.
 |---|---|---|---|
 | `ref` | str | yes | - |
 | `option` | str | yes | - |
+| `page_key` | list[any] \| none | no | - |
 
 ### `browser_type`
 
-Type text into one observed field by its ref.
+Type text into one observed field by its ref, refusing a page that moved since that observation.
 
 Hints: read-only no, destructive no, idempotent no, open-world yes.
 
@@ -140,6 +142,7 @@ Hints: read-only no, destructive no, idempotent no, open-world yes.
 |---|---|---|---|
 | `ref` | str | yes | - |
 | `text` | str | yes | - |
+| `page_key` | list[any] \| none | no | - |
 
 ### `browser_wait`
 

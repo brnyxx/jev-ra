@@ -125,6 +125,24 @@ def test_a_missing_ref_fails_with_one_line(state_home, fake_browser, capsys):
     assert "No click action for e9" in capsys.readouterr().err
 
 
+def test_parse_page_key_reads_json_or_none():
+    assert cli.parse_page_key(None) is None
+    assert cli.parse_page_key('[1, "http://x"]') == [1, "http://x"]
+
+
+def test_observe_returns_a_page_key_and_click_refuses_a_stale_one(state_home, fake_browser, capsys):
+    cli.main(["open", "http://127.0.0.1/form.html"])
+    capsys.readouterr()
+    assert cli.main(["observe", "--json"]) == 0
+    observed = json.loads(capsys.readouterr().out)
+    assert observed["page_key"]
+    assert cli.main(["click", "e2", "--page-key", '[0, "http://stale"]', "--json"]) == 0
+    refused = json.loads(capsys.readouterr().out)
+    assert refused["status"] == "escalate"
+    assert refused["reason"] == "stale"
+    assert fake_browser[-1].acted == []
+
+
 def test_bare_invocation_prints_help(capsys):
     assert cli.main([]) == 0
     assert "COMMAND" in capsys.readouterr().out

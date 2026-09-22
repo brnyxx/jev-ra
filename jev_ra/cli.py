@@ -19,7 +19,7 @@ from .browser.chrome import alive, find_browser, forget_pid, forget_port, profil
 from .browser.session import Session
 from .config import MAX_PAGES_LIMIT, MAX_STEPS_LIMIT, SERVE_HOST, SERVE_PORT, clamp, load, redact, state_path
 from .decide.client import DecisionClient
-from .errors import JevError, JevRaError, render
+from .errors import JevError, JevRaError, StalePage, render
 from .extract import MODES, extract
 from .logs import configure
 
@@ -121,6 +121,11 @@ def parse_values(pairs):
     return values
 
 
+def parse_page_key(text):
+    """The page_key a caller quotes back from `observe --json`, or None."""
+    return None if text is None else json.loads(text)
+
+
 def element_line(element):
     """Render one observed element as `[ref] role label · value`."""
     line = " ".join(part for part in (f"[{element['ref']}]", element.get("role"), element.get("label")) if part)
@@ -214,6 +219,7 @@ def cmd_observe(args):
         "text": page.get("text", ""),
         "elements": [element_line(element) for element in space.elements],
         "omitted": space.omitted,
+        "page_key": page.get("page_key"),
     }
     return emit(args, data, [f"{data['title']} — {data['url']}", *data["elements"]])
 
@@ -242,11 +248,32 @@ def step_command(call):
         """Run the wrapped browser call and print the page it left behind."""
         session = attach()
         agent = Agent(session=session, config=load(), decide=no_decision)
-        page = call(agent, args)
+        try:
+            page = call(agent, args)
+        except StalePage as error:
+            if getattr(args, "page_key", None) is None:
+                raise
+            data = {"status": "escalate", "reason": "stale", "detail": {"error": str(error)}}
+            return emit(args, data, [f"escalate: stale — {error}"])
         data = page_summary(page, session)
         return emit(args, data, summary_lines(data))
 
     return handler
+
+
+def click_call(agent, args):
+    """Run a `click`, honouring a quoted page_key."""
+    return agent.click(args.ref, page_key=parse_page_key(args.page_key))
+
+
+def type_call(agent, args):
+    """Run a `type`, honouring a quoted page_key."""
+    return agent.type(args.ref, args.text, page_key=parse_page_key(args.page_key))
+
+
+def select_call(agent, args):
+    """Run a `select`, honouring a quoted page_key."""
+    return agent.select(args.ref, args.option, page_key=parse_page_key(args.page_key))
 
 
 def no_decision(_state, _questions):
@@ -812,17 +839,20 @@ def build_parser():
 
     click = add_json(sub.add_parser("click", help="click one observed element"))
     click.add_argument("ref")
-    click.set_defaults(handler=step_command(lambda agent, args: agent.click(args.ref)))
+    click.add_argument("--page-key", help="the page_key from `observe --json`; refuses a stale ref")
+    click.set_defaults(handler=step_command(click_call))
 
     typed = add_json(sub.add_parser("type", help="type into one observed field"))
     typed.add_argument("ref")
     typed.add_argument("text")
-    typed.set_defaults(handler=step_command(lambda agent, args: agent.type(args.ref, args.text)))
+    typed.add_argument("--page-key", help="the page_key from `observe --json`; refuses a stale ref")
+    typed.set_defaults(handler=step_command(type_call))
 
     select = add_json(sub.add_parser("select", help="select an observed dropdown option"))
     select.add_argument("ref")
     select.add_argument("option")
-    select.set_defaults(handler=step_command(lambda agent, args: agent.select(args.ref, args.option)))
+    select.add_argument("--page-key", help="the page_key from `observe --json`; refuses a stale ref")
+    select.set_defaults(handler=step_command(select_call))
 
     scroll = add_json(sub.add_parser("scroll", help="scroll the open page"))
     scroll.add_argument("direction", choices=("down", "up"))

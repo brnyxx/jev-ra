@@ -18,7 +18,7 @@ from .browser import MAX_ELEMENTS, actions
 from .browser.session import Session
 from .config import MAX_PAGES_LIMIT, MAX_STEPS_LIMIT, MAX_VALUE_CHARS, MAX_VALUES, clamp, load
 from .decide.client import DecisionClient
-from .errors import ChromeError, JevRaError, render
+from .errors import ChromeError, JevRaError, StalePage, render
 from .extract import MODES, extract
 from .logs import configure
 from .search import MAX_PAGES, search
@@ -191,6 +191,19 @@ def run_result(result, started):
     return payload
 
 
+def step_result(call, started, session, page_key=None):
+    """A direct step's page summary, or the stale escalation that refused a quoted page_key."""
+    try:
+        page = call()
+    except StalePage as error:
+        if page_key is None:
+            raise ToolError(render(error)) from None
+        return {"status": "escalate", "reason": "stale", "detail": {"error": str(error)}}
+    except (JevRaError, LookupError) as error:
+        raise ToolError(render(error)) from None
+    return summary(page, started, session)
+
+
 def build_server(browser=None):
     """Build the MCP server and register every browser tool on it."""
     browser = browser or Browser()
@@ -259,6 +272,7 @@ def build_server(browser=None):
             "text": page.get("text", "")[:OBSERVE_TEXT_CHARS],
             "elements": [element_line(element) for element in space.elements],
             "omitted": space.omitted,
+            "page_key": page.get("page_key"),
             "elapsed_ms": round((time.perf_counter() - started) * 1000),
         }
 
@@ -274,25 +288,25 @@ def build_server(browser=None):
         return payload
 
     @mcp.tool(annotations=hints())
-    def browser_click(ref: str) -> dict:
-        """Click one observed element by its ref."""
+    def browser_click(ref: str, page_key: list | None = None) -> dict:
+        """Click one observed element by its ref. Pass the page_key from browser_observe to refuse a stale ref."""
         started = time.perf_counter()
         session = browser.require()
-        return summary(guarded(lambda: browser.stepper().click(ref)), started, session)
+        return step_result(lambda: browser.stepper().click(ref, page_key=page_key), started, session, page_key)
 
     @mcp.tool(annotations=hints())
-    def browser_type(ref: str, text: str) -> dict:
-        """Type text into one observed field by its ref."""
+    def browser_type(ref: str, text: str, page_key: list | None = None) -> dict:
+        """Type text into one observed field by its ref, refusing a page that moved since that observation."""
         started = time.perf_counter()
         session = browser.require()
-        return summary(guarded(lambda: browser.stepper().type(ref, text)), started, session)
+        return step_result(lambda: browser.stepper().type(ref, text, page_key=page_key), started, session, page_key)
 
     @mcp.tool(annotations=hints(idempotent=True))
-    def browser_select(ref: str, option: str) -> dict:
-        """Select an observed dropdown option by its value or label."""
+    def browser_select(ref: str, option: str, page_key: list | None = None) -> dict:
+        """Select an observed dropdown option by its value or label, refusing a stale ref."""
         started = time.perf_counter()
         session = browser.require()
-        return summary(guarded(lambda: browser.stepper().select(ref, option)), started, session)
+        return step_result(lambda: browser.stepper().select(ref, option, page_key=page_key), started, session, page_key)
 
     @mcp.tool(annotations=hints())
     def browser_scroll(direction: str = "down") -> dict:

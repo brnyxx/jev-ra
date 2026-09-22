@@ -192,6 +192,23 @@ def test_an_unknown_ref_comes_back_as_a_tool_error():
     assert "No click action for e9" in failed.content[0].text
 
 
+def test_browser_observe_returns_a_page_key_that_guards_a_stale_ref():
+    server, _browser, fake = server_with()
+    call(server, "browser_open", url="http://127.0.0.1/form.html")
+    observed = payload(call(server, "browser_observe"))
+    assert observed["page_key"]
+    refused = payload(call(server, "browser_click", ref="e2", page_key=[0, "http://stale"]))
+    assert refused == {
+        "status": "escalate",
+        "reason": "stale",
+        "detail": {"error": "the page changed since that observation, observe again"},
+    }
+    assert fake.acted == []
+    accepted = payload(call(server, "browser_click", ref="e2", page_key=observed["page_key"]))
+    assert accepted["title"] == "Booking form"
+    assert fake.acted == [("e2", "click", None)]
+
+
 def test_extract_rejects_an_unknown_mode():
     server, _browser, _session = server_with()
     call(server, "browser_open", url="http://127.0.0.1/form.html")

@@ -32,6 +32,9 @@ MAX_LOOKS = 4
 # A look has to earn the next one. Confidence that climbs means the page is giving up its answer
 # a screen at a time; confidence that does not means the answer is not down there.
 LOOK_GAIN = 0.02
+# A ref names an element in the observation it came from. When the caller quotes that observation's
+# page_key, the ref is only honoured if the page still reads the same; otherwise observe again.
+STALE_OBSERVATION = "the page changed since that observation, observe again"
 
 
 @dataclass
@@ -269,17 +272,17 @@ class Agent:
         """One decided step towards an instruction."""
         return self.run(instruction, values=values, max_steps=max_steps)
 
-    def click(self, ref):
+    def click(self, ref, page_key=None):
         """Click one observed element by its ref, without asking the model."""
-        return self.direct(ref, "click")
+        return self.direct(ref, "click", page_key=page_key)
 
-    def type(self, ref, text):
+    def type(self, ref, text, page_key=None):
         """Type into one observed field by its ref, without asking the model."""
-        return self.direct(ref, "fill", text=text)
+        return self.direct(ref, "fill", text=text, page_key=page_key)
 
-    def select(self, ref, option):
+    def select(self, ref, option, page_key=None):
         """Select an observed dropdown option, without asking the model."""
-        return self.direct(ref, "select", option=option)
+        return self.direct(ref, "select", option=option, page_key=page_key)
 
     def scroll(self, direction="down"):
         """Scroll one viewport step, without asking the model."""
@@ -307,9 +310,11 @@ class Agent:
         self.session.press(key)
         return self.session.observe()
 
-    def direct(self, ref, kind, text=None, option=None):
+    def direct(self, ref, kind, text=None, option=None, page_key=None):
         """Execute one observed action chosen by ref, not by the model."""
         page = self.session.observe()
+        if page_key is not None and page.get("page_key") != page_key:
+            raise StalePage(STALE_OBSERVATION)
         candidates = [a for a in page["actions"] if a["id"] == ref and a["kind"] == kind]
         if kind == "select":
             candidates = [a for a in candidates if option in (a.get("value"), a.get("label", "").split(" → ")[-1])]
