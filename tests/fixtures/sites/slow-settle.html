@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Listing</title></head>
+<body>
+<h1>Listing</h1>
+<!-- A page that starves the timers the post-input settle waits on. arxiv.org's listing renders
+     its formulas after an input and the settle promise comes back six seconds later; delaying
+     the page's own timers is the same thing seen from this side of CDP. -->
+<label for="q">Search all fields</label>
+<input id="q">
+<p>Showing 1-50 of 4,210 entries.</p>
+<script>
+  const LATER_MS = 6000;
+  const timeout = window.setTimeout.bind(window);
+  window.setTimeout = (fn, ms, ...rest) => timeout(fn, (ms || 0) + LATER_MS, ...rest);
+  window.requestAnimationFrame = (fn) => timeout(() => fn(performance.now()), LATER_MS + 100);
+</script>
+</body>
+</html>

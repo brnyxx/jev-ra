@@ -348,15 +348,19 @@ class Session:
         if action is None:
             return
         # Read-only, and only after the action was already recorded: navigation may cut it short.
+        # It awaits a promise the page resolves, so it is an evaluating call and gets an
+        # evaluating call's budget; a page that takes even longer than that is still only a page
+        # this run waited for, so the timeout is logged and the step goes on to read the marker.
         try:
             self.call(
                 "Runtime.evaluate",
+                timeout=EVALUATE_TIMEOUT_S,
                 expression=f"{SETTLE_JS}({json.dumps(action)})",
                 awaitPromise=True,
                 returnByValue=True,
             )
-        except RuntimeError:
-            logger.debug("Post-input settle was interrupted")
+        except (ChromeError, RuntimeError) as error:
+            logger.debug("Post-input settle was interrupted: %s", error)
         self.wait_out(action, was, before)
 
     def wait_out(self, action, was, before):
