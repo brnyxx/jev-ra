@@ -8,6 +8,7 @@ the row names the command that proves it. Rows without a command yet are debt, l
 | check | proves | command |
 |---|---|---|
 | corpus ≥ 95 % on possible tasks, 3 runs, tagged commit | it does the job on real sites | `uv run jev-ra corpus run --runs 3` |
+| one corpus site's answer, measured on the spot: status, landing address, the Agent's wall verdict, controls | a wall row is measured, not remembered | `scripts/check_site.py <task id or url>` |
 | every `expect = escalate:*` task escalates with that reason 3/3 | it refuses instead of guessing | same run, `failures by reason` empty for those |
 | no invented input: zero TYPE_TEXT with text not in `values` across the corpus | the core contract | `scripts/check_no_invented_input.py corpus/results/<date>.jsonl` |
 | browser-use on the same corpus, same judge, published next to ours | the comparison is honest | `scripts/bu_corpus.py` |
@@ -66,7 +67,7 @@ the row names the command that proves it. Rows without a command yet are debt, l
 
 | check | proves | command |
 |---|---|---|
-| landing page: demo replays a real run, four languages, no dead link | first impression | `scripts/check_site.py` |
+| landing page: demo replays a real run, four languages, no dead local reference | first impression | `tests/test_launch_assets.py`, `scripts/check_demo_data.py --check`, `scripts/check_i18n.py --check` |
 | README install commands verified in CI against the published package | docs are true | release smoke job |
 | `jev-ra serve`: HTTP+SSE, API key, per-key quota, structured logs | sellable | `tests/test_serve.py` |
 | named profiles keep a login across runs | login once | `tests/test_profiles.py` |
@@ -75,4 +76,4 @@ the row names the command that proves it. Rows without a command yet are debt, l
 ## Debt (no command yet)
 
 - `jev-ra trace`, `jev-ra serve`,
-  profiles, Dockerfile, Windows job, macOS cold-start job, `scripts/check_site.py`.
+  profiles, Dockerfile, Windows job, macOS cold-start job.
