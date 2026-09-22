@@ -205,6 +205,13 @@ class Adapter:
         self.close()
 
 
+def evidence(result):
+    """The first words of the page a run ended on, which is what a `blocked` has to be read against."""
+    detail = result.get("detail") or {}
+    text = detail.get("error") or detail.get("page_text") or result.get("final_answer") or ""
+    return " ".join(text.split())[:200]
+
+
 def landed(step):
     """Whether the page showed that an action took effect, by the checks jev-ra already makes."""
     return bool(step.get("page_changed") or any((step.get("verified") or {}).values()))

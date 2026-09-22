@@ -9,3 +9,6 @@ dist/
 .DS_Store
 docs/recordings/
 .coverage
+bench/public/vendor/
+bench/public/data/
+bench/public/runs/
