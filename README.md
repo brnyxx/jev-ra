@@ -134,6 +134,7 @@ Every response carries `elapsed_ms`, and `decisions` plus `cost` whenever Jev wa
 | `close` | close the session kept by `open` |
 | `clean [--dry-run] [--keep-profile] [--daemons]` | stop what jev-ra started and empty its profile |
 | `mcp` | run the MCP stdio server |
+| `serve [--host ADDR] [--port N] [--quota N]` | run the same tools over HTTP and SSE |
 | `skill` | print the agent guide, for saving as a skill file |
 | `install claude\|codex [--scope user\|project\|local]` | register jev-ra as an MCP server with a coding agent |
 | `doctor` | check the key, the endpoint, Chrome and one live decision |
@@ -142,6 +143,12 @@ Every response carries `elapsed_ms`, and `decisions` plus `cost` whenever Jev wa
 
 `open` … `close` share one browser across invocations through a target id in
 `$XDG_STATE_HOME/jev-ra/session.json`. Add `--json` to any command for the raw payload.
+
+`serve` is the same tool set over MCP's streamable HTTP transport, at `/mcp`, answering with
+server-sent events; `/healthz` answers without a key. Every request carries a key from
+`JEV_RA_SERVE_KEYS` as `Authorization: Bearer <key>`, is charged the decisions it spends against
+that key's daily quota, and leaves one JSON line on stderr with the run id it also returns in the
+`x-jev-ra-run-id` header. A key is never logged: the line names it by a digest.
 
 ## Python
 
@@ -253,6 +260,8 @@ field and invents values. You can still configure one with `JEV_RA_TEXT_MODEL`.
 | `JEV_RA_ALLOW_FILE_URLS` | `1` to let a session open `file:` URLs |
 | `JEV_RA_SEARCH_URL` | search endpoint template, `{query}` substituted |
 | `JEV_RA_TEXT_MODEL`, `JEV_RA_TEXT_BASE_URL`, `JEV_RA_TEXT_API_KEY` | optional text helper, off by default |
+| `JEV_RA_SERVE_KEYS` | comma list of API keys `jev-ra serve` accepts; it will not start without one |
+| `JEV_RA_SERVE_QUOTA` | decisions per key per day for `jev-ra serve`; unlimited when unset |
 
 `$XDG_CONFIG_HOME/jev-ra/config.json` sets the same keys; the environment wins.
 

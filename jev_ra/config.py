@@ -13,6 +13,9 @@ TYPESAFE_MODEL = "jev-latest"
 OPENROUTER_ENDPOINT = "https://openrouter.ai/api/alpha/decisions"
 OPENROUTER_MODEL = "typesafe/jev-1.13"
 
+SERVE_HOST = "127.0.0.1"
+SERVE_PORT = 8765
+
 KEY_VARIABLES = ("JEV_RA_API_KEY", "TYPESAFE_API_KEY", "OPENROUTER_API_KEY")
 DEFAULT_TEXT_BASE_URL = "https://api.openai.com/v1"
 ENV_VARIABLES = (
@@ -31,6 +34,8 @@ ENV_VARIABLES = (
     "JEV_RA_TEXT_MODEL",
     "JEV_RA_TEXT_BASE_URL",
     "JEV_RA_TEXT_API_KEY",
+    "JEV_RA_SERVE_KEYS",
+    "JEV_RA_SERVE_QUOTA",
 )
 
 

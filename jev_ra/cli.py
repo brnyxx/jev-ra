@@ -17,7 +17,7 @@ from .agent import Agent
 from .browser import MAX_ELEMENTS, actions
 from .browser.chrome import alive, find_browser, forget_pid, forget_port, profile_dir, read_pid, read_port, url_for
 from .browser.session import Session
-from .config import MAX_PAGES_LIMIT, MAX_STEPS_LIMIT, clamp, load, redact, state_path
+from .config import MAX_PAGES_LIMIT, MAX_STEPS_LIMIT, SERVE_HOST, SERVE_PORT, clamp, load, redact, state_path
 from .decide.client import DecisionClient
 from .errors import JevError, JevRaError, render
 from .extract import MODES, extract
@@ -728,9 +728,9 @@ def cmd_skill(args):
 
 def cmd_mcp(_args):
     """Run the MCP stdio server."""
-    from .mcp_server import main as serve
+    from .mcp_server import main as stdio
 
-    serve()
+    stdio()
     return 0
 
 
@@ -741,6 +741,13 @@ def bounded(low, high, label):
         return clamp(int(text), low, high, label)
 
     return parse
+
+
+def cmd_serve(args):
+    """Run the same tools over HTTP and SSE."""
+    from . import serve
+
+    return serve.serve(host=args.host, port=args.port, quota=args.quota)
 
 
 def add_json(parser):
@@ -820,6 +827,12 @@ def build_parser():
     clean.set_defaults(handler=cmd_clean)
 
     sub.add_parser("mcp", help="run the MCP stdio server").set_defaults(handler=cmd_mcp)
+
+    served = sub.add_parser("serve", help="run the same tools over HTTP and SSE")
+    served.add_argument("--host", default=SERVE_HOST, help=f"address to bind (default {SERVE_HOST})")
+    served.add_argument("--port", type=int, default=SERVE_PORT, help=f"port to bind (default {SERVE_PORT})")
+    served.add_argument("--quota", type=int, help="decisions per key per day; unlimited when unset")
+    served.set_defaults(handler=cmd_serve)
 
     skill = add_json(sub.add_parser("skill", help="print the agent guide, for saving as a skill file"))
     skill.set_defaults(handler=cmd_skill)

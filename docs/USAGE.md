@@ -172,6 +172,7 @@ positional arguments:
     close       close the session kept by `open`
     clean       stop what jev-ra started and empty its profile
     mcp         run the MCP stdio server
+    serve       run the same tools over HTTP and SSE
     skill       print the agent guide, for saving as a skill file
     install     register jev-ra as an MCP server with a coding agent
     doctor      check the key, the endpoint, Chrome and one live decision
