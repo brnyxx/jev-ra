@@ -155,9 +155,21 @@ FOCUS_SLEEP_S = 0.05
 # After input, keep reading the marker until two readings agree. A single-page app re-renders
 # well after its two frames are up, and a half-rendered page reads as one with nothing to do.
 QUIET_BUDGET_S = 0.6
+# A link can ask a single-page app for a route the page answers after the click. Give that
+# address one chance to arrive before the controls and text are read as the click's answer.
+ROUTE_BUDGET_S = 0.8
 # One budget for everything a step waits for. A page that has finished settling says so by going
 # still, and one that never does costs what it always did rather than being asked more often.
 SETTLE_BUDGET_S = 2.0
+ROUTE_WAIT_JS = """(options => new Promise(resolve => {
+  const started = performance.now();
+  const check = () => {
+    if (location.href !== options.url) return resolve(true);
+    if (performance.now() - started >= options.budget_ms) return resolve(false);
+    setTimeout(check, 16);
+  };
+  check();
+}))"""
 # What a click that opens a panel brings: a field, a menu item, an option. A link that blinks
 # in and out - Back to top, a scroll helper - is the page catching up, not the click's answer,
 # and accepting it would end the wait before the panel mounts.
@@ -528,6 +540,19 @@ class Session:
         expression = snapshot_expression(self.max_elements)
         previous, opened, differed = None, not opens, False
         ready, still, count, reading = None, False, None, first
+        if action.get("kind") == "click" and action.get("href") and was and action["href"] != was[MARKER_URL]:
+            route_budget = min(ROUTE_BUDGET_S, max(0.0, deadline - time.monotonic()))
+            if route_budget:
+                try:
+                    route_options = json.dumps({"url": was[MARKER_URL], "budget_ms": round(route_budget * 1000)})
+                    changed = self.evaluate(
+                        f"{ROUTE_WAIT_JS}({route_options})",
+                        await_promise=True,
+                    )
+                except StalePage:
+                    changed = True
+                if changed:
+                    reading = None
         while True:
             if reading is None:
                 with timer.measure("snapshot"):
