@@ -39,3 +39,32 @@ the PR or the commit that closes it.
 
 Release planning: version, changelog, PyPI trusted publisher fixed (no token upload), npm, GitHub
 release, site, launch posts. Not before.
+
+## Where things stand, 2026-09-22
+
+Measured on main `371d417` (CI green: test x3, image, macos, windows, cold-start).
+
+| gate | state | measured |
+|---|---|---|
+| lint, format, types | green | CI |
+| generated docs | green | CI |
+| tests without a browser | green | 731 passed, 91.3 % |
+| tests with a browser | red, close | 881 passed, 94.19 % (bar 95 %) |
+| CI | green | `371d417` |
+| real-site corpus | red | 201/219 possible tasks = 91.8 % (bar 95 %), `12f49f1` 3 runs |
+| head-to-head | green | docs/BENCHMARKS.md, browser-use 29/40 = 72 % at 19.4 s vs 102/120 = 85 % at 3.1 s |
+| recorded tasks | not measured | needs a quiet machine, 5 runs |
+| recovery, live | green | docs/PRODUCTION_REVIEW_2026-09-22.md sequence, 22.5 s relaunch |
+| public benchmarks | red | 10 + 10 judged only; Online-Mind2Web 3/10 |
+| quality bar | red | Debt rows remain in docs/QUALITY_BAR.md |
+
+What remains, in the order it pays off:
+
+1. **Decision quality** (lane `fix/decisions`, paused at `dc5938f` with the late-route fixture written and the snapshot naming each link's address; the wait itself is not wired). Three mechanisms: a link click waited out by the address (nhk), href-less anchors offered as controls (JMA), a date picker driven as a grid (Google Flights). Then the state carries the last step's effect and each candidate's evidence, measured on the corpus and the public twenty; then `JEV_RA_HYBRID` as an experiment with its cost. This is the gate that moves the corpus from 91.8 % to 95 %.
+2. **Corpus hygiene**: `gov_kr_search` url to plus.gov.kr; oliveyoung's bot check recorded as the eighth wall in corpus/egress.md; seven walled sites need a `JEV_RA_PROXY` egress to be measured at all.
+3. **Public benchmarks at full size**: Online-Mind2Web all 300 through WebJudge, trajectories published; WebVoyager as the regression gate.
+4. **Recorded tasks**: `uv run jev-ra bench --live --runs 5` on a quiet machine, against 1.5 / 5.0 / 2.0 s.
+5. **Browser coverage** from 94.2 % to 95 %, and the quality-bar Debt rows (soak.py, check_no_invented_input.py, the rest of that table).
+6. A fragile test noted by the speed lane: `test_a_target_whose_setup_fails_is_closed_again` assumes nothing listens on 9222.
+
+Browser tests skip silently when no Chrome answers on 9222; a local pass without one is not a pass. Start one as ci.yml does and run with `JEV_RA_REQUIRE_BROWSER=1`.
