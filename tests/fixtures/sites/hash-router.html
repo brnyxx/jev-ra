@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Library docs</title>
+<style>body { font: 14px/1.5 system-ui; margin: 0; padding: 32px; }</style>
+</head>
+<body>
+<!-- A router that lives entirely after the #. The address changes without the document ever
+     reloading, so readyState is complete the whole time and says nothing about which view is on
+     screen; the view arrives a couple of frames later, the way a router's does. -->
+<h1>Library docs</h1>
+<nav>
+  <a href="#overview">Overview</a>
+  <a href="#install">Installation</a>
+</nav>
+<div id="view">Choose a section.</div>
+<script>
+  const views = {
+    '#overview': ['Overview', 'What this library is for and what it is not.'],
+    '#install': ['Installation', 'Run the installer, then build for the first time.'],
+  };
+  const render = () => {
+    const [heading, body] = views[location.hash] || ['Library docs', 'Choose a section.'];
+    setTimeout(() => {
+      document.getElementById('view').innerHTML = '<h2>' + heading + '</h2><p>' + body + '</p>';
+    }, 200);
+  };
+  addEventListener('hashchange', render);
+  render();
+</script>
+</body>
+</html>

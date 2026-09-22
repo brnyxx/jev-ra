@@ -401,14 +401,31 @@ class Session:
             raise StalePage("Document changed during evaluation")
         return response.get("result", {}).get("value")
 
+    def reading(self):
+        """The marker as the page stands, or None when it will not be read right now."""
+        try:
+            return self.evaluate(marker_expression(self.max_elements))
+        except StalePage:
+            return None
+
     def open(self, url):
         """Navigate, wait for the load to finish, and observe."""
         url = check_url(url, self.config)
         self.after_input = None
+        # An address that names a fragment may be answered by the router of the document already
+        # open rather than by a new one, and then there is a view to wait for. Read where the page
+        # stands before asking for it; an address without a fragment never pays for this.
+        was = self.reading() if urlsplit(url).fragment else None
         self.invalidate()
-        self.call("Page.navigate", timeout=NAVIGATE_TIMEOUT_S, url=url)
+        moved = self.call("Page.navigate", timeout=NAVIGATE_TIMEOUT_S, url=url)
         self.load()
         self.paint()
+        # A same-document navigation is answered without a loader: nothing reloaded, so the
+        # document was complete before the call and stays complete, and readyState says nothing
+        # about the view the fragment names. Changing the part after the # is a navigation like
+        # any other, and gets the wait the navigation a click starts already gets.
+        if was and not moved.get("loaderId"):
+            self.wait_out({"kind": "navigate"}, was, None)
         return self.observe()
 
     def quiet(self, budget_s, after=None, quiet_ms=QUIET_MS):
