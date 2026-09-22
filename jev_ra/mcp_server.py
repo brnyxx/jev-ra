@@ -4,6 +4,7 @@ import logging
 import os
 import signal
 import sys
+import threading
 import time
 
 from mcp.server.mcpserver import Image, MCPServer
@@ -23,6 +24,12 @@ from .search import MAX_PAGES, search
 logger = logging.getLogger(__name__)
 
 SUMMARY_TEXT_CHARS = 1500
+# mcp dispatches sync tool bodies through anyio.to_thread, so nothing stops two of them landing on
+# the one session this server holds: one target, one element cache, one pending-input record. Long
+# enough that a tool queued behind a quick observe still runs; short enough that a client waiting
+# on a whole browser_run is told to wait rather than left hanging.
+BUSY_TIMEOUT_S = 0.5
+BUSY = "busy: another tool is still running on this session; wait for it or call browser_close"
 OBSERVE_TEXT_CHARS = 3000
 INSTRUCTIONS = """Drive a real Chrome. browser_open first, then browser_run for a whole goal,
 or the single-step tools when you want to steer. Supply `values` for anything that must be typed:
@@ -48,10 +55,28 @@ class Browser:
 
     def __init__(self, config=None, session_factory=None, decide=None):
         self.config = config or load()
+        self.lock = threading.RLock()
         self.session_factory = session_factory or (lambda: Session(self.config))
         self.decide = decide
         self.session = None
         self.client = None
+
+    def guarded(self, call):
+        """Run one tool body alone on this session, in the sentence every other surface uses."""
+        if not self.lock.acquire(timeout=BUSY_TIMEOUT_S):
+            raise ToolError(BUSY)
+        try:
+            return call()
+        except ChromeError as error:
+            # The browser this session was attached to is gone. Keeping the session would answer
+            # every later call with the same refusal, browser_open included; dropping it here is
+            # what lets the next browser_open start a Chrome and carry on.
+            self.dropped()
+            raise ToolError(render(error)) from None
+        except (JevRaError, LookupError) as error:
+            raise ToolError(render(error)) from None
+        finally:
+            self.lock.release()
 
     def open(self):
         """Open the shared session, creating it on first use."""
@@ -136,18 +161,7 @@ def build_server(browser=None):
     browser = browser or Browser()
     mcp = MCPServer("jev-ra", version=__version__, instructions=INSTRUCTIONS)
 
-    def guarded(call):
-        """Run a tool body, turning any anticipated failure into the CLI's own sentence."""
-        try:
-            return call()
-        except ChromeError as error:
-            # The browser this session was attached to is gone. Keeping the session would answer
-            # every later call with the same refusal, browser_open included; dropping it here is
-            # what lets the next browser_open start a Chrome and carry on.
-            browser.dropped()
-            raise ToolError(render(error)) from None
-        except (JevRaError, LookupError) as error:
-            raise ToolError(render(error)) from None
+    guarded = browser.guarded
 
     @mcp.tool(annotations=hints(idempotent=True))
     def browser_open(url: str) -> dict:

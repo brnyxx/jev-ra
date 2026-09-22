@@ -2,10 +2,12 @@ import asyncio
 import json
 import re
 import signal
+import threading
 from pathlib import Path
 
 import pytest
 from mcp import Client
+from mcp.server.mcpserver.exceptions import ToolError
 
 from jev_ra import config, mcp_server
 from jev_ra.decide import Reply
@@ -284,3 +286,60 @@ def test_sigterm_closes_the_browser_and_then_stops_the_process(monkeypatch):
     assert signal.SIGTERM in handlers
     assert browser.closed == 1
     assert left == [0]
+class Blocking(FakeSession):
+    """A session whose observe() stays inside the tool body until the test lets go of it."""
+
+    def __init__(self):
+        super().__init__()
+        self.armed = False
+        self.inside = threading.Event()
+        self.leave = threading.Event()
+
+    def observe(self, timer=None):
+        if self.armed:
+            self.inside.set()
+            assert self.leave.wait(timeout=5)
+        return super().observe(timer)
+
+
+def test_a_tool_that_arrives_while_another_runs_gets_a_busy_error_not_the_session():
+    # mcp dispatches sync tool bodies through anyio.to_thread, so a client that times out and
+    # retries puts two tools on one browser: four pieces of per-page state, one target, two writers.
+    fake = Blocking()
+    server, _browser, _fake = server_with(session=fake)
+    call(server, "browser_open", url="http://127.0.0.1/form.html")
+    fake.armed = True
+    worker = threading.Thread(target=call, args=(server, "browser_observe"))
+    worker.start()
+    try:
+        assert fake.inside.wait(timeout=5)
+        busy = call(server, "browser_observe")
+    finally:
+        fake.leave.set()
+        worker.join(timeout=5)
+    assert busy.is_error
+    assert "busy" in busy.content[0].text
+    assert "browser_close" in busy.content[0].text
+
+
+def test_the_session_is_free_again_once_the_first_tool_finishes():
+    browser = Browser(config=config.load({}), session_factory=FakeSession, decide=None)
+    holding, release, finished = threading.Event(), threading.Event(), []
+
+    def slow():
+        holding.set()
+        assert release.wait(timeout=5)
+        finished.append("slow")
+        return "slow"
+
+    worker = threading.Thread(target=lambda: browser.guarded(slow))
+    worker.start()
+    try:
+        assert holding.wait(timeout=5)
+        with pytest.raises(ToolError, match="busy"):
+            browser.guarded(lambda: "second")
+    finally:
+        release.set()
+        worker.join(timeout=5)
+    assert finished == ["slow"]
+    assert browser.guarded(lambda: "third") == "third"
