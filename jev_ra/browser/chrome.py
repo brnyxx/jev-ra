@@ -256,7 +256,12 @@ def complaint(profile):
     return spoken[-1] if spoken else ""
 
 
-def launch(binary, profile, viewport=(1280, 900), env=None, flags=(), locale=DEFAULT_LOCALE):
+def proxy_flags(proxy):
+    """The --proxy-server argument for an egress, or nothing. The value is never logged."""
+    return (f"--proxy-server={proxy}",) if proxy else ()
+
+
+def launch(binary, profile, viewport=(1280, 900), env=None, flags=(), locale=DEFAULT_LOCALE, proxy=None):
     """Start Chrome on its own profile with an ephemeral debugging port."""
     profile = Path(profile)
     profile.mkdir(parents=True, exist_ok=True)
@@ -275,10 +280,11 @@ def launch(binary, profile, viewport=(1280, 900), env=None, flags=(), locale=DEF
         *FLAGS,
         *locale_flags(locale),
         *platform_flags(env=env, version=browser_version(binary)),
+        *proxy_flags(proxy),
         *flags,
         "about:blank",
     ]
-    logger.info("Launching %s on %s", binary, profile)
+    logger.info("Launching %s on %s%s", binary, profile, " through a proxy" if proxy else "")
     # Chrome explains itself on stderr and then exits. Thrown away, every refusal looks the same.
     handle = log.open("wb")
     try:
@@ -382,7 +388,7 @@ def remembered(url, profile):
     return port is not None and url == url_for(port)
 
 
-def ensure(env=None, viewport=(1280, 900), allow_launch=True, profile=None, locale=DEFAULT_LOCALE):
+def ensure(env=None, viewport=(1280, 900), allow_launch=True, profile=None, locale=DEFAULT_LOCALE, proxy=None):
     """Return (cdp_url, source) where source is 'BU_CDP_URL', 'reused' or 'launched'.
 
     A named profile is asked for because of the cookies in it, so it outranks an ambient
@@ -395,6 +401,11 @@ def ensure(env=None, viewport=(1280, 900), allow_launch=True, profile=None, loca
     configured = env.get("BU_CDP_URL")
     if configured and not named:
         if alive(configured):
+            if proxy:
+                # A proxy is a launch argument. A Chrome that was already running was started
+                # without it, and saying so is the difference between measuring an egress and
+                # measuring this network while believing otherwise.
+                logger.warning("A proxy is configured, but BU_CDP_URL names a running Chrome; it is not used")
             return configured, "BU_CDP_URL"
         if not remembered(configured, profile):
             raise ChromeError(
@@ -419,21 +430,21 @@ def ensure(env=None, viewport=(1280, 900), allow_launch=True, profile=None, loca
             "No Chrome, Chromium or Edge found. Install one, set JEV_RA_CHROME to its path, "
             "or start your own and export BU_CDP_URL."
         )
-    port = start(binary, profile, viewport, locale)
+    port = start(binary, profile, viewport, locale, proxy)
     if not named:
         LAUNCHED_URL = url_for(port)
     env["BU_CDP_URL"] = url_for(port)
     return url_for(port), "launched"
 
 
-def start(binary, profile, viewport, locale=DEFAULT_LOCALE):
+def start(binary, profile, viewport, locale=DEFAULT_LOCALE, proxy=None):
     """Launch Chrome and return its port, giving up the sandbox only when Chrome asks us to."""
-    process = launch(binary, profile, viewport, locale=locale)
+    process = launch(binary, profile, viewport, locale=locale, proxy=proxy)
     try:
         return wait_for_port(profile, process)
     except ChromeError:
         if not sandbox_refused(profile):
             raise
     logger.warning("Chrome could not start its own sandbox on this machine; launching it without one")
-    relaunched = launch(binary, profile, viewport, flags=("--no-sandbox",), locale=locale)
+    relaunched = launch(binary, profile, viewport, flags=("--no-sandbox",), locale=locale, proxy=proxy)
     return wait_for_port(profile, relaunched)

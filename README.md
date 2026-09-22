@@ -289,6 +289,7 @@ field and invents values. You can still configure one with `JEV_RA_TEXT_MODEL`.
 | `JEV_RA_LOCALE` | the language the browser asks sites for; default `en-US`, blank for the machine's |
 | `JEV_RA_MAX_STEPS`, `JEV_RA_MAX_DECISIONS`, `JEV_RA_TIMEOUT_S` | budgets (40 / 80 / 120) |
 | `JEV_RA_BLOCK_RESOURCES` | `0` to stop blocking fonts and media |
+| `JEV_RA_PROXY` | egress for a Chrome jev-ra launches, e.g. `http://host:8080` |
 | `JEV_RA_ALLOW_FILE_URLS` | `1` to let a session open `file:` URLs |
 | `JEV_RA_SEARCH_URL` | search endpoint template, `{query}` substituted |
 | `JEV_RA_TEXT_MODEL`, `JEV_RA_TEXT_BASE_URL`, `JEV_RA_TEXT_API_KEY` | optional text helper, off by default |

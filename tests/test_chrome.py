@@ -111,7 +111,7 @@ def test_a_chrome_whose_sandbox_cannot_start_is_launched_once_more_without_it(mo
     )
     launches = []
 
-    def launch(binary, path, viewport=(1280, 900), flags=(), locale=""):
+    def launch(binary, path, viewport=(1280, 900), flags=(), locale="", proxy=None):
         launches.append(tuple(flags))
         return None
 

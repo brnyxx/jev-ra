@@ -295,7 +295,10 @@ class Session:
         self.cache = {}
         viewport = self.config.viewport
         self.cdp_url, self.chrome_source = ensure_chrome(
-            viewport=(viewport.width, viewport.height), profile=profile, locale=self.config.locale
+            viewport=(viewport.width, viewport.height),
+            profile=profile,
+            locale=self.config.locale,
+            proxy=self.config.proxy,
         )
         ensure_daemon()
         verify_attached(self.cdp_url)

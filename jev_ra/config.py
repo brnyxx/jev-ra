@@ -35,6 +35,7 @@ ENV_VARIABLES = (
     "JEV_RA_MAX_DECISIONS",
     "JEV_RA_TIMEOUT_S",
     "JEV_RA_BLOCK_RESOURCES",
+    "JEV_RA_PROXY",
     "JEV_RA_ALLOW_FILE_URLS",
     "JEV_RA_SEARCH_URL",
     "JEV_RA_TEXT_MODEL",
@@ -106,6 +107,7 @@ class Config:
     budgets: Budgets = field(default_factory=Budgets)
     block_resources: bool = True
     allow_file_urls: bool = False
+    proxy: str | None = None
 
     @property
     def provider(self):
@@ -164,6 +166,31 @@ def read_flag(value, default):
     if isinstance(value, bool):
         return value
     return str(value).strip().lower() not in FALSE_VALUES
+
+
+PROXY_RULE = (
+    "A proxy is one Chrome --proxy-server value: host:port, scheme://host:port, a per-scheme list, or direct://."
+)
+
+
+def read_proxy(value):
+    """The egress a Chrome jev-ra launches is put behind, or None.
+
+    Chrome takes the whole value - one address, a per-scheme list, or direct:// - so it is passed
+    through rather than parsed here. What is refused is what would stop being one value: a blank,
+    whitespace that would split it into two arguments, and a leading dash that would make it
+    another flag. The value itself is never logged, because a residential egress carries its
+    credentials in it.
+    """
+    if value is None:
+        return None
+    proxy = str(value).strip()
+    if not proxy:
+        return None
+    if proxy.startswith("-") or any(character.isspace() for character in proxy):
+        logger.warning("Ignoring an unusable proxy. %s", PROXY_RULE)
+        return None
+    return proxy
 
 
 def require_browser(env=None):
@@ -288,4 +315,5 @@ def load(env=None, path=None):
         budgets=read_budgets(env, stored.get("budgets")),
         block_resources=read_flag(env.get("JEV_RA_BLOCK_RESOURCES", stored.get("block_resources")), True),
         allow_file_urls=read_flag(env.get("JEV_RA_ALLOW_FILE_URLS", stored.get("allow_file_urls")), False),
+        proxy=read_proxy(env.get("JEV_RA_PROXY") or stored.get("proxy")),
     )

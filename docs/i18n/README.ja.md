@@ -248,6 +248,7 @@ v0.1 の基準に対する PASS/FAIL を表示する。
 | `JEV_RA_VIEWPORT` | 例: `1280x900`(既定値) |
 | `JEV_RA_MAX_STEPS`, `JEV_RA_MAX_DECISIONS`, `JEV_RA_TIMEOUT_S` | 予算 (40 / 80 / 120) |
 | `JEV_RA_BLOCK_RESOURCES` | `0` でフォント/メディアの遮断を切る |
+| `JEV_RA_PROXY` | jev-ra が起動する Chrome の egress。例: `http://host:8080` |
 | `JEV_RA_ALLOW_FILE_URLS` | `1` でセッションが `file:` URL を開けるようになる |
 | `JEV_RA_SEARCH_URL` | 検索エンドポイントのテンプレート。`{query}` が置換される |
 | `JEV_RA_TEXT_MODEL`, `JEV_RA_TEXT_BASE_URL`, `JEV_RA_TEXT_API_KEY` | 任意のテキストヘルパー。既定はオフ |
