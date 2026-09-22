@@ -13,7 +13,7 @@ from browser_harness.helpers import cdp
 from ..config import load
 from ..errors import BadUrl, ChromeError, StalePage
 from ..profile import NullTimer
-from . import MAX_ELEMENTS, guard_expression, marker_expression, snapshot_expression
+from . import MAX_ELEMENTS, QUIET_STATE_JS, guard_expression, marker_expression, snapshot_expression
 from .chrome import ensure as ensure_chrome
 from .chrome import ready as chrome_ready
 from .chrome import verify_attached
@@ -85,6 +85,58 @@ IDEMPOTENT = (
 EVALUATE_TIMEOUT_S = 30.0
 WAIT_SLEEP_S = 0.1
 SETTLE_ATTEMPTS = 10
+# A page knows when it stopped changing, and asking it ten times a second is both slower and less
+# true than letting it say so. One MutationObserver and one frame counter per document: `last` is
+# when the DOM last moved and `count` how often it has, so a wait can be for stillness or for the
+# next change. Stillness is 120 ms with nothing navigating; the caller's budget is still the
+# ceiling, and a document the browser stops painting is answered by the timeout rather than never.
+QUIET_MS = 120
+# A click whose answer has not reached the action set yet is given a longer stillness before the
+# wait gives up on it: a panel that mounts a beat after the click is preceded by the page moving,
+# and only a page that has gone properly still has nothing left to say.
+UNANSWERED_QUIET_MS = 400
+# A page that never stops moving would hold a single probe for the whole budget and leave nothing
+# to read it with, so a probe is asked for a little more than the stillness it waits for.
+QUIET_SLICE_MS = 80
+QUIESCENCE_JS = (
+    """(options => new Promise(resolve => {
+  const state = """
+    + QUIET_STATE_JS
+    + """();
+  const started = performance.now(), deadline = started + options.budget_ms, first = state.frames;
+  let answered = false;
+  const answer = quiet => {
+    if (answered) return;
+    answered = true;
+    resolve({quiet, count: state.count, waited: Math.round(performance.now() - started)});
+  };
+  const tick = () => {
+    if (answered) return;
+    state.frames++;
+    const now = performance.now();
+    // A document that has not moved once since it was first read has nothing to settle; one that
+    // has gets the stillness its caller asked for, measured from the last time it moved.
+    const still = !state.leaving && document.readyState === 'complete' &&
+      (state.count === 0 || now - state.last >= options.quiet_ms) &&
+      (options.after === null || state.count > options.after);
+    // Two frames, so a document that has only just been handed the input has had one to answer in.
+    if (still && state.frames - first >= 2) return answer(true);
+    if (now >= deadline) return answer(false);
+    requestAnimationFrame(tick);
+  };
+  requestAnimationFrame(tick);
+  // A document the browser has stopped painting runs no frames; the ceiling still has to answer.
+  setTimeout(() => answer(false), options.budget_ms + 50);
+}))"""
+)
+# The load is the page's own event, not something to ask about twenty times a second. A navigation
+# that replaces the document under the wait destroys the context, which is asked again.
+READY_JS = """(options => new Promise(resolve => {
+  const done = () => resolve(document.readyState);
+  if (document.readyState === 'complete') return done();
+  addEventListener('load', done, {once: true});
+  setTimeout(done, options.budget_ms);
+}))"""
 # A frame that just committed its first paint can swallow the first click into it: the resolver's
 # hit test passes, the input event lands on the parent, and the field never takes focus. Give the
 # focus a moment to arrive on its own, then ask for it directly. Clicking again is not an option:
@@ -93,14 +145,10 @@ SETTLE_ATTEMPTS = 10
 FOCUS_SLEEP_S = 0.05
 # After input, keep reading the marker until two readings agree. A single-page app re-renders
 # well after its two frames are up, and a half-rendered page reads as one with nothing to do.
-QUIET_INTERVAL_S = 0.06
 QUIET_BUDGET_S = 0.6
-# One budget for everything a step waits for, and a turn that lengthens as it goes: a page that
-# has finished settling says so in the first two readings, and one that has not is not helped by
-# being asked twenty times a second.
+# One budget for everything a step waits for. A page that has finished settling says so by going
+# still, and one that never does costs what it always did rather than being asked more often.
 SETTLE_BUDGET_S = 2.0
-SETTLE_INTERVAL_CAP_S = 0.32
-SETTLE_BACKOFF = 1.5
 # What a click that opens a panel brings: a field, a menu item, an option. A link that blinks
 # in and out - Back to top, a scroll helper - is the page catching up, not the click's answer,
 # and accepting it would end the wait before the panel mounts.
@@ -346,27 +394,64 @@ class Session:
         self.after_input = None
         self.invalidate()
         self.call("Page.navigate", timeout=NAVIGATE_TIMEOUT_S, url=url)
-        deadline = time.monotonic() + LOAD_TIMEOUT_S
-        while time.monotonic() < deadline:
+        self.load()
+        self.paint()
+        return self.observe()
+
+    def quiet(self, budget_s, after=None, quiet_ms=QUIET_MS):
+        """Wait in the page until it stops changing, and say whether it did.
+
+        `{"quiet": ..., "count": ...}`: whether the document went still inside the budget rather
+        than running out of it, and how many times it has mutated, which a caller waiting for
+        something that has not happened yet passes back as `after`. None when the document moved
+        under the probe, which is the answer to observe again.
+        """
+        options = {"quiet_ms": quiet_ms, "budget_ms": max(0, round(budget_s * 1000)), "after": after}
+        try:
+            return self.evaluate(f"{QUIESCENCE_JS}({json.dumps(options)})", await_promise=True)
+        except StalePage:
+            logger.debug("The document changed while waiting for it to go quiet")
+            return None
+
+    def load(self, budget=LOAD_TIMEOUT_S):
+        """Wait for the document's own load event, or for the load budget to run out."""
+        deadline = time.monotonic() + budget
+        while True:
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                return False
+            expression = f"{READY_JS}({json.dumps({'budget_ms': round(remaining * 1000)})})"
             try:
-                if self.evaluate("document.readyState") == "complete":
-                    break
+                if self.evaluate(expression, await_promise=True) == "complete":
+                    return True
             except StalePage:
-                pass
-            time.sleep(0.02)
-        # A document that reports itself complete can still be a loading screen: a portal paints a
-        # cover over every control it has drawn, and a snapshot of it observes nothing, which
-        # reads as a page with nothing to act on. Wait for a control that is reachable or merely
-        # out of view, and stop as soon as there is one.
-        deadline = time.monotonic() + PAINT_BUDGET_S
-        while time.monotonic() < deadline:
+                logger.debug("The document was replaced while waiting for it to load")
+
+    def paint(self, budget=PAINT_BUDGET_S):
+        """Wait until there is something on the page to act on, or the budget runs out.
+
+        A document that reports itself complete can still be a loading screen: a portal paints a
+        cover over every control it has drawn, and a snapshot of it observes nothing, which reads
+        as a page with nothing to act on. Nothing new arrives while the DOM is still, so what is
+        waited for between readings is the page's own next mutation rather than a fixed sleep.
+        """
+        deadline = time.monotonic() + budget
+        seen = None
+        while True:
             try:
                 if self.evaluate(PAINTED_JS):
-                    break
+                    return True
             except StalePage:
                 logger.debug("The document changed while waiting for it to paint")
-            time.sleep(WAIT_SLEEP_S)
-        return self.observe()
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                return False
+            answer = self.quiet(remaining, after=seen)
+            if answer is None:
+                continue
+            if not answer["quiet"]:
+                return False
+            seen = answer["count"]
 
     def settle(self):
         """Wait out the effect of the last input before observing again."""
@@ -397,16 +482,17 @@ class Session:
         Three waits used to run here one after another, each on its own clock and its own
         deadline: the route an address had already moved to, whatever the click opened, and the
         page going quiet. They are three questions about successive readings of the same marker,
-        so read it once a turn, answer all three, and stop as soon as all three are answered.
-        Quiet keeps its own shorter allowance inside the shared one, so a page that never stops
-        moving costs what it always did rather than the whole budget.
+        so read it, answer all three, and then wait for the page itself to say it has changed or
+        stopped changing rather than asking again on a timer. Two identical readings of a page
+        that is not moving end the wait, whatever the input was; a page that never stops moving
+        costs the budget it always did.
         """
         opens = bool(before) and action.get("kind") == "click" and action.get("role") == "button"
         deadline = time.monotonic() + SETTLE_BUDGET_S
         expression = marker_expression(self.max_elements)
         previous, opened, differed = None, not opens, False
-        pause, ready = QUIET_INTERVAL_S, None
-        while time.monotonic() < deadline:
+        ready, still, count = None, False, None
+        while True:
             try:
                 marker = self.evaluate(expression)
             except StalePage:
@@ -426,16 +512,31 @@ class Session:
                     or any(control[1] in PANEL_ROLES for control in fresh)
                 )
                 opened, differed = differs and differed, differs
-            if opened and routed(marker, was):
-                if marker == previous:
-                    return
+            caught_up = routed(marker, was)
+            if marker == previous and caught_up and (opened or still):
+                return
+            if opened and caught_up:
                 if ready is None:
                     ready = time.monotonic()
                 elif time.monotonic() - ready >= QUIET_BUDGET_S:
                     return
+            # Two identical readings of a page that is not moving: only its next change can answer
+            # what this wait is still asking, so that is what the next turn waits for.
+            after = count if still and marker == previous else None
             previous = marker
-            time.sleep(pause)
-            pause = min(pause * SETTLE_BACKOFF, SETTLE_INTERVAL_CAP_S)
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                return
+            # A click whose answer has already shown up in a reading only has to stop moving; one
+            # that has shown nothing yet is given longer, because a panel that mounts a beat later
+            # is preceded by the page moving and only a page gone properly still has nothing more.
+            stillness = QUIET_MS if opened or differed else UNANSWERED_QUIET_MS
+            # Waiting for a change that has not happened yet has nothing else to interrupt it, so
+            # it may have the rest of the budget; waiting for stillness leaves room to read again.
+            budget = remaining if after is not None else min(remaining, (stillness + QUIET_SLICE_MS) / 1000)
+            answer = self.quiet(budget, after=after, quiet_ms=stillness)
+            still = answer is not None and answer["quiet"]
+            count = answer["count"] if answer is not None else None
 
     def observe(self, timer=None):
         """One atomic reading of the page: text, elements, actions, guards and marker."""

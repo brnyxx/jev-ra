@@ -56,3 +56,12 @@ def test_a_disclosure_that_only_flips_expanded_is_not_waited_out(session, fixtur
     assert next(e for e in after["elements"] if e["label"] == "Brand")["expanded"] == "true"
     assert elapsed < 1.0, f"waited {elapsed:.2f}s for a change that had already happened"
     assert len(reads) <= 6
+
+
+def test_a_static_page_settles_in_the_time_it_takes_to_see_it(session, fixture_server):
+    page = session.open(fixture_server + "/sites/static.html")
+    session.act(action_for(page, "Apply", "click"), page)
+    started = time.monotonic()
+    session.settle()
+    elapsed = time.monotonic() - started
+    assert elapsed < 0.2, f"waited {elapsed:.2f}s for a page that never moves"
