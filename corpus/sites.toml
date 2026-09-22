@@ -681,13 +681,16 @@ goal = "Open the project structure page from the documentation navigation."
 expect = "done"
 verify = { url_contains = ["project-structure"], text_any = ["Project structure", "src/"] }
 
+# Was: open the installation page. The navigation offers two of them, Install at /get and
+# Installation at /docs/installation, and which one a run reaches varies between runs; both do
+# what the goal asks, so no address proves it. Quickstart is one label with one destination.
 [[task]]
-name = "bun_docs_installation"
+name = "bun_docs_quickstart"
 family = "docs_spa"
 url = "https://bun.com/docs"
-goal = "Open the installation page from the documentation navigation."
+goal = "Open the quickstart page from the documentation navigation."
 expect = "done"
-verify = { url_contains = ["installation"], text_any = ["Install", "install"] }
+verify = { url_contains = ["bun.com/docs/quickstart"], text_any = ["Quickstart", "quickstart"] }
 
 [[task]]
 name = "deno_docs_installation"
