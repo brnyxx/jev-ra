@@ -167,6 +167,8 @@ class Result:
     run_id: str = ""
     url: str = ""
     title: str = ""
+    http_status: int | None = None
+    site_error: bool = False
     final_answer: str | None = None
     steps: list = field(default_factory=list)
     decisions: int = 0
@@ -680,6 +682,8 @@ class _Run:
             run_id=self.run_id,
             url=page.get("url", ""),
             title=page.get("title", ""),
+            http_status=page.get("http_status"),
+            site_error=self.site_error,
             final_answer=final_answer,
             steps=self.steps,
             decisions=self.decisions,

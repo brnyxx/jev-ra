@@ -167,6 +167,21 @@ def test_a_run_records_what_the_page_showed_and_closes_the_session(stub):
     assert FakeSession.instances[0].closed is True
 
 
+def test_a_run_records_the_status_and_whether_the_site_answered_with_an_error(stub):
+    stub(Result(status="done", http_status=502, site_error=True, final_page=page()))
+    row = corpus.run_task(task(verify={"text_contains": ["hello"]}), config=None, decide=lambda *_: {})
+    assert row["http_status"] == 502 and row["site_error"] is True
+    stub(Result(status="done", http_status=200, final_page=page()))
+    row = corpus.run_task(task(verify={"text_contains": ["hello"]}), config=None, decide=lambda *_: {})
+    assert row["http_status"] == 200 and row["site_error"] is False
+
+
+def test_a_failed_engine_records_no_status_and_no_site_error(stub):
+    stub(JevRaError("Chrome is not reachable."))
+    row = corpus.run_task(task(), config=None, decide=lambda *_: {})
+    assert row["http_status"] is None and row["site_error"] is False
+
+
 def test_a_run_records_what_it_typed_so_the_results_file_can_be_checked(stub):
     stub(
         Result(
@@ -285,6 +300,57 @@ def test_the_summary_reports_pass_rate_median_and_the_reasons():
     assert corpus.pass_rate([]) == 0.0
 
 
+def test_the_summary_counts_the_attempts_the_site_answered_with_an_error():
+    rows = [
+        {
+            "task": "a",
+            "family": "f",
+            "passed": True,
+            "why": "",
+            "elapsed_ms": 100,
+            "decisions": 2,
+            "cost": 0.001,
+            "status": "done",
+            "reason": "",
+            "site_error": True,
+        },
+        {
+            "task": "a",
+            "family": "f",
+            "passed": False,
+            "why": "escalate:blocked_by_site",
+            "elapsed_ms": 200,
+            "decisions": 0,
+            "cost": 0.0,
+            "status": "escalate",
+            "reason": "blocked_by_site",
+            "site_error": True,
+        },
+        {
+            "task": "b",
+            "family": "f",
+            "passed": True,
+            "why": "",
+            "elapsed_ms": 300,
+            "decisions": 3,
+            "cost": 0.002,
+            "status": "done",
+            "reason": "",
+            "site_error": False,
+        },
+    ]
+    table = corpus.summarise(rows)
+    first = next(row for row in table if row["task"] == "a")
+    second = next(row for row in table if row["task"] == "b")
+    assert first["site"] == 2 and second["site"] == 0
+
+
+def test_the_results_file_keeps_the_site_columns(tmp_path):
+    rows = [{"task": "a", "status": "done", "http_status": 503, "site_error": True}]
+    first = json.loads(corpus.write_results(rows, tmp_path).read_text().strip())
+    assert first["http_status"] == 503 and first["site_error"] is True
+
+
 def test_results_are_appended_without_the_bulky_page(tmp_path):
     rows = [{"task": "a", "passed": True, "text": "x" * 100, "elements": [{"label": "b"}], "status": "done"}]
     path = corpus.write_results(rows, tmp_path)
@@ -337,7 +403,7 @@ def test_the_cli_reports_the_run_and_fails_under_the_bar(monkeypatch, tmp_path, 
     assert code == 1
     assert "pass rate 50%" in out
     assert "FAIL" in out
-    assert "| task | family |" in out
+    assert "| task | family |" in out and "| site |" in out
 
 
 def test_the_cli_passes_when_the_corpus_clears_the_bar(monkeypatch, tmp_path, capsys):

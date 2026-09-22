@@ -268,3 +268,7 @@ per-task rerun agrees. The three mechanisms in the candidate hold on their fixtu
 3/3, href-less anchors 2/2, date grid 2/2) and cost nothing on the corpus; the state-evidence
 change tried in the same lane (`416273c` on `fix/decisions`) was left out because it turned
 hackernews_page_two from 3/3 into 0/3 on every rerun.
+
+Every row now also records the status the site answered its document with (`http_status`) and
+whether the run hit a site error page (`site_error`), and the per-task table carries a `site`
+column counting those attempts.

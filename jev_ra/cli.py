@@ -707,7 +707,7 @@ def cmd_bench(args):
     return 0 if payload["passed"] else 1
 
 
-CORPUS_COLUMNS = ("task", "family", "runs", "passed", "pass_rate", "median_ms", "decisions", "cost", "why")
+CORPUS_COLUMNS = ("task", "family", "runs", "passed", "pass_rate", "site", "median_ms", "decisions", "cost", "why")
 
 
 def corpus_line(row):
