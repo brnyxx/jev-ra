@@ -19,7 +19,7 @@ the row names the command that proves it. Rows without a command yet are debt, l
 |---|---|---|
 | Chrome killed mid-session: next `browser_open` succeeds, `browser_close` succeeds | recovery | `tests/test_mcp_recovery.py` |
 | SIGTERM to the MCP server: no Chrome or daemon left that it started | no orphans | `tests/test_mcp_lifecycle.py` |
-| 100 tool calls in a row on one server: RSS growth < 50 MB, tabs = 1 | no leaks | `scripts/soak.py --calls 100` |
+| 100 tool calls in a row on one session: RSS growth < 50 MB, no page target opened | no leaks | `scripts/soak.py --calls 100` |
 | two clients, concurrent tool calls: no StalePage from the race, second gets `busy` | serialised | `tests/test_mcp_concurrency.py` |
 | every CDP/HTTP call bounded; `browser_run` returns within `max_steps` x step budget + 10 s | no hang | `tests/test_budgets.py` |
 | `javascript:`, `file:`, `data:` refused at open; `file:` only with opt-in | no local read | `tests/test_session_open_schemes.py` |
@@ -74,5 +74,5 @@ the row names the command that proves it. Rows without a command yet are debt, l
 
 ## Debt (no command yet)
 
-- `scripts/soak.py`, `jev-ra trace`, `jev-ra serve`,
+- `jev-ra trace`, `jev-ra serve`,
   profiles, Dockerfile, Windows job, macOS cold-start job, `scripts/check_site.py`.
