@@ -173,8 +173,28 @@ def state_elements(elements, opened):
     return views
 
 
+def last_step_effect(space, opened):
+    """One line naming what the last step put on the page, or nothing.
+
+    The element table says what is there. It never says which of it is the answer to the last
+    action, and a run that has just opened a list is looking at the list and at the control it
+    came from with nothing to tell it which way round that is. This is state, not wording: the
+    questions are unchanged.
+    """
+    if not opened:
+        return ""
+    fresh = [element for element in space.elements if element.get("node") in opened["controls"]]
+    if not fresh:
+        return ""
+    control = next((element for element in space.elements if element.get("node") == opened["node"]), None)
+    what = "suggestions" if opened.get("listbox") else "controls"
+    where = f" under {control['label']}" if control and control.get("label") else ""
+    return f"the last step opened {len(fresh)} {what}{where}, listed first below"
+
+
 def build_state(page, space, goal, history=(), values=None, opened=None):
     """The state sent alongside the questions: meaning, never markup."""
+    effect = last_step_effect(space, opened)
     return {
         "goal": goal,
         "page": {
@@ -188,6 +208,7 @@ def build_state(page, space, goal, history=(), values=None, opened=None):
             for step in list(history)[-RECENT_ACTIONS:]
         ],
         "values_available": sorted(values) if values else [],
+        **({"last_step_effect": effect} if effect else {}),
     }
 
 

@@ -212,6 +212,32 @@ def test_without_an_opened_panel_the_table_keeps_its_document_order():
     assert all("expanded" not in element for element in state["elements"])
 
 
+def test_the_state_names_what_the_last_step_opened():
+    space = space_for(LISTING)
+    state = build_state(LISTING, space, "goal", opened={"node": 1, "controls": {2}, "listbox": True})
+    assert state["last_step_effect"] == "the last step opened 1 suggestions under Origin, listed first below"
+
+
+def test_a_panel_is_named_as_controls_rather_than_suggestions():
+    space = space_for()
+    state = build_state(PAGE, space, "goal", opened={"node": 3, "controls": {1, 2}, "listbox": False})
+    assert state["last_step_effect"] == "the last step opened 2 controls under Search flights, listed first below"
+
+
+def test_a_step_that_opened_nothing_says_nothing():
+    assert "last_step_effect" not in build_state(PAGE, space_for(), "goal")
+    gone = {"node": 1, "controls": {98, 99}, "listbox": True}
+    assert "last_step_effect" not in build_state(PAGE, space_for(), "goal", opened=gone)
+
+
+def test_the_questions_are_not_reworded_by_any_of_this():
+    space = space_for(LISTING)
+    plain = build_questions(space, "goal")
+    opened = build_questions(space, "goal", opened={"node": 1, "controls": {2}, "listbox": True})
+    assert plain["operation"]["instructions"] == opened["operation"]["instructions"]
+    assert json.loads(plain["operation"]["instructions"])["rules"] == NEXT_ACTION
+
+
 def test_read_answers_resolves_the_action_and_the_joint_probability():
     space = space_for()
     questions = build_questions(space, "goal")
