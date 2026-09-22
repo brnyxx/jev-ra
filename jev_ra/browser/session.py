@@ -119,13 +119,22 @@ QUIESCENCE_JS = (
     const still = !state.leaving && document.readyState === 'complete' &&
       (state.count === 0 || now - state.last >= options.quiet_ms) &&
       (options.after === null || state.count > options.after);
-    // Two frames, so a document that has only just been handed the input has had one to answer in.
+    // Two ticks, so a document that has only just been handed the input has had one to answer in.
     if (still && state.frames - first >= 2) return answer(true);
     if (now >= deadline) return answer(false);
-    requestAnimationFrame(tick);
+    schedule();
   };
-  requestAnimationFrame(tick);
-  // A document the browser has stopped painting runs no frames; the ceiling still has to answer.
+  // A page that is not being painted runs no animation frames: Chrome on Linux gives a background
+  // target none at all, measured on the CI runner as every settle costing its whole budget. So the
+  // tick runs on a timer, at frame pace, and a frame that does arrive only makes it come sooner.
+  let pending = null;
+  const schedule = () => {
+    if (pending !== null) return;
+    pending = setTimeout(() => { pending = null; tick(); }, 16);
+    requestAnimationFrame(() => { if (pending !== null) { clearTimeout(pending); pending = null; tick(); } });
+  };
+  schedule();
+  // The ceiling still has to answer even if no tick ever ran.
   setTimeout(() => answer(false), options.budget_ms + 50);
 }))"""
 )
