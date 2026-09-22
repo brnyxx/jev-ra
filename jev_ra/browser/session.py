@@ -230,17 +230,27 @@ class Session:
         self.target_id = (
             cdp("Target.createTarget", url="about:blank", background=True)["targetId"] if created else target_id
         )
-        self.session_id = cdp("Target.attachToTarget", targetId=self.target_id, flatten=True)["sessionId"]
-        self.call(
-            "Emulation.setDeviceMetricsOverride",
-            width=viewport.width,
-            height=viewport.height,
-            deviceScaleFactor=1,
-            mobile=False,
-        )
-        # Keep rAF and menus rendering in an owned background tab without stealing focus.
-        self.call("Emulation.setFocusEmulationEnabled", enabled=True)
-        self.blocked = self.block_resources() if self.config.block_resources else []
+        try:
+            self.session_id = cdp("Target.attachToTarget", targetId=self.target_id, flatten=True)["sessionId"]
+            self.call(
+                "Emulation.setDeviceMetricsOverride",
+                width=viewport.width,
+                height=viewport.height,
+                deviceScaleFactor=1,
+                mobile=False,
+            )
+            # Keep rAF and menus rendering in an owned background tab without stealing focus.
+            self.call("Emulation.setFocusEmulationEnabled", enabled=True)
+            self.blocked = self.block_resources() if self.config.block_resources else []
+        except Exception:
+            # Nobody else has the id of a target whose setup failed, so this is the only chance to
+            # close it. A target we were only handed stays open: its owner decides when it goes.
+            if created:
+                try:
+                    cdp("Target.closeTarget", targetId=self.target_id)
+                except Exception:
+                    logger.warning("Could not close target %s after its setup failed", self.target_id)
+            raise
 
     def block_resources(self, urls=BLOCKED_URLS):
         """Stop this target fetching the given URL patterns."""

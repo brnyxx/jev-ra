@@ -2,6 +2,7 @@
 
 import pytest
 
+from jev_ra import config
 from jev_ra.browser import session as session_module
 from jev_ra.errors import ChromeError, JevRaError, StalePage
 
@@ -174,3 +175,43 @@ def test_a_node_that_is_not_an_observed_id_never_reaches_the_page(bare, method, 
     for smuggled in ("1); alert(1)//", 1.0, None, True, "12"):
         with pytest.raises(ValueError):
             getattr(bare, method)(smuggled)
+
+
+def recording_cdp(fails_on):
+    """A cdp that answers the setup calls and refuses the named one."""
+    calls = []
+
+    def cdp(method, session_id=None, _response_timeout=None, **params):
+        calls.append((method, params))
+        if method == fails_on:
+            raise RuntimeError({"code": -32000, "message": "Session with given id not found."})
+        if method == "Target.createTarget":
+            return {"targetId": "t1"}
+        if method == "Target.attachToTarget":
+            return {"sessionId": "s1"}
+        return {}
+
+    cdp.calls = calls
+    return cdp
+
+
+@pytest.fixture
+def no_chrome_needed(monkeypatch):
+    monkeypatch.setattr(session_module, "ensure_chrome", lambda **_k: ("http://127.0.0.1:9222", "BU_CDP_URL"))
+    monkeypatch.setattr(session_module, "ensure_daemon", lambda *_a, **_k: None)
+
+
+def test_a_target_whose_setup_fails_is_closed_again(monkeypatch, no_chrome_needed):
+    cdp = recording_cdp("Emulation.setDeviceMetricsOverride")
+    monkeypatch.setattr(session_module, "cdp", cdp)
+    with pytest.raises(ChromeError):
+        session_module.Session(config=config.load({}))
+    assert ("Target.closeTarget", {"targetId": "t1"}) in cdp.calls
+
+
+def test_a_target_we_only_attached_to_is_left_alone(monkeypatch, no_chrome_needed):
+    cdp = recording_cdp("Emulation.setDeviceMetricsOverride")
+    monkeypatch.setattr(session_module, "cdp", cdp)
+    with pytest.raises(ChromeError):
+        session_module.Session(config=config.load({}), target_id="theirs")
+    assert not [method for method, _params in cdp.calls if method == "Target.closeTarget"]
