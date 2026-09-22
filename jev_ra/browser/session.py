@@ -225,6 +225,11 @@ RESOLVE_JS = """(action => {
   if (!e?.isConnected || e.matches(':disabled') || e.closest('[aria-disabled="true"],[inert]') ||
       !e.checkVisibility({checkVisibilityCSS:true})) return null;
   if (action.kind==='fill' && (e.readOnly || e.getAttribute('aria-readonly')==='true')) return null;
+  // A link that asks for a new tab would open one this run is not driving, and the page it was
+  // clicked on reads exactly as it did before - three of those in a row is a run that stopped on
+  // a link it chose correctly the first time. gov.cn opens its whole navigation this way. The
+  // run has one tab, so the link is followed in it. _self already means this one.
+  if (action.kind==='click' && e.tagName==='A' && e.target && e.target!=='_self') e.removeAttribute('target');
   // The point the snapshot would have offered it at, hit-tested in the element's own root:
   // elementFromPoint stops at a shadow host otherwise.
   const local=cache.point(e);
