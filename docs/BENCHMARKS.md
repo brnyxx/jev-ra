@@ -272,3 +272,26 @@ hackernews_page_two from 3/3 into 0/3 on every rerun.
 Every row now also records the status the site answered its document with (`http_status`) and
 whether the run hit a site error page (`site_error`), and the per-task table carries a `site`
 column counting those attempts.
+
+## 0.2.4: site weather, and the same machine for the speed check
+
+Measured 2026-09-23 through the TypeSafe direct route (OpenRouter out of credits; decisions take
+495-604 ms there against about 300 ms through OpenRouter, so every live time below is slower than
+the 0.1 table for that reason alone). Raw rows: [`2026-09-23-v0.2.4/`](benchmarks/2026-09-23-v0.2.4/).
+
+Corpus, three runs, 83 tasks (the three httpbin forms now also run against httpbingo.org): 213 / 249.
+On the 80 tasks shared with 0.2.3: 204 / 240 against 207 / 240, inside the ±5 run-to-run noise;
+the one row the new site-error path produced is booking.com answering HTTP 502 twice, reported as
+`blocked_by_site` instead of being decided on.
+
+Recorded tasks, five runs each, 0.2.3 and this release back to back on the same machine:
+
+| task | 0.2.3 | 0.2.4 |
+|---|---|---|
+| Wikipedia | 4,661 ms | 4,291 ms |
+| Olive Young sort | 6,694 ms | 5,884 ms |
+| Search with a citation | 2,250 ms | 2,267 ms |
+| Form fill | 1,558 ms | 1,559 ms |
+| Google Flights | 0/5 | 0/5 |
+
+The release is not slower than the one before it. Google Flights fails on both and is open.

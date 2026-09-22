@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.2.4 - 2026-09-23
+
+### Changed
+- A site's error answer is no longer read as the page. The observation carries the document's
+  `http_status`; a 5xx, a 429 or a short page that says it is an error is waited out for two seconds
+  and reloaded once, and a site still answering with an error is reported as `blocked_by_site`
+  (`detail.wall = "http <status>"`), never as a plain `blocked`.
+- Corpus rows record `http_status` and `site_error`, the summary shows a `site` column, and
+  `scripts/soak.py` counts site errors, so a failure on the site's bad minute is told apart from a
+  product failure.
+- The three httpbin form tasks also run against httpbingo.org, so the forms family does not depend
+  on one host.
+- The recorded Google Flights task asks for a departure a month ahead instead of a day that has
+  passed.
+
 ## 0.2.3 - 2026-09-22
 
 ### Changed

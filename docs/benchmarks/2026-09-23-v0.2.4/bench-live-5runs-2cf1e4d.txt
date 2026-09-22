@@ -1,0 +1,25 @@
+offline (scripted decisions, local fixtures, no network), 5 run(s) each:
+  form_fill: 5/5 verified, median 312 ms, p90 334 ms, 5 decisions, 0 text calls
+  catalog_sort: 5/5 verified, median 522 ms, p90 532 ms, 3 decisions, 0 text calls
+live, 5 run(s) each, verified on the page:
+  wikipedia: 5/5 verified, median 4291 ms, p90 5823 ms, 4 decisions, 0 text calls
+  flights: 0/5 verified; stuck_loop
+  oliveyoung_sort: 5/5 verified, median 5884 ms, p90 6777 ms, 4 decisions, 0 text calls
+  search_fact: 5/5 verified, median 2267 ms, p90 2557 ms, 4 decisions, 0 text calls
+  form_fill: 5/5 verified, median 1559 ms, p90 1611 ms, 5 decisions, 0 text calls
+ratio (jev-ra median / browser-use flash_mode, >= 3.0x to pass):
+  wikipedia: 4291 ms / 23058 ms = 5.37x, 100% of 5 runs  PASS
+  flights: never verified / 66414 ms = n/a, 0% of 5 runs  FAIL
+  oliveyoung_sort: 5884 ms / 15071 ms = 2.56x, 100% of 5 runs  FAIL
+  search_fact: 2267 ms / no baseline row = n/a, 100% of 5 runs  PASS
+  form_fill: 1559 ms / no baseline row = n/a, 100% of 5 runs  PASS
+
+| task | runs | successes | success_rate | median_ms | p90_ms | median_steps | median_decisions | median_cost | text_calls |
+|---|---|---|---|---|---|---|---|---|---|
+| wikipedia | 5 | 5 | 1.0 | 4291 | 5823 | 2 | 4 | 0.0 | 0 |
+| flights | 5 | 0 | 0.0 |  |  |  |  |  | 0 |
+| oliveyoung_sort | 5 | 5 | 1.0 | 5884 | 6777 | 3 | 4 | 0.0 | 0 |
+| search_fact | 5 | 5 | 1.0 | 2267 | 2557 | 3 | 4 | 0.0 | 0 |
+| form_fill | 5 | 5 | 1.0 | 1559 | 1611 | 4 | 5 | 0.0 | 0 |
+
+FAIL: at least one task is short
