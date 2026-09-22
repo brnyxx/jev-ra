@@ -231,7 +231,9 @@ RESOLVE_JS = """(action => {
   return {x,y};
 })"""
 
-# Two frames settle ordinary input; a combobox gets up to 200 ms for real suggestions.
+# Two frames settle ordinary input; a combobox gets up to 200 ms for real suggestions. What the
+# promise resolves with is the page itself: the wait after an input and the first reading of what
+# the input did are the same round trip, so the observation rides the action back.
 SETTLE_JS = """(action => new Promise(resolve => {
   const cache=window.__jevRa;
   const field=cache?.nodes.get(action.node);
@@ -275,6 +277,7 @@ class Session:
         self.after_input = None
         self.before_input = None
         self.moved_from = None
+        self.settled = None
         self.cache = {}
         viewport = self.config.viewport
         self.cdp_url, self.chrome_source = ensure_chrome(
@@ -355,6 +358,7 @@ class Session:
 
     def invalidate(self):
         """Drop everything cached for the current page."""
+        self.settled = None
         self.cache.clear()
 
     def call(self, method, timeout=CALL_TIMEOUT_S, **params):
@@ -453,30 +457,27 @@ class Session:
                 return False
             seen = answer["count"]
 
-    def settle(self):
+    def settle(self, timer=None):
         """Wait out the effect of the last input before observing again."""
+        timer = timer or NullTimer()
         action, self.after_input = self.after_input, None
         was, self.moved_from = self.moved_from, None
         before, self.before_input = self.before_input, None
         if action is None:
             return
         # Read-only, and only after the action was already recorded: navigation may cut it short.
-        # It awaits a promise the page resolves, so it is an evaluating call and gets an
-        # evaluating call's budget; a page that takes even longer than that is still only a page
-        # this run waited for, so the timeout is logged and the step goes on to read the marker.
-        try:
-            self.call(
-                "Runtime.evaluate",
-                timeout=EVALUATE_TIMEOUT_S,
-                expression=f"{SETTLE_JS}({json.dumps(action)})",
-                awaitPromise=True,
-                returnByValue=True,
-            )
-        except (ChromeError, RuntimeError) as error:
-            logger.debug("Post-input settle was interrupted: %s", error)
-        self.wait_out(action, was, before)
+        first = None
+        settling = f"{SETTLE_JS}({json.dumps(action)}).then(() => {snapshot_expression(self.max_elements)})"
+        with timer.measure("wait"):
+            try:
+                first = self.evaluate(settling, await_promise=True)
+            except (StalePage, ChromeError, RuntimeError) as error:
+                # A page that outlasts even the evaluating budget is still only a page this run
+                # waited for: the timeout is logged and the step goes on to read the marker.
+                logger.debug("Post-input settle was interrupted: %s", error)
+        self.wait_out(action, was, before, first, timer)
 
-    def wait_out(self, action, was, before):
+    def wait_out(self, action, was, before, first=None, timer=None):
         """One budget and one reading per turn for everything a step waits for.
 
         Three waits used to run here one after another, each on its own clock and its own
@@ -487,18 +488,22 @@ class Session:
         that is not moving end the wait, whatever the input was; a page that never stops moving
         costs the budget it always did.
         """
+        timer = timer or NullTimer()
         opens = bool(before) and action.get("kind") == "click" and action.get("role") == "button"
         deadline = time.monotonic() + SETTLE_BUDGET_S
-        expression = marker_expression(self.max_elements)
+        expression = snapshot_expression(self.max_elements)
         previous, opened, differed = None, not opens, False
-        ready, still, count = None, False, None
+        ready, still, count, reading = None, False, None, first
         while True:
-            try:
-                marker = self.evaluate(expression)
-            except StalePage:
+            if reading is None:
+                with timer.measure("snapshot"):
+                    try:
+                        reading = self.evaluate(expression)
+                    except StalePage:
+                        return
+            if not reading:
                 return
-            if not marker:
-                return
+            marker = reading["marker"]
             if not opened:
                 controls = control_set(marker[MARKER_CONTROLS])
                 fresh = controls - before[1]
@@ -514,6 +519,9 @@ class Session:
                 opened, differed = differs and differed, differs
             caught_up = routed(marker, was)
             if marker == previous and caught_up and (opened or still):
+                # The page this wait ended on is the page the step observes; reading it again is
+                # a second evaluation of the same document for the same answer.
+                self.settled = reading
                 return
             if opened and caught_up:
                 if ready is None:
@@ -534,16 +542,20 @@ class Session:
             # Waiting for a change that has not happened yet has nothing else to interrupt it, so
             # it may have the rest of the budget; waiting for stillness leaves room to read again.
             budget = remaining if after is not None else min(remaining, (stillness + QUIET_SLICE_MS) / 1000)
-            answer = self.quiet(budget, after=after, quiet_ms=stillness)
+            with timer.measure("wait"):
+                answer = self.quiet(budget, after=after, quiet_ms=stillness)
             still = answer is not None and answer["quiet"]
             count = answer["count"] if answer is not None else None
+            reading = None
 
     def observe(self, timer=None):
         """One atomic reading of the page: text, elements, actions, guards and marker."""
         timer = timer or NullTimer()
-        with timer.measure("wait"):
-            self.settle()
+        self.settle(timer)
         with timer.measure("snapshot"):
+            settled, self.settled = self.settled, None
+            if settled is not None:
+                return settled
             for attempt in range(SETTLE_ATTEMPTS):
                 try:
                     page = self.evaluate(snapshot_expression(self.max_elements))
