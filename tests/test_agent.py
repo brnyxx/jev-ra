@@ -209,6 +209,61 @@ def test_a_weak_done_followed_by_a_real_one_still_finishes():
     assert result.status == "done"
 
 
+PANEL_ACTIONS = [
+    *FORM_ACTIONS,
+    {"id": "e3", "node": 3, "role": "textbox", "kind": "fill", "label": "Adults", "value": ""},
+    {"id": "e4", "node": 4, "role": "button", "kind": "click", "label": "Confirm passengers"},
+]
+
+PANEL_ELEMENTS = [
+    *FORM_ELEMENTS,
+    {"ref": "e3", "node": 3, "role": "textbox", "label": "Adults", "value": "", "rect": {}},
+    {"ref": "e4", "node": 4, "role": "button", "label": "Confirm passengers", "rect": {}},
+]
+
+
+def opening_pages():
+    """A click on Search flights that opens a panel below it instead of navigating."""
+    before = page(0)
+    after = {**page(1), "elements": PANEL_ELEMENTS, "actions": PANEL_ACTIONS}
+    return [before, after, after]
+
+
+def test_the_panel_a_click_opened_leads_the_next_states_element_table():
+    decide = decider([CLICK_SUBMIT, DONE])
+    agent = agent_with(decide, session=FakeSession(opening_pages()))
+    agent.run("add passengers")
+    state = decide.seen[1][0]
+    labels = [element["label"] for element in state["elements"]]
+    assert labels[:2] == ["Adults", "Confirm passengers"]
+    opener = next(element for element in state["elements"] if element["label"] == "Search flights")
+    assert opener["expanded"] == "true"
+
+
+def test_a_click_that_navigated_opened_no_panel():
+    moved = {**page(1), "url": "http://127.0.0.1/results.html", "elements": PANEL_ELEMENTS, "actions": PANEL_ACTIONS}
+    decide = decider([CLICK_SUBMIT, DONE])
+    agent = agent_with(decide, session=FakeSession([page(0), moved, moved]))
+    agent.run("add passengers")
+    assert all("expanded" not in element for element in decide.seen[1][0]["elements"])
+
+
+def test_a_click_that_added_nothing_opened_no_panel():
+    decide = decider([CLICK_SUBMIT, DONE])
+    agent = agent_with(decide, session=FakeSession([page(0), page(1), page(1)]))
+    agent.run("add passengers")
+    assert all("expanded" not in element for element in decide.seen[1][0]["elements"])
+
+
+def test_a_scroll_never_claims_to_have_opened_anything():
+    pages = scrollable()
+    pages[1] = {**pages[1], "elements": PANEL_ELEMENTS, "actions": [*PANEL_ACTIONS, SCROLL_DOWN]}
+    decide = decider([weak(0.2), DONE])
+    agent = agent_with(decide, session=FakeSession(pages))
+    agent.run("add passengers")
+    assert all("expanded" not in element for element in decide.seen[1][0]["elements"])
+
+
 def test_blocked_is_reported_as_blocked_with_candidates():
     blocked = {
         "operation": answer("BLOCKED", {"BLOCKED": 0.7, "CLICK": 0.2, "TYPE_TEXT": 0.05, "WAIT": 0.05}),

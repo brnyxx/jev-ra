@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Book a trip</title>
+<style>
+  body { font: 14px/1.5 system-ui; margin: 0; padding: 32px; }
+  #panel { display: none; border: 1px solid #ccc; padding: 16px; margin-top: 16px; }
+  body.open #panel { display: block; }
+</style>
+</head>
+<body>
+<!-- What a booking form does: one button, and the fields it opens live below it in the document.
+     Read in document order the button comes first, so the model sees the thing it already
+     pressed before it sees what pressing it produced. -->
+<h1>Book a trip</h1>
+<button type="button" id="open" onclick="document.body.classList.add('open')">Add passengers</button>
+<div id="panel">
+  <label for="adults">Adults</label>
+  <input id="adults" type="text">
+  <label for="children">Children</label>
+  <input id="children" type="text">
+  <button type="button" id="confirm">Confirm passengers</button>
+</div>
+</body>
+</html>

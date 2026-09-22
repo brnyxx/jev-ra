@@ -118,7 +118,29 @@ def build_questions(space, goal, history=(), values=None, exclude=()):
     return questions
 
 
-def build_state(page, space, goal, history=(), values=None):
+def state_elements(elements, opened):
+    """The element table one decision sees, with whatever the last click opened at the top of it.
+
+    A control that opens a panel says nothing about itself: the panel's fields land wherever the
+    document puts them, which for a booking form is under the button that opened them, and the
+    model re-reads the button it already pressed before it reaches them. Put what the click
+    produced first, and say on the control that it is what produced them.
+    """
+    if not opened:
+        return [element_view(element) for element in elements]
+    controls = opened["controls"]
+    fresh = [element for element in elements if element.get("node") in controls]
+    rest = [element for element in elements if element.get("node") not in controls]
+    views = []
+    for element in (*fresh, *rest):
+        view = element_view(element)
+        if element.get("node") == opened["node"]:
+            view["expanded"] = "true"
+        views.append(view)
+    return views
+
+
+def build_state(page, space, goal, history=(), values=None, opened=None):
     """The state sent alongside the questions: meaning, never markup."""
     return {
         "goal": goal,
@@ -127,7 +149,7 @@ def build_state(page, space, goal, history=(), values=None):
             "title": page.get("title", ""),
             "text": page.get("text", "")[:PAGE_TEXT_CHARS],
         },
-        "elements": [element_view(element) for element in space.elements],
+        "elements": state_elements(space.elements, opened),
         "recent_actions": [
             {key: step.get(key) for key in ("action", "kind", "text", "page_changed")}
             for step in list(history)[-RECENT_ACTIONS:]

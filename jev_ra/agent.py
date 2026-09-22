@@ -128,6 +128,7 @@ class Agent:
             return run.escalate("stale", BLANK_PAGE, detail={"error": "The page never settled to be read."})
         exclude, stale_retries, looks, reasked = set(), 0, 0, False
         best, waited, reasked_value = 0.0, False, False
+        opened = None
         while True:
             over = run.over_budget(limit, budgets, len(run.steps))
             if over:
@@ -136,7 +137,7 @@ class Agent:
             with timer.measure("actions"):
                 space = self.space(page)
                 questions = build_questions(space, goal, run.history, binder.available(), exclude)
-                state = build_state(page, space, goal, run.history, binder.available())
+                state = build_state(page, space, goal, run.history, binder.available(), opened)
             try:
                 with timer.measure("decide"):
                     reply = self.decide(state, questions)
@@ -222,6 +223,7 @@ class Agent:
                     None,
                     timer,
                 )
+                opened = None
                 continue
             looks, best, waited = 0, 0.0, False
 
@@ -263,6 +265,7 @@ class Agent:
                 )
             before, page = page, after
             run.record(decision, before, page, text, timer)
+            opened = revealed(decision, before, page)
             stuck = run.stuck(space)
             if stuck:
                 return run.escalate(stuck, page, decision)
@@ -484,6 +487,26 @@ def unsupplied_field(decision, space, binder, goal):
     if action is None:
         return None
     return NeedsValue(action, goal, "the page needs a value that was not supplied").detail
+
+
+def revealed(decision, before, after):
+    """What a click opened: the control itself, and the controls that came up under it.
+
+    A click that changed the address opened a page, not a panel, and one that added nothing
+    opened nothing at all. Node ids outlive a reading of the page, so what is new is what was
+    not there a moment ago.
+    """
+    if decision.operation != "CLICK" or not decision.action:
+        return None
+    if before.get("url") != after.get("url"):
+        return None
+    if len(after.get("actions") or ()) <= len(before.get("actions") or ()):
+        return None
+    was = {element.get("node") for element in before.get("elements") or ()}
+    controls = {element.get("node") for element in after.get("elements") or ()} - was
+    if not controls:
+        return None
+    return {"node": decision.action.get("node"), "controls": controls}
 
 
 def page_text(page):

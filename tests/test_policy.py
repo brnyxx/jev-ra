@@ -137,6 +137,28 @@ def test_state_sends_meaning_and_recent_actions_only():
     assert state["elements"][0] == {"ref": "e1", "role": "textbox", "label": "City", "value": "Zurich"}
 
 
+def test_the_panel_a_click_opened_is_listed_first_and_its_control_says_so():
+    space = space_for()
+    opened = {"node": 3, "controls": {1, 2}}
+    state = build_state(PAGE, space, "goal", opened=opened)
+    assert [element["ref"] for element in state["elements"]] == ["e1", "e2", "e3"]
+    opener = state["elements"][-1]
+    assert (opener["ref"], opener["expanded"]) == ("e3", "true")
+
+
+def test_a_panel_below_its_button_is_hoisted_above_it():
+    space = space_for()
+    state = build_state(PAGE, space, "goal", opened={"node": 1, "controls": {3}})
+    assert [element["ref"] for element in state["elements"]] == ["e3", "e1", "e2"]
+    assert state["elements"][1]["expanded"] == "true"
+
+
+def test_without_an_opened_panel_the_table_keeps_its_document_order():
+    state = build_state(PAGE, space_for(), "goal")
+    assert [element["ref"] for element in state["elements"]] == ["e1", "e2", "e3"]
+    assert all("expanded" not in element for element in state["elements"])
+
+
 def test_read_answers_resolves_the_action_and_the_joint_probability():
     space = space_for()
     questions = build_questions(space, "goal")
