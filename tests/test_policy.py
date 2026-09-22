@@ -11,7 +11,7 @@ from jev_ra.decide.policy import (
     build_state,
     read_answers,
 )
-from jev_ra.decide.questions import NEXT_ACTION, NONE_VALUE, TARGET
+from jev_ra.decide.questions import NEXT_ACTION, NONE_VALUE, PAGE_TEXT_CHARS, TARGET
 
 PAGE = {
     "url": "http://127.0.0.1/form.html",
@@ -135,6 +135,12 @@ def test_state_sends_meaning_and_recent_actions_only():
     assert state["values_available"] == ["city"]
     assert all("rect" not in element for element in state["elements"])
     assert state["elements"][0] == {"ref": "e1", "role": "textbox", "label": "City", "value": "Zurich"}
+
+
+def test_the_state_caps_the_page_text_it_carries():
+    page = {**PAGE, "text": "x" * (PAGE_TEXT_CHARS * 3)}
+    state = build_state(page, space_for(page), "goal")
+    assert len(state["page"]["text"]) == PAGE_TEXT_CHARS
 
 
 def test_the_panel_a_click_opened_is_listed_first_and_its_control_says_so():

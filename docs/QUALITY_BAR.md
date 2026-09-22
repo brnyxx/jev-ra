@@ -1,7 +1,7 @@
 # The quality bar
 
 What "finished" means for jev-ra, as checks. A release is cut only when every row is green, and
-the row names the command that proves it. Rows without a command yet are debt, listed at the end.
+the row names the command that proves it.
 
 ## Correctness
 
@@ -18,28 +18,28 @@ the row names the command that proves it. Rows without a command yet are debt, l
 
 | check | proves | command |
 |---|---|---|
-| Chrome killed mid-session: next `browser_open` succeeds, `browser_close` succeeds | recovery | `tests/test_mcp_recovery.py` |
-| SIGTERM to the MCP server: no Chrome or daemon left that it started | no orphans | `tests/test_mcp_lifecycle.py` |
+| Chrome killed mid-session: next `browser_open` succeeds, `browser_close` succeeds | recovery | `tests/test_mcp_server.py` |
+| SIGTERM to the MCP server: no Chrome or daemon left that it started | no orphans | `tests/test_mcp_server.py` |
 | 100 tool calls in a row on one session: RSS growth < 50 MB, no page target opened | no leaks | `scripts/soak.py --calls 100` |
-| two clients, concurrent tool calls: no StalePage from the race, second gets `busy` | serialised | `tests/test_mcp_concurrency.py` |
-| every CDP/HTTP call bounded; `browser_run` returns within `max_steps` x step budget + 10 s | no hang | `tests/test_budgets.py` |
-| `javascript:`, `file:`, `data:` refused at open; `file:` only with opt-in | no local read | `tests/test_session_open_schemes.py` |
-| cold start on a fresh Linux box with only the key set: `doctor` and `search` green | first run works | CI job `cold-start`, `CLEAN_INSTALL.md` |
+| two clients, concurrent tool calls: no StalePage from the race, second gets `busy` | serialised | `tests/test_mcp_server.py` |
+| every CDP/HTTP call is bounded; a run ends on its step, decision and time budgets | no hang | `tests/test_session_transport.py`, `tests/test_agent.py` |
+| `javascript:`, `file:`, `data:` refused at open; `file:` only with opt-in | no local read | `tests/test_session_url_scheme.py` |
+| cold start on a fresh Linux box: `doctor` launches its own Chrome and the first-run tests pass | first run works | `.github/workflows/ci.yml` job `cold-start`, `tests/test_first_run.py` |
 
 ## Error surface
 
 | check | proves | command |
 |---|---|---|
-| every tool error carries a message and a `next_step`; none is `Error executing tool X` | actionable | `tests/test_mcp_errors.py` parametrised over every error class |
+| every tool error carries the error's own message and `next_step`, the same on the CLI and MCP surfaces | actionable | `tests/test_errors.py` |
 | every escalation reason in code appears in README, USAGE, AGENTS.md and the four translations | docs match | `tests/test_docs_consistency.py` |
-| key never in stdout, stderr, logs, `--json`, error text, install argv display | secrets | `tests/test_redaction.py` |
+| key never in stdout, stderr, logs, `--json`, error text, install argv display | secrets | `tests/test_install_doctor.py`, `tests/test_agent.py`, `tests/test_client.py` |
 
 ## Observability
 
 | check | proves | command |
 |---|---|---|
-| every result has `run_id`, per-step ms, decisions, cost | billable and debuggable | `tests/test_result_shape.py` |
-| `JEV_RA_LOG_LEVEL=DEBUG` explains a `stuck_loop` (which choices repeated) | post-mortem | `tests/test_logging.py` |
+| every result has `run_id`, per-step ms, decisions, cost | billable and debuggable | `tests/test_mcp_server.py`, `tests/test_trace.py` |
+| `JEV_RA_LOG_LEVEL=DEBUG` explains a `stuck_loop` (which choices repeated) | post-mortem | `tests/test_agent.py` |
 | `jev-ra trace <run_id>` renders the run's steps as the site's demo does | shareable | `tests/test_trace.py` |
 
 ## Performance
@@ -47,19 +47,19 @@ the row names the command that proves it. Rows without a command yet are debt, l
 | check | proves | command |
 |---|---|---|
 | three recorded tasks, 5-run median: ≤ 1.5 / 5.0 / 2.0 s | the next 2x | `uv run jev-ra bench --live --runs 5` |
-| corpus wall per decision, median ≤ 0.7 s | waits are earned | corpus rows |
-| decision request size: element table ≤ 250 rows, state ≤ 12 KB | payload bounded | `tests/test_state_size.py` |
+| per-step wall on a stored run: wait, decide, act, snapshot, overhead | waits are earned | `uv run jev-ra profile <run_id>` |
+| decision payload: element table ≤ 250 rows and page text ≤ 6,000 characters | payload bounded | `tests/test_tool_limits.py`, `tests/test_policy.py` |
 | Python overhead per step ≤ 5 % of step wall | no language rewrite needed | `uv run jev-ra profile` |
 
 ## Delivery
 
 | check | proves | command |
 |---|---|---|
-| `uvx jev-ra@<tag> doctor` and `npx -y jev-ra@<tag> doctor` green within 10 min of the tag | release works | release.yml smoke job after publish |
-| PyPI trusted publishing succeeds (no token upload) | automated | release.yml `pypi` job |
+| `uvx jev-ra@<tag> doctor` and `npx -y jev-ra@<tag> doctor` green within 10 min of the tag | release works | `.github/workflows/release.yml` job `build` |
+| PyPI trusted publishing succeeds (no token upload) | automated | `.github/workflows/release.yml` job `pypi` |
 | sdist < 400 KB, wheel < 150 KB | lean | `tests/test_packaging.py` |
-| CI green on 3.12/3.13/3.14 x ubuntu, plus macOS cold start | platforms | `ci.yml` matrix |
-| Windows: `doctor` green on a windows-latest runner | claimed platforms are tested | `ci.yml` job `windows` |
+| CI green on 3.12/3.13/3.14 x ubuntu, plus macOS cold start | platforms | `.github/workflows/ci.yml` job `test` (matrix), job `macos` |
+| Windows: `doctor` green on a windows-latest runner | claimed platforms are tested | `.github/workflows/ci.yml` job `windows` |
 | every public function has a docstring; ruff D rules on | reads as a product | `uv run ruff check .` |
 | coverage ≥ 90 % without a browser, ≥ 95 % with one | tests mean something | `uv run pytest -q` |
 
@@ -68,12 +68,7 @@ the row names the command that proves it. Rows without a command yet are debt, l
 | check | proves | command |
 |---|---|---|
 | landing page: demo replays a real run, four languages, no dead local reference | first impression | `tests/test_launch_assets.py`, `scripts/check_demo_data.py --check`, `scripts/check_i18n.py --check` |
-| README install commands verified in CI against the published package | docs are true | release smoke job |
+| README install commands run against the built wheel and the npm launcher | docs are true | `.github/workflows/release.yml` job `build` |
 | `jev-ra serve`: HTTP+SSE, API key, per-key quota, structured logs | sellable | `tests/test_serve.py` |
 | named profiles keep a login across runs | login once | `tests/test_profiles.py` |
-| container image: `docker run jev-ra doctor` green | hosted | `Dockerfile`, CI job `image` |
-
-## Debt (no command yet)
-
-- `jev-ra trace`, `jev-ra serve`,
-  profiles, Dockerfile, Windows job, macOS cold-start job.
+| container image: `docker run jev-ra doctor` green | hosted | `.github/workflows/ci.yml` job `image` |
