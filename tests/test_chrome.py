@@ -67,7 +67,8 @@ def test_the_port_file_is_parsed_and_bad_ones_are_ignored(tmp_path):
     assert chrome.read_port(tmp_path / "missing") is None
 
 
-def test_bu_cdp_url_wins_over_everything(monkeypatch):
+def test_a_live_bu_cdp_url_wins_over_everything(monkeypatch):
+    monkeypatch.setattr(chrome, "alive", lambda url, timeout=2.0: url == "http://127.0.0.1:9222")
     monkeypatch.setattr(chrome, "launch", lambda *_a, **_k: pytest.fail("must not launch"))
     url, source = chrome.ensure(env={"BU_CDP_URL": "http://127.0.0.1:9222"})
     assert (url, source) == ("http://127.0.0.1:9222", "BU_CDP_URL")
@@ -248,3 +249,42 @@ def test_a_silent_refusal_still_reads_cleanly(tmp_path):
     profile = tmp_path / "profile"
     profile.mkdir()
     assert chrome.complaint(profile) == ""
+
+
+def test_a_remembered_url_that_is_dead_is_dropped_and_a_new_chrome_starts(monkeypatch, tmp_path):
+    profile = tmp_path / "jev-ra" / "chrome-profile"
+    profile.mkdir(parents=True)
+    (profile / chrome.PORT_FILE).write_text("41234\n")
+    monkeypatch.setattr(chrome, "alive", lambda _url, timeout=2.0: False)
+    monkeypatch.setattr(chrome, "find_browser", lambda **_k: "/opt/chrome")
+    launched = []
+    monkeypatch.setattr(chrome, "launch", lambda binary, path, viewport: launched.append(binary))
+    monkeypatch.setattr(chrome, "wait_for_port", lambda *_a, **_k: 45000)
+    env = {"XDG_STATE_HOME": str(tmp_path), "BU_CDP_URL": "http://127.0.0.1:41234"}
+    assert chrome.ensure(env=env) == ("http://127.0.0.1:45000", "launched")
+    assert launched == ["/opt/chrome"]
+    assert env["BU_CDP_URL"] == "http://127.0.0.1:45000"
+    assert chrome.read_port(profile) is None
+
+
+def test_a_url_we_launched_is_dropped_even_without_a_port_file(monkeypatch, tmp_path):
+    monkeypatch.setattr(chrome, "LAUNCHED_URL", "http://127.0.0.1:41234")
+    monkeypatch.setattr(chrome, "alive", lambda _url, timeout=2.0: False)
+    monkeypatch.setattr(chrome, "find_browser", lambda **_k: "/opt/chrome")
+    monkeypatch.setattr(chrome, "launch", lambda *_a, **_k: None)
+    monkeypatch.setattr(chrome, "wait_for_port", lambda *_a, **_k: 45000)
+    env = {"XDG_STATE_HOME": str(tmp_path), "BU_CDP_URL": "http://127.0.0.1:41234"}
+    assert chrome.ensure(env=env) == ("http://127.0.0.1:45000", "launched")
+
+
+def test_a_dead_url_the_user_set_is_reported_not_replaced(monkeypatch, tmp_path):
+    monkeypatch.setattr(chrome, "LAUNCHED_URL", None)
+    monkeypatch.setattr(chrome, "alive", lambda _url, timeout=2.0: False)
+    monkeypatch.setattr(chrome, "launch", lambda *_a, **_k: pytest.fail("must not launch"))
+    env = {"XDG_STATE_HOME": str(tmp_path), "BU_CDP_URL": "http://127.0.0.1:9222"}
+    with pytest.raises(chrome.ChromeError) as caught:
+        chrome.ensure(env=env)
+    rendered = caught.value.render()
+    assert "http://127.0.0.1:9222" in rendered
+    assert "unset BU_CDP_URL" in rendered
+    assert env["BU_CDP_URL"] == "http://127.0.0.1:9222"

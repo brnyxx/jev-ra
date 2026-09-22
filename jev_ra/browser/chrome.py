@@ -258,17 +258,48 @@ def ready(cdp=None, timeout=READY_TIMEOUT_S):
     raise ChromeError(f"Chrome did not answer a first command within {timeout:g}s: {last}")
 
 
+# The url of the Chrome on the jev-ra profile this process last settled on. `ensure()` writes its
+# answer into the environment, so a Chrome that dies leaves a url behind that looks configured;
+# remembering what we wrote is what tells our own leftover from the one the user exported.
+LAUNCHED_URL = None
+
+
+def forget_port(profile):
+    """Drop the port file, so a dead Chrome is not read as a live one later."""
+    (Path(profile) / PORT_FILE).unlink(missing_ok=True)
+
+
+def remembered(url, profile):
+    """Whether this cdp url is one jev-ra wrote itself, rather than one the user exported."""
+    if url == LAUNCHED_URL:
+        return True
+    port = read_port(profile)
+    return port is not None and url == url_for(port)
+
+
 def ensure(env=None, viewport=(1280, 900), allow_launch=True):
     """Return (cdp_url, source) where source is 'BU_CDP_URL', 'reused' or 'launched'."""
+    global LAUNCHED_URL
     env = os.environ if env is None else env
+    profile = profile_dir(env)
     configured = env.get("BU_CDP_URL")
     if configured:
-        return configured, "BU_CDP_URL"
-    profile = profile_dir(env)
+        if alive(configured):
+            return configured, "BU_CDP_URL"
+        if not remembered(configured, profile):
+            raise ChromeError(
+                f"No Chrome answered at BU_CDP_URL ({configured})",
+                next_step="Start it or unset BU_CDP_URL.",
+            )
+        logger.info("The Chrome jev-ra launched at %s is gone; starting another", configured)
+        env.pop("BU_CDP_URL")
+        forget_port(profile)
+        LAUNCHED_URL = None
     port = read_port(profile)
     if port and alive(url_for(port)):
-        env["BU_CDP_URL"] = url_for(port)
-        return url_for(port), "reused"
+        LAUNCHED_URL = url_for(port)
+        env["BU_CDP_URL"] = LAUNCHED_URL
+        return LAUNCHED_URL, "reused"
     if not allow_launch:
         raise ChromeError("No automation Chrome is running and launching is disabled")
     binary = find_browser(env=env)
@@ -279,5 +310,6 @@ def ensure(env=None, viewport=(1280, 900), allow_launch=True):
         )
     process = launch(binary, profile, viewport)
     port = wait_for_port(profile, process)
-    env["BU_CDP_URL"] = url_for(port)
-    return url_for(port), "launched"
+    LAUNCHED_URL = url_for(port)
+    env["BU_CDP_URL"] = LAUNCHED_URL
+    return LAUNCHED_URL, "launched"

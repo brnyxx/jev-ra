@@ -229,8 +229,10 @@ Google Flights flow, 14 decisions). Cost scales with decisions, not with page si
 sent is the element table and the visible text, never the HTML.
 
 **Does it need its own Chrome?** It will find or launch one on its own profile
-(`$XDG_STATE_HOME/jev-ra/chrome-profile`) and reuse it. Point `BU_CDP_URL` at a different Chrome to
-override. Do not point it at a browser signed into anything you would not let an agent operate.
+(`$XDG_STATE_HOME/jev-ra/chrome-profile`) and reuse it; when the Chrome it launched dies, the next
+command starts another. Point `BU_CDP_URL` at a different Chrome to override - if nothing answers
+there, jev-ra says so rather than launching one behind your back. Do not point it at a browser
+signed into anything you would not let an agent operate.
 
 **Why no text model?** The host agent already has the context. A second model adds 675-938 ms per
 field and invents values. You can still configure one with `JEV_RA_TEXT_MODEL`.
