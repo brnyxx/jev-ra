@@ -137,6 +137,8 @@ def speculate(page, action, text):
         )
     controls = [item for item in page.get("actions", []) if item["id"] in CONTROL_ACTIONS]
     return {**page, "elements": elements, "actions": [*offered, *controls]}
+
+
 # The two operations that can put something new on the page without leaving it.
 OPENING = ("CLICK", "TYPE_TEXT")
 
