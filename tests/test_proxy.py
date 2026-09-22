@@ -38,8 +38,8 @@ def test_the_flag_sits_before_whatever_the_caller_added(monkeypatch, tmp_path):
     monkeypatch.setattr(chrome.subprocess, "Popen", lambda command, **_k: argv.extend(command) or Started())
     profile = tmp_path / "profile"
     profile.mkdir()
-    chrome.launch("/opt/chrome", profile, flags=("--no-sandbox",), proxy="socks5://127.0.0.1:1080")
-    assert argv.index("--proxy-server=socks5://127.0.0.1:1080") < argv.index("--no-sandbox")
+    chrome.launch("/opt/chrome", profile, flags=("--caller-added",), proxy="socks5://127.0.0.1:1080")
+    assert argv.index("--proxy-server=socks5://127.0.0.1:1080") < argv.index("--caller-added")
 
 
 def test_the_env_names_the_proxy():

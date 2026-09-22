@@ -67,7 +67,7 @@ def first_click(questions):
 
 
 def run_against(session, fixture_server, decide, max_steps=8):
-    agent = Agent(session=session, config=config.load({}), decide=decide)
+    agent = Agent(session=session, config=config.load({}), decide=decide, prefetch=False)
     return agent.run(GOAL, values={"origin": "Zurich"}, max_steps=max_steps, url=f"{fixture_server}{FIXTURE}")
 
 
