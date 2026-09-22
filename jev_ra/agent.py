@@ -10,7 +10,7 @@ from .config import load, redact
 from .decide.client import DecisionClient
 from .decide.policy import InvalidDecision, build_questions, build_state, read_answers
 from .decide.questions import CANDIDATES, GOAL_ACHIEVED_THRESHOLD
-from .errors import JevBadResponse, JevError, StalePage
+from .errors import JevBadResponse, JevError, StalePage, render
 from .profile import CATEGORIES, StepTimer
 from .text import NeedsValue, ValueBinder
 
@@ -83,14 +83,14 @@ class Agent:
         return None
 
     def said(self, error):
-        """What an error says, with this run's key taken out of it.
+        """What an error says and what to do about it, with this run's key taken out of it.
 
         Nothing the client raises carries the response body today, so nothing carries the key.
         A provider that echoes it back, or a decide callable a host supplies itself, would reach
         the caller through here, and the detail of an escalation is the one place a run hands a
         string it did not write to whoever called it.
         """
-        return redact(str(error), self.config.api_key)
+        return redact(render(error), self.config.api_key)
 
     def space(self, page):
         """The action space of an observed page."""
@@ -128,11 +128,12 @@ class Agent:
                 reasked = True
                 continue
             except JevError as error:
-                # A decision the provider would not answer - a rejected request, an exhausted
-                # token budget, a dead connection - is a budget the run cannot spend. It reaches
-                # the caller as an escalation with the provider's own words, never as an escape.
+                # A budget is something this run spent and the host can give more of. A provider
+                # that will not answer - a rejected key, a dead connection - is neither, and a
+                # host told "budget" narrows the goal and buys the same refusal again. Its own
+                # reason, with the provider's own words and next step, redacted.
                 run.decisions += 1
-                return run.escalate("budget", page, detail={"error": self.said(error)})
+                return run.escalate("provider_error", page, detail={"error": self.said(error)})
             run.decisions += 1
             run.cost += reply.cost
             try:

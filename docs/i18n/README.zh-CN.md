@@ -164,8 +164,9 @@ TYPE_TEXT 需要一个字符串，而 jev-ra 不会凭空造一个。在选定�
 
 `Result.status` 为 `done`、`blocked`、`escalate` 或 `budget` 之一。运行中途停下时，`reason` 是
 `needs_value`、`stuck_loop`、`unverified_done`、`stale`、`invalid_decision`、`too_many_controls`、
-`blocked` 或 `budget` 之一。`budget` 还会在 `detail` 中给出被耗尽的预算（步数、决策数、时间，或提供方
-未作答的决策）。escalate 还会带上按概率排序的前八个
+`provider_error` 或 `blocked` 之一。以 `budget` 结束的运行会把被耗尽的预算（步数、决策数、时间）
+放进 `reason`；`provider_error` 是提供方根本拒绝作答，应检查密钥与路径，而不是重试目标。
+escalate 还会带上按概率排序的前八个
 操作/目标候选，以及最多 3,000 个字符的页面文本，足够在不重新观测的情况下做判断。
 
 校验是确定性的：每次操作后都会比较 url、title、text 和字段状态，`page_changed` 来自页面的语义

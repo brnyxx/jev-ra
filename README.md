@@ -168,8 +168,9 @@ current value. You supply the value and call again. The default install has no t
 
 `Result.status` is `done`, `blocked`, `escalate` or `budget`. When a run stops short, `reason` is one
 of `needs_value`, `stuck_loop`, `unverified_done`, `stale`, `invalid_decision`, `too_many_controls`,
-`blocked` or `budget`. `budget` also names the budget that was hit (steps, decisions, time, or a
-decision the provider would not answer) in `detail`. An escalation
+`provider_error` or `blocked`. A run that ends on `budget` names the budget it hit (steps, decisions
+or time) in `reason` instead; `provider_error` is the provider refusing to answer at all, so check
+the key and the route rather than retrying the goal. An escalation
 also carries the top eight operation/target candidates with their probabilities, and up to 3,000
 characters of page text — enough to decide what to do without observing again.
 

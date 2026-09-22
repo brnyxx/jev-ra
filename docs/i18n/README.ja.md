@@ -169,8 +169,9 @@ Jev が*あなたが渡した*値のどれがそのフィールドに入るか�
 
 `Result.status` は `done`、`blocked`、`escalate`、`budget` のいずれか。実行が途中で止まったときの
 `reason` は `needs_value`、`stuck_loop`、`unverified_done`、`stale`、`invalid_decision`、
-`too_many_controls`、`blocked`、`budget` のいずれか。`budget` は使い切った予算(ステップ、判断、時間、
-またはプロバイダが答えなかった判断)を `detail` にも入れる。
+`too_many_controls`、`provider_error`、`blocked` のいずれか。`budget` で終わった実行は使い切った
+予算(ステップ、判断、時間)を `reason` に入れる。`provider_error` はプロバイダが答えること自体を
+拒んだということなので、ゴールを再試行せず鍵と経路を確認する。
 escalate には確率つきの上位 8 件の操作/対象候補と、最大 3,000 文字のページテキストが含まれる。
 もう一度観測しなくても判断できるだけの材料だ。
 

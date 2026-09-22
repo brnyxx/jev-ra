@@ -527,7 +527,7 @@ def test_a_decision_the_provider_rejects_escalates_instead_of_escaping():
     client = DecisionClient(settings, transport=httpx.MockTransport(handler))
     session = FakeSession()
     result = Agent(session=session, config=settings, client=client).run("find flights")
-    assert (result.status, result.reason) == ("escalate", "budget")
+    assert (result.status, result.reason) == ("escalate", "provider_error")
     assert "HTTP 400" in result.detail["error"]
     assert session.acted == []
 
@@ -672,7 +672,7 @@ def test_a_provider_error_carrying_the_key_is_redacted_before_the_caller_sees_it
 
     settings = config.load({"OPENROUTER_API_KEY": key})
     result = Agent(session=FakeSession(), config=settings, decide=decide).run("find flights")
-    assert (result.status, result.reason) == ("escalate", "budget")
+    assert (result.status, result.reason) == ("escalate", "provider_error")
     assert key not in result.detail["error"]
     assert "[redacted]" in result.detail["error"]
 
@@ -689,3 +689,23 @@ def test_an_unusable_answer_set_is_redacted_the_same_way():
     result = Agent(session=FakeSession(), config=settings, decide=decide).run("find flights")
     assert result.reason == "invalid_decision"
     assert key not in result.detail["error"]
+
+
+def test_a_rejected_key_is_its_own_reason_and_never_carries_the_key():
+    # A budget is something the run spent and the host can give more of. A provider that will not
+    # answer is neither: narrowing the goal and calling again spends money on the same refusal.
+    key = "sk-or-v1-not-to-be-shared"
+
+    def handler(request):
+        return httpx.Response(401, json={"error": {"message": f"No auth credentials found for {key}", "code": 401}})
+
+    settings = config.load({"OPENROUTER_API_KEY": key})
+    client = DecisionClient(settings, transport=httpx.MockTransport(handler))
+    session = FakeSession()
+    result = Agent(session=session, config=settings, client=client).run("find flights")
+    assert (result.status, result.reason) == ("escalate", "provider_error")
+    assert "OPENROUTER_API_KEY" in result.detail["error"]
+    assert "HTTP 401" in result.detail["error"]
+    assert key not in result.detail["error"]
+    assert session.acted == []
+    assert result.decisions == 1
