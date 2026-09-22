@@ -156,6 +156,10 @@ verify = { text_any = ["London"] }
 
 # ---------------------------------------------------------------- forms with validation
 
+# httpbin.org answers with an error page for minutes at a time, so every task that lives on it has
+# a twin on httpbingo.org, which serves the same API: same goal, same values, same spec. One
+# host's bad minute is then one host's failure, not the family's weather.
+
 [[task]]
 name = "httpbin_form_submit"
 family = "forms"
@@ -166,9 +170,25 @@ expect = "done"
 verify = { text_any = ["custname", "Ada Lovelace"] }
 
 [[task]]
+name = "httpbin_form_submit_bingo"
+family = "forms"
+url = "https://httpbingo.org/forms/post"
+goal = "Fill in the pizza order for Ada Lovelace with a large size and submit it."
+values = { customer = "Ada Lovelace", telephone = "+41 44 000 0000", email = "ada@example.com" }
+expect = "done"
+verify = { text_any = ["custname", "Ada Lovelace"] }
+
+[[task]]
 name = "httpbin_form_missing_value"
 family = "forms"
 url = "https://httpbin.org/forms/post"
+goal = "Fill in the customer name and submit the order."
+expect = "escalate:needs_value"
+
+[[task]]
+name = "httpbin_form_missing_value_bingo"
+family = "forms"
+url = "https://httpbingo.org/forms/post"
 goal = "Fill in the customer name and submit the order."
 expect = "escalate:needs_value"
 
@@ -626,6 +646,15 @@ verify = { text_contains = ["Lovelace"] }
 name = "httpbin_form_small_pizza"
 family = "forms"
 url = "https://httpbin.org/forms/post"
+goal = "Order a small pizza for the supplied customer name and submit it."
+values = { customer = "Ada Lovelace" }
+expect = "done"
+verify = { text_contains = ["Ada Lovelace"], text_any = ["small"] }
+
+[[task]]
+name = "httpbin_form_small_pizza_bingo"
+family = "forms"
+url = "https://httpbingo.org/forms/post"
 goal = "Order a small pizza for the supplied customer name and submit it."
 values = { customer = "Ada Lovelace" }
 expect = "done"

@@ -14,7 +14,7 @@ EXPECTED_FAMILIES = {
     "ecommerce": 5,
     "search_read": 5,
     "booking": 5,
-    "forms": 15,
+    "forms": 18,
     "news": 5,
     "docs_spa": 15,
     "portal": 5,
@@ -67,12 +67,30 @@ def task(**kwargs):
     return corpus.Task(**{**base, **kwargs})
 
 
-def test_the_corpus_file_declares_eighty_tasks_in_ten_families():
+def test_the_corpus_file_declares_its_tasks_in_ten_families():
     tasks = corpus.load_tasks()
-    assert len(tasks) == 80
+    assert len(tasks) == 83
     assert corpus.families(tasks) == list(EXPECTED_FAMILIES)
     counted = {name: len([t for t in tasks if t.family == name]) for name in EXPECTED_FAMILIES}
     assert counted == EXPECTED_FAMILIES
+
+
+def test_every_httpbin_form_task_has_a_twin_on_a_second_host():
+    tasks = {task.name: task for task in corpus.load_tasks()}
+    twins = 0
+    for name, base in tasks.items():
+        if not name.startswith("httpbin_form_") or name.endswith("_bingo"):
+            continue
+        twin = tasks[f"{name}_bingo"]
+        assert twin.family == base.family
+        assert twin.goal == base.goal
+        assert twin.values == base.values
+        assert twin.expect == base.expect
+        assert twin.verify == base.verify
+        assert twin.max_steps == base.max_steps
+        assert "httpbingo.org" in twin.url
+        twins += 1
+    assert twins == 3
 
 
 def test_every_declared_task_is_well_formed():
