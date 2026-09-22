@@ -97,3 +97,44 @@ def test_describe_renders_ref_role_label_and_value():
 def test_element_view_keeps_meaning_and_drops_geometry():
     view = actions.element_view(element("e4", 4, "Refundable", role="checkbox", checked="false"))
     assert view == {"ref": "e4", "role": "checkbox", "label": "Refundable", "checked": "false"}
+
+
+LINKS = {
+    "url": "https://en.wikipedia.org/wiki/Zebra",
+    "elements": [
+        element("e1", 1, "Learn more", role="link", host="www.iana.org"),
+        element("e2", 2, "Reserved names", role="link", host="www.rfc-editor.org"),
+        element("e3", 3, "Talk", role="link"),
+        element("e4", 4, "한국어", role="link", host="ko.wikipedia.org"),
+    ],
+    "actions": [
+        click("e1", 1, "Learn more", role="link"),
+        click("e2", 2, "Reserved names", role="link"),
+        click("e3", 3, "Talk", role="link"),
+        click("e4", 4, "한국어", role="link"),
+    ],
+    "omitted": 0,
+}
+
+
+def test_the_registrable_part_is_what_tells_two_sites_apart():
+    assert actions.site("en.wikipedia.org") == "wikipedia.org"
+    assert actions.site("www.seoul.go.kr") == "seoul.go.kr"
+    assert actions.site("example.com") == "example.com"
+    assert actions.site("localhost") == "localhost"
+    assert actions.site("127.0.0.1") == "127.0.0.1"
+    assert actions.site("") == ""
+
+
+def test_another_language_of_the_same_site_is_not_somewhere_else():
+    assert [target for target in actions.build(LINKS).targets["CLICK"]] == ["e3", "e4", "e1", "e2"]
+
+
+def test_a_goal_that_names_a_host_brings_that_host_home():
+    space = actions.build(LINKS, goal="Check what iana.org reserves example.com for.")
+    assert [target for target in space.targets["CLICK"]] == ["e1", "e3", "e4", "e2"]
+
+
+def test_the_goal_is_read_for_hostnames_only():
+    assert actions.home_sites("https://en.wikipedia.org/wiki/Zebra", "Open the Korean version") == {"wikipedia.org"}
+    assert "iana.org" in actions.home_sites("", "Open iana.org and read it.")

@@ -1,11 +1,17 @@
 """Turn an observed page into the operations, targets and controls a decision may choose from."""
 
+import re
 from dataclasses import dataclass
+from urllib.parse import urlsplit
 
 from . import MAX_ELEMENTS
 
 OPERATIONS = {"click": "CLICK", "fill": "TYPE_TEXT", "select": "SELECT"}
 STATE_KEYS = ("checked", "selected", "expanded")
+HOSTNAME = re.compile(r"\b(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,}\b", re.IGNORECASE)
+# Labels that belong to the registry rather than to anyone: seoul.go.kr and busan.go.kr are two
+# sites, and www.seoul.go.kr is one site with the front page of seoul.go.kr.
+SHARED_LABELS = frozenset({"ac", "co", "com", "edu", "go", "gov", "ne", "net", "or", "org"})
 
 
 @dataclass(frozen=True)
@@ -35,7 +41,34 @@ class ActionSpace:
         return f"{line} · {value}" if value else line
 
 
-def build(page, max_elements=MAX_ELEMENTS):
+def site(host):
+    """The registrable part of a host: enough to tell one site from another, and no more."""
+    host = (host or "").lower()
+    labels = host.split(".")
+    if len(labels) < 3 or host.replace(".", "").isdigit():
+        return host
+    return ".".join(labels[-3:] if labels[-2] in SHARED_LABELS else labels[-2:])
+
+
+def home_sites(url, goal):
+    """The sites this run belongs on: the one it is standing on, plus any the goal names."""
+    sites = {site(urlsplit(url or "").hostname or "")}
+    sites |= {site(match.group(0)) for match in HOSTNAME.finditer(goal or "")}
+    return sites - {""}
+
+
+def elsewhere(page, elements, goal):
+    """The refs whose link leaves the sites this run belongs on.
+
+    Leaving the site is almost always wrong: a page with nothing but anchors on it walks off into
+    whatever it links to and ends stuck three hops away. Off-site links stay on offer - a goal is
+    sometimes exactly one of them - but they are offered after everything still on the site.
+    """
+    home = home_sites(page.get("url", ""), goal)
+    return {element["ref"] for element in elements if element.get("host") and site(element["host"]) not in home}
+
+
+def build(page, max_elements=MAX_ELEMENTS, goal=""):
     """Group an observed page into per-operation targets and page controls."""
     elements, seen = [], set()
     for element in page.get("elements", []):
@@ -62,7 +95,12 @@ def build(page, max_elements=MAX_ELEMENTS):
         else:
             target = ref
         targets.setdefault(operation, {})[target] = action
-    return ActionSpace(elements=elements, targets=targets, controls=controls, omitted=omitted)
+    away = elsewhere(page, elements, goal)
+    ordered = {
+        operation: dict(sorted(candidates.items(), key=lambda item: item[1]["id"] in away))
+        for operation, candidates in targets.items()
+    }
+    return ActionSpace(elements=elements, targets=ordered, controls=controls, omitted=omitted)
 
 
 def element_view(element):

@@ -184,6 +184,10 @@
         if (value!==null) element[key]=value;
       }
       if (current(e)) element.current='true';
+      // Where a link goes, when that is somewhere else. An anchor resolves its own href, so a
+      // relative one answers with this page's host and says nothing; mailto: and javascript:
+      // have no host at all. Only a link that leaves the site says so.
+      if (e.tagName==='A' && e.host && e.host!==location.host) element.host=e.host;
       if (['checkbox','radio'].includes(e.type)) element.checked=String(e.checked);
       const stand=standIn(e);
       if (stand && ['checkbox','radio'].includes(stand.type)) element.checked=String(stand.checked);

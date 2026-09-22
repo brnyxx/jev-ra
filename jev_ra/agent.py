@@ -111,9 +111,9 @@ class Agent:
         """
         return redact(render(error), self.config.api_key)
 
-    def space(self, page):
-        """The action space of an observed page."""
-        return actions.build(page, self.session.max_elements)
+    def space(self, page, goal=""):
+        """The action space of an observed page, as this goal reads it."""
+        return actions.build(page, self.session.max_elements, goal)
 
     def run(self, goal, values=None, max_steps=None, url=None):
         """Pursue a goal until it is done, blocked, escalated or out of budget."""
@@ -135,7 +135,7 @@ class Agent:
                 return run.finish("budget", over, page)
             timer = StepTimer()
             with timer.measure("actions"):
-                space = self.space(page)
+                space = self.space(page, goal)
                 questions = build_questions(space, goal, run.history, binder.available(), exclude)
                 state = build_state(page, space, goal, run.history, binder.available(), opened)
             try:
