@@ -144,3 +144,43 @@ jobs:
           uv run jev-ra doctor --json > doctor.json || true
           cat doctor.json
           uv run python -c "import json; assert json.load(open('doctor.json'))['chrome']['ok']"
+
+  cold-start:
+    runs-on: ubuntu-latest
+    env:
+      JEV_RA_REQUIRE_BROWSER: "1"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: uv sync --locked
+
+      - name: Install Chrome
+        uses: browser-actions/setup-chrome@v1
+        with:
+          chrome-version: stable
+
+      - name: Doctor launches its own browser
+        run: |
+          uv run jev-ra doctor --json > "$RUNNER_TEMP/doctor.json" || true
+          uv run python - "$RUNNER_TEMP/doctor.json" <<'PY'
+          import json
+          import sys
+
+          report = json.load(open(sys.argv[1]))
+          chrome = report.get("chrome") or {}
+          assert chrome.get("ok") is True, chrome
+          assert chrome.get("source") == "launched", chrome
+          print("cold start launched its own Chrome:", chrome.get("detail"))
+          PY
+
+      - name: Cold-start tests
+        run: |
+          uv run pytest -q -m browser \
+            tests/test_first_run.py tests/test_chrome.py \
+            --no-cov

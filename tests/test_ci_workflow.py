@@ -40,7 +40,19 @@ def test_the_workflow_is_well_formed():
     blocks(text)
     assert text.startswith("name: ci\n")
     assert re.search(r"^jobs:$", text, re.MULTILINE)
-    assert text.count("steps:") == 4
+    assert text.count("steps:") == 5
+
+
+def test_the_cold_start_job_launches_its_own_browser_without_a_cdp_url():
+    cold = WORKFLOW.read_text().split("  cold-start:", 1)[1]
+    assert "runs-on: ubuntu-latest" in cold
+    assert 'python-version: "3.12"' in cold
+    assert "JEV_RA_REQUIRE_BROWSER" in cold
+    assert "doctor --json" in cold
+    assert '"launched"' in cold
+    assert "tests/test_first_run.py tests/test_chrome.py" in cold
+    # The whole point of the job: no Chrome is handed to it.
+    assert "BU_CDP_URL" not in cold
 
 
 def test_the_release_workflow_is_well_formed():

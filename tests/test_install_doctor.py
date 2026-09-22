@@ -127,6 +127,17 @@ def test_doctor_without_a_key_explains_and_exits_one(clean_env, capsys):
     assert "decision" not in out
 
 
+def test_doctor_checks_chrome_without_a_key_when_a_browser_is_required(clean_env, monkeypatch, capsys):
+    monkeypatch.setenv("JEV_RA_REQUIRE_BROWSER", "1")
+    monkeypatch.setattr(cli, "Session", lambda *_a, **_k: FakeSession())
+    assert cli.main(["doctor", "--json"]) == 1
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["key"] is False
+    assert payload["chrome"]["ok"] is True
+    assert payload["chrome"]["source"] == "BU_CDP_URL"
+    assert "decision" not in payload
+
+
 def doctor_client(monkeypatch, reply=None, error=None):
     class Client:
         def __init__(self, _config, **_kwargs):

@@ -37,6 +37,7 @@ ENV_VARIABLES = (
     "JEV_RA_SERVE_KEYS",
     "JEV_RA_SERVE_QUOTA",
     "JEV_RA_LOG_LEVEL",
+    "JEV_RA_REQUIRE_BROWSER",
 )
 
 
@@ -156,6 +157,12 @@ def read_flag(value, default):
     if isinstance(value, bool):
         return value
     return str(value).strip().lower() not in FALSE_VALUES
+
+
+def require_browser(env=None):
+    """Whether the environment insists a browser be reachable, key or no key."""
+    env = os.environ if env is None else env
+    return read_flag(env.get("JEV_RA_REQUIRE_BROWSER"), False)
 
 
 def positive_int(value, default, label):

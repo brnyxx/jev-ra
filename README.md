@@ -283,6 +283,7 @@ field and invents values. You can still configure one with `JEV_RA_TEXT_MODEL`.
 | `JEV_RA_SERVE_KEYS` | comma list of API keys `jev-ra serve` accepts; it will not start without one |
 | `JEV_RA_SERVE_QUOTA` | decisions per key per day for `jev-ra serve`; unlimited when unset |
 | `JEV_RA_LOG_LEVEL` | log level for stderr, e.g. `DEBUG`; default `WARNING` |
+| `JEV_RA_REQUIRE_BROWSER` | `1` makes `doctor` check Chrome even without a key |
 
 `$XDG_CONFIG_HOME/jev-ra/config.json` sets the same keys; the environment wins.
 
