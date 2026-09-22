@@ -38,7 +38,17 @@ STALE_OBSERVATION = "the page changed since that observation, observe again"
 # What a site says when it has decided the caller is a machine. None of it is something a
 # decision can act on, and reporting it as BLOCKED says the task was impossible rather than that
 # the site would not serve it. Matched lowercased, against everything the opened page says.
-WALL_PHRASES = ("captcha", "접속이 차단", "unusual traffic", "bots use", "access denied")
+WALL_PHRASES = (
+    "captcha",
+    "접속이 차단",
+    "unusual traffic",
+    "bots use",
+    "access denied",
+    # Measured on the first public-benchmark pass: carvana.com answered with Cloudflare's own
+    # refusal and marriott.com with Akamai's, and neither said any of the five above.
+    "you have been blocked",
+    "have permission to access",
+)
 # A refusal is the whole page. Past this much text the page is about something else and merely
 # mentions the word: vercel.com/docs offers "an invisible check instead of a CAPTCHA" six
 # thousand characters in, and reading that as a wall costs a task that was working.
@@ -446,7 +456,9 @@ class _Run:
         text = page_text(page)
         said = text.strip()
         if len(said) < WALL_TEXT_CHARS:
-            lowered = text.lower()
+            # A refusal that speaks only in the tab's name is still the host refusing: Akamai
+            # titles the page "Access Denied" and gives it an edge reference number for a body.
+            lowered = f"{page.get('title', '')}\n{text}".lower()
             phrase = next((phrase for phrase in WALL_PHRASES if phrase in lowered), "")
             if phrase:
                 return f"the page answered with {phrase!r}"

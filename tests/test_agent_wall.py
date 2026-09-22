@@ -68,3 +68,28 @@ def test_a_page_about_walls_is_not_a_wall(session, fixture_server):
     decide = always_click("Read the deployment protection guide")
     result = run_on(session, f"{fixture_server}/sites/captcha-mention.html", decide)
     assert result.reason != "blocked_by_site"
+
+
+def test_the_cloudflare_refusal_carvana_served_is_a_wall(session, fixture_server):
+    decide = always_click("Click to reveal")
+    result = run_on(session, f"{fixture_server}/sites/cloudflare-wall.html", decide)
+    assert (result.status, result.reason) == ("escalate", "blocked_by_site")
+    assert result.decisions == 0
+    assert "you have been blocked" in result.detail["wall"]
+
+
+def test_a_refusal_that_speaks_only_in_the_tabs_name_is_a_wall(session, fixture_server):
+    decide = always_click("Retry")
+    result = run_on(session, f"{fixture_server}/sites/akamai-wall.html", decide)
+    assert (result.status, result.reason) == ("escalate", "blocked_by_site")
+    assert result.decisions == 0
+    assert "access denied" in result.detail["wall"]
+
+
+def test_a_long_page_that_merely_quotes_a_refusal_is_not_one():
+    from jev_ra.agent import _Run
+
+    run = _Run.__new__(_Run)
+    run.opens = ()
+    quoted = "Sorry, you have been blocked is what Cloudflare says. " * 40
+    assert run.walled({"url": "https://blog.test/waf", "title": "Access Denied explained", "text": quoted}) == ""
