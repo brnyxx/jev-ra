@@ -27,9 +27,10 @@ without them a TYPE_TEXT step comes back as an escalation instead of a guess."""
 
 
 def hints(read_only=False, idempotent=False, open_world=True):
-    """MCP tool annotations. Nothing here deletes or overwrites anything the user owns, so no tool is
-    destructive; tools that act on a live site are open-world and, when a second call would act
-    again, not idempotent.
+    """MCP tool annotations.
+
+    Nothing here deletes or overwrites anything the user owns, so no tool is destructive; tools that
+    act on a live site are open-world and, when a second call would act again, not idempotent.
     """
     return ToolAnnotations(
         read_only_hint=read_only,
