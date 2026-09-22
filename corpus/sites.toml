@@ -1,4 +1,4 @@
-# The real-site corpus. Forty tasks, eight families, all against the live web.
+# The real-site corpus. Eighty tasks, ten families, all against the live web.
 #
 # Each task says what it wants to happen (`expect`) and how the page proves it (`verify`).
 # `expect = "done"` means the run must finish and the verify spec must hold.
@@ -373,3 +373,350 @@ family = "auth"
 url = "https://www.linkedin.com/login"
 goal = "Sign in and open the feed."
 expect = "escalate:needs_value"
+
+# ---------------------------------------------------------------- Japanese sites
+
+[[task]]
+name = "ja_wikipedia_search"
+family = "ja"
+url = "https://ja.wikipedia.org/wiki/メインページ"
+goal = "Search this encyclopedia for 不完全性定理 and open its article."
+values = { query = "不完全性定理" }
+expect = "done"
+verify = { text_contains = ["不完全性定理"], min_text = 1000 }
+
+[[task]]
+name = "ja_python_docs_whatsnew"
+family = "ja"
+url = "https://docs.python.org/ja/3/"
+goal = "Open the 新機能 page for this Python version."
+expect = "done"
+verify = { url_contains = ["whatsnew"], text_any = ["新機能", "What's New"] }
+
+[[task]]
+name = "ja_mdn_search"
+family = "ja"
+url = "https://developer.mozilla.org/ja/"
+goal = "Search MDN for fetch and open its reference page."
+values = { query = "fetch" }
+expect = "done"
+verify = { url_contains = ["fetch"], text_any = ["fetch()", "Fetch API"] }
+
+[[task]]
+name = "ja_nhk_society_section"
+family = "ja"
+url = "https://www3.nhk.or.jp/news/"
+goal = "Open the 社会 news section."
+expect = "done"
+verify = { url_contains = ["genre/society"], text_any = ["社会"] }
+
+[[task]]
+name = "ja_asahi_international_section"
+family = "ja"
+url = "https://www.asahi.com/"
+goal = "Open the 国際 news section."
+expect = "done"
+verify = { url_contains = ["asahi.com/international"], text_any = ["国際"] }
+
+[[task]]
+name = "ja_asahi_search"
+family = "ja"
+url = "https://www.asahi.com/"
+goal = "Search this news site for 半導体 and show the results."
+values = { query = "半導体" }
+expect = "done"
+verify = { text_any = ["半導体"] }
+
+[[task]]
+name = "ja_rakuten_search"
+family = "ja"
+url = "https://www.rakuten.co.jp/"
+goal = "Search the shop for キーボード and show the results."
+values = { query = "キーボード" }
+expect = "done"
+verify = { text_any = ["キーボード"] }
+
+[[task]]
+name = "ja_amazon_search"
+family = "ja"
+url = "https://www.amazon.co.jp/"
+goal = "Search for 万年筆 and show the results list."
+values = { query = "万年筆" }
+expect = "done"
+verify = { url_contains = ["s?k="], text_any = ["万年筆"] }
+
+# Was: open the 防災情報 page. The site labels two different links exactly 防災情報 - a menu page
+# and the /bosai/ portal - so the goal could not name which one it meant, and the first run
+# opened the other one and was marked failed for doing what it was asked. 各種データ・資料 is one
+# label with one destination.
+[[task]]
+name = "ja_jma_data_index"
+family = "ja"
+url = "https://www.jma.go.jp/jma/index.html"
+goal = "Open the 各種データ・資料 page."
+expect = "done"
+verify = { url_contains = ["menureport"], text_any = ["データ", "資料"] }
+
+[[task]]
+name = "ja_jma_earthquake"
+family = "ja"
+url = "https://www.jma.go.jp/jma/index.html"
+goal = "Open the 地震・火山 information page."
+expect = "done"
+verify = { url_contains = ["earthquake_volcano"], text_any = ["地震"] }
+
+# ---------------------------------------------------------------- Simplified Chinese sites
+
+[[task]]
+name = "zh_wikipedia_search"
+family = "zh_cn"
+url = "https://zh.wikipedia.org/wiki/Wikipedia:首页"
+goal = "Search this encyclopedia for 哥德尔不完备定理 and open its article."
+values = { query = "哥德尔不完备定理" }
+expect = "done"
+verify = { text_contains = ["不完备定理"], min_text = 1000 }
+
+[[task]]
+name = "zh_python_docs_whatsnew"
+family = "zh_cn"
+url = "https://docs.python.org/zh-cn/3/"
+goal = "Open the 有什么新变化 page for this Python version."
+expect = "done"
+verify = { url_contains = ["whatsnew"], text_any = ["新变化", "What's New"] }
+
+[[task]]
+name = "zh_mdn_search"
+family = "zh_cn"
+url = "https://developer.mozilla.org/zh-CN/"
+goal = "Search MDN for fetch and open its reference page."
+values = { query = "fetch" }
+expect = "done"
+verify = { url_contains = ["fetch"], text_any = ["fetch()", "Fetch API"] }
+
+[[task]]
+name = "zh_vue_docs_guide"
+family = "zh_cn"
+url = "https://cn.vuejs.org/"
+goal = "Open the 文档 guide from the site navigation."
+expect = "done"
+verify = { url_contains = ["/guide"], text_any = ["简介", "快速上手"] }
+
+[[task]]
+name = "zh_react_docs_learn"
+family = "zh_cn"
+url = "https://zh-hans.react.dev/"
+goal = "Open the 学习 React section."
+expect = "done"
+verify = { url_contains = ["/learn"], text_any = ["快速入门", "学习"] }
+
+[[task]]
+name = "zh_bbc_topic_section"
+family = "zh_cn"
+url = "https://www.bbc.com/zhongwen/simp"
+goal = "Open the 中国 news section."
+expect = "done"
+verify = { url_contains = ["/zhongwen/topics/"], text_any = ["中国"] }
+
+# Was: open the 国际 section. The site serves that section at two addresses, /news/world from the
+# front page's nav and /global from its menu, and the first run opened /global and was marked
+# failed for it. 财经 has one landing page.
+[[task]]
+name = "zh_zaobao_finance_section"
+family = "zh_cn"
+url = "https://www.zaobao.com/"
+goal = "Open the 财经 news section."
+expect = "done"
+verify = { url_contains = ["zaobao.com.sg/finance"], text_any = ["财经"] }
+
+[[task]]
+name = "zh_jd_search"
+family = "zh_cn"
+url = "https://www.jd.com/"
+goal = "Search the shop for 键盘 and show the results."
+values = { query = "键盘" }
+expect = "done"
+verify = { text_any = ["键盘"] }
+
+[[task]]
+name = "zh_taobao_search"
+family = "zh_cn"
+url = "https://www.taobao.com/"
+goal = "Search for 键盘 and show the results."
+values = { query = "键盘" }
+expect = "done"
+verify = { text_any = ["键盘"] }
+
+[[task]]
+name = "zh_gov_cn_policy"
+family = "zh_cn"
+url = "https://www.gov.cn/"
+goal = "Open the 最新政策 list."
+expect = "done"
+verify = { url_contains = ["zhengce"], text_any = ["政策"] }
+
+# ---------------------------------------------------------------- more forms with validation
+
+[[task]]
+name = "selenium_form_submit"
+family = "forms"
+url = "https://www.selenium.dev/selenium/web/web-form.html"
+goal = "Put the supplied name in the text input and submit the form."
+values = { name = "Ada Lovelace" }
+expect = "done"
+verify = { url_contains = ["submitted-form", "my-text=Ada"], text_any = ["Received!"] }
+
+[[task]]
+name = "selenium_form_select"
+family = "forms"
+url = "https://www.selenium.dev/selenium/web/web-form.html"
+goal = "Choose Two in the dropdown and submit the form."
+expect = "done"
+verify = { url_contains = ["my-select=2"], text_any = ["Received!"] }
+
+[[task]]
+name = "selenium_form_textarea"
+family = "forms"
+url = "https://www.selenium.dev/selenium/web/web-form.html"
+goal = "Put the supplied message in the textarea and submit the form."
+values = { message = "Shipping is late" }
+expect = "done"
+verify = { url_contains = ["my-textarea=Shipping"], text_any = ["Received!"] }
+
+[[task]]
+name = "herokuapp_dropdown_select"
+family = "forms"
+url = "https://the-internet.herokuapp.com/dropdown"
+goal = "Choose Option 2 in the dropdown."
+expect = "done"
+verify = { label_any = ["Option 2"] }
+
+[[task]]
+name = "herokuapp_login_wall"
+family = "forms"
+url = "https://the-internet.herokuapp.com/login"
+goal = "Log in to the account."
+expect = "escalate:needs_value"
+
+[[task]]
+name = "wikipedia_login_wall"
+family = "forms"
+url = "https://en.wikipedia.org/w/index.php?title=Special:UserLogin"
+goal = "Log in to the account."
+expect = "escalate:needs_value"
+
+[[task]]
+name = "demoqa_text_box"
+family = "forms"
+url = "https://demoqa.com/text-box"
+goal = "Fill in the full name and the email, then submit the form."
+values = { full_name = "Ada Lovelace", email = "ada@example.com" }
+expect = "done"
+verify = { text_contains = ["Ada Lovelace", "ada@example.com"] }
+
+[[task]]
+name = "expandtesting_inputs"
+family = "forms"
+url = "https://practice.expandtesting.com/inputs"
+goal = "Put the supplied text in the text input and display the inputs."
+values = { text = "Lovelace" }
+expect = "done"
+verify = { text_contains = ["Lovelace"] }
+
+[[task]]
+name = "httpbin_form_small_pizza"
+family = "forms"
+url = "https://httpbin.org/forms/post"
+goal = "Order a small pizza for the supplied customer name and submit it."
+values = { customer = "Ada Lovelace" }
+expect = "done"
+verify = { text_contains = ["Ada Lovelace"], text_any = ["small"] }
+
+[[task]]
+name = "duckduckgo_settings_privacy"
+family = "forms"
+url = "https://duckduckgo.com/settings"
+goal = "Open the privacy settings section."
+expect = "done"
+verify = { text_any = ["Privacy", "개인정보", "Tracking"] }
+
+# ---------------------------------------------------------------- more documentation single-page apps
+
+[[task]]
+name = "nextjs_docs_installation"
+family = "docs_spa"
+url = "https://nextjs.org/docs"
+goal = "Open the installation page from the documentation navigation."
+expect = "done"
+verify = { url_contains = ["installation"], text_any = ["Install", "install"] }
+
+[[task]]
+name = "vite_docs_guide"
+family = "docs_spa"
+url = "https://vite.dev/"
+goal = "Open the guide from the site navigation."
+expect = "done"
+verify = { url_contains = ["/guide"], text_any = ["Getting Started", "Guide"] }
+
+[[task]]
+name = "svelte_docs_getting_started"
+family = "docs_spa"
+url = "https://svelte.dev/docs/svelte/overview"
+goal = "Open the getting started page from the documentation navigation."
+expect = "done"
+verify = { url_contains = ["getting-started"], text_any = ["Getting started", "Getting Started"] }
+
+[[task]]
+name = "tailwind_docs_colors"
+family = "docs_spa"
+url = "https://tailwindcss.com/docs/installation/using-vite"
+goal = "Open the colors page from the documentation navigation."
+expect = "done"
+verify = { url_contains = ["docs/colors"], text_any = ["Colors", "palette"] }
+
+[[task]]
+name = "astro_docs_project_structure"
+family = "docs_spa"
+url = "https://docs.astro.build/en/getting-started/"
+goal = "Open the project structure page from the documentation navigation."
+expect = "done"
+verify = { url_contains = ["project-structure"], text_any = ["Project structure", "src/"] }
+
+[[task]]
+name = "bun_docs_installation"
+family = "docs_spa"
+url = "https://bun.com/docs"
+goal = "Open the installation page from the documentation navigation."
+expect = "done"
+verify = { url_contains = ["installation"], text_any = ["Install", "install"] }
+
+[[task]]
+name = "deno_docs_installation"
+family = "docs_spa"
+url = "https://docs.deno.com/runtime/"
+goal = "Open the installation page from the documentation navigation."
+expect = "done"
+verify = { url_contains = ["getting_started/installation"], text_any = ["Install", "install"] }
+
+[[task]]
+name = "typescript_docs_handbook"
+family = "docs_spa"
+url = "https://www.typescriptlang.org/docs/"
+goal = "Open the TypeScript Handbook."
+expect = "done"
+verify = { url_contains = ["handbook"], text_any = ["Handbook"] }
+
+[[task]]
+name = "redux_docs_tutorial"
+family = "docs_spa"
+url = "https://redux.js.org/"
+goal = "Open the Redux tutorial from the site navigation."
+expect = "done"
+verify = { url_contains = ["tutorial"], text_any = ["Tutorial", "tutorial"] }
+
+[[task]]
+name = "angular_docs_tutorials"
+family = "docs_spa"
+url = "https://angular.dev/"
+goal = "Open the tutorials section from the site navigation."
+expect = "done"
+verify = { url_contains = ["angular.dev/tutorials"], text_any = ["Tutorial", "tutorials"] }

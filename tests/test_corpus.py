@@ -9,7 +9,18 @@ from jev_ra.agent import Result
 from jev_ra.errors import JevRaError
 
 ROOT = Path(__file__).resolve().parents[1]
-EXPECTED_FAMILIES = ["ecommerce", "search_read", "booking", "forms", "news", "docs_spa", "portal", "auth"]
+EXPECTED_FAMILIES = {
+    "ecommerce": 5,
+    "search_read": 5,
+    "booking": 5,
+    "forms": 15,
+    "news": 5,
+    "docs_spa": 15,
+    "portal": 5,
+    "auth": 5,
+    "ja": 10,
+    "zh_cn": 10,
+}
 
 
 def page(url="https://example.com/x", text="hello", elements=None):
@@ -55,11 +66,12 @@ def task(**kwargs):
     return corpus.Task(**{**base, **kwargs})
 
 
-def test_the_corpus_file_declares_forty_tasks_in_eight_families():
+def test_the_corpus_file_declares_eighty_tasks_in_ten_families():
     tasks = corpus.load_tasks()
-    assert len(tasks) == 40
-    assert corpus.families(tasks) == EXPECTED_FAMILIES
-    assert all(len([t for t in tasks if t.family == name]) == 5 for name in EXPECTED_FAMILIES)
+    assert len(tasks) == 80
+    assert corpus.families(tasks) == list(EXPECTED_FAMILIES)
+    counted = {name: len([t for t in tasks if t.family == name]) for name in EXPECTED_FAMILIES}
+    assert counted == EXPECTED_FAMILIES
 
 
 def test_every_declared_task_is_well_formed():
