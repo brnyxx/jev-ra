@@ -230,8 +230,21 @@ KEYS = {
     "Tab": (9, "Tab", ""),
 }
 
+# The element a keystroke lands on: the focused element, followed into open shadow roots and
+# same-origin frames.
+ACTIVE_JS = """(() => {
+  let active=document.activeElement;
+  for (;;) {
+    let inner=active?.shadowRoot?.activeElement ?? null;
+    if (!inner && active?.tagName==='IFRAME') { try { inner=active.contentDocument?.activeElement; } catch {} }
+    if (!inner || inner===active) return active;
+    active=inner;
+  }
+})"""
+
 # Code-owned node ids refer to observed elements. A decision never supplies a selector.
-RESOLVE_JS = """(action => {
+RESOLVE_JS = (
+    """(action => {
   const cache=window.__jevRa;
   const e=cache?.nodes.get(action.node);
   // Laid out and kept by the accessibility tree; transparency is settled by the hit test below,
@@ -256,8 +269,14 @@ RESOLVE_JS = """(action => {
     e.dispatchEvent(new Event('input',{bubbles:true}));
     e.dispatchEvent(new Event('change',{bubbles:true}));
   }
+  // Where focus stands before a field is pressed, so a press that moves it can be told apart
+  // from one that was dropped and left it where it was.
+  if (action.kind==='fill') cache.focusBefore=("""
+    + ACTIVE_JS
+    + """)();
   return {x,y};
 })"""
+)
 
 # Two frames settle ordinary input; a combobox gets up to 200 ms for real suggestions. What the
 # promise resolves with is the page itself: the wait after an input and the first reading of what
@@ -293,6 +312,21 @@ FOCUSED_JS = """(node => {
   const e=window.__jevRa?.nodes.get(node);
   return !!e && (e.ownerDocument.activeElement===e || e.getRootNode()?.activeElement===e);
 })"""
+# Whether pressing the observed field moved focus onto another text field, which is where a
+# person's keystrokes now go. A flight search's origin opens a dialog over the form with an input
+# of its own and focuses it; forcing focus back onto the covered field types the value where
+# nothing reads it. Focus that did not move - a dropped click, a field that kept it - is not this.
+HANDED_JS = (
+    """(node => {
+  const cache=window.__jevRa, e=cache?.nodes.get(node), active=("""
+    + ACTIVE_JS
+    + """)();
+  if (!e || !active || active===e || active===cache.focusBefore || active.readOnly || active.disabled) return false;
+  if (active.isContentEditable || active.tagName==='TEXTAREA') return true;
+  return active.tagName==='INPUT' && !['checkbox','radio','button','submit','reset','image','file','hidden',
+    'password','range','color'].includes(active.type);
+})"""
+)
 
 
 class Session:
@@ -745,7 +779,7 @@ class Session:
         self.click(self.resolve(action))
         if action["kind"] == "fill" and not self.focused(action["node"]):
             time.sleep(FOCUS_SLEEP_S)
-            if not self.focused(action["node"]) and not self.focus(action["node"]):
+            if not self.focused(action["node"]) and not self.handed(action["node"]) and not self.focus(action["node"]):
                 raise StalePage("The field never took focus. Observe again.")
         if action["kind"] == "fill":
             self.select_all()
@@ -777,6 +811,10 @@ class Session:
     def focused(self, node):
         """Whether the observed field itself holds focus."""
         return bool(self.evaluate(f"({FOCUSED_JS})({observed(node)})"))
+
+    def handed(self, node):
+        """Whether pressing the observed field moved focus onto another text field to type into."""
+        return bool(self.evaluate(f"({HANDED_JS})({observed(node)})"))
 
     def focus(self, node):
         """Ask the browser to focus one observed node, and say whether it now holds focus."""

@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Where from</title>
+<style>
+  body { font: 16px/1.5 system-ui; margin: 24px; }
+  label { display: block; margin: 8px 0; }
+  #editor { position: fixed; inset: 0; background: #fff; padding: 24px; }
+  #editor[hidden] { display: none; }
+  [role="option"] { display: block; padding: 4px 0; cursor: pointer; }
+</style>
+</head>
+<body>
+<!-- An origin field the way Google Flights draws it: pressing the field opens a dialog over the
+     whole form with an input of its own, already holding the field's value, and moves focus into
+     it. What is typed there is what the suggestions answer; the field under the dialog only ever
+     receives the option that is chosen. Focus starts on the destination, as Google's does. -->
+<label>Where from? <input id="origin" role="combobox" aria-expanded="false" value="Busan"></label>
+<label>Where to? <input id="destination" role="combobox" aria-expanded="false"></label>
+<label>Passenger name <input id="passenger"></label>
+<div id="editor" role="dialog" aria-label="Origin" hidden>
+  <input id="editing" role="combobox" aria-label="Where else?" aria-expanded="true" aria-controls="options">
+  <div id="options" role="listbox"></div>
+</div>
+<script>
+  const places = ['Busan', 'Busana, Italy', 'Zurich', 'Zurich Airport (ZRH)'];
+  const origin = document.getElementById('origin');
+  const editor = document.getElementById('editor');
+  const editing = document.getElementById('editing');
+  const options = document.getElementById('options');
+  const suggest = () => {
+    const typed = editing.value.trim().toLowerCase();
+    options.replaceChildren(...places.filter(place => typed && place.toLowerCase().startsWith(typed)).map(place => {
+      const option = document.createElement('div');
+      option.setAttribute('role', 'option');
+      option.textContent = place;
+      option.addEventListener('click', () => { origin.value = place; editor.hidden = true; });
+      return option;
+    }));
+  };
+  origin.addEventListener('click', () => {
+    editor.hidden = false;
+    editing.value = origin.value;
+    editing.focus();
+    suggest();
+  });
+  editing.addEventListener('input', suggest);
+  document.getElementById('destination').focus();
+</script>
+</body>
+</html>
