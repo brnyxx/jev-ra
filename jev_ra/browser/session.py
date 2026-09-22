@@ -197,7 +197,9 @@ BLANK = "about:blank"
 OPEN_MIN_CONTROLS = 4
 # The marker, as snapshot.js builds it: origin, address, scroll, size, then the page itself.
 MARKER_ORIGIN, MARKER_URL, MARKER_CONTROLS = 0, 1, 8
-MARKER_CONTENT = slice(6, None)
+# A route is answered by its title, rendered text or elements, not by links whose hrefs changed
+# with the address or by page-key bookkeeping that can move before the view has rendered.
+MARKER_CONTENT = slice(6, 9)
 # Fonts and media cost bytes and answer nothing. Images are deliberately NOT here: blocking
 # them on en.wikipedia.org drops the observed controls from 62 to 34, because real layouts
 # size themselves around their images and half the page then falls outside the viewport.
