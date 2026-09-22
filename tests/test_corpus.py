@@ -470,3 +470,13 @@ def test_the_flights_task_always_asks_for_a_departure_a_month_ahead():
     task = next(t for t in corpus.load_tasks(today=date(2026, 9, 22)) if t.name == "flights_zrh_lon_oneway")
     assert task.values["departure_date"] == "2026-10-22"
     assert "2026-10-22" in task.goal
+
+
+def test_the_flights_spec_reads_the_results_page_as_google_spells_zurich():
+    task = next(t for t in corpus.load_tasks(today=date(2026, 9, 23)) if t.name == "flights_zrh_lon_oneway")
+    row = {
+        "url": "https://www.google.com/travel/flights/search?tfs=CBwQAhooEgoyMDI2LTEwLTIz",
+        "text": "Search results\n22 results returned.\nTrack prices from Zürich to London departing 2026-10-23",
+        "elements": [],
+    }
+    assert corpus.check(task.verify, row) == (True, "")

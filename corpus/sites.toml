@@ -113,7 +113,7 @@ goal = "Search one-way flights from Zurich to London departing {today+30} and sh
 values = { origin = "Zurich", destination = "London", departure_date = "{today+30}" }
 max_steps = 25
 expect = "done"
-verify = { url_contains = ["tfs="], text_any = ["취리히", "Zurich", "ZRH"] }
+verify = { url_contains = ["tfs="], text_any = ["취리히", "Zurich", "Zürich", "ZRH"] }
 
 [[task]]
 name = "booking_city_search"
