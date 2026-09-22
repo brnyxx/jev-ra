@@ -236,15 +236,19 @@ def test_a_session_that_cannot_be_built_says_why():
 class FakeBrowser:
     def __init__(self):
         self.closed = 0
+        self.holding = True
 
     def close(self):
-        self.closed += 1
+        if self.holding:
+            self.holding = False
+            self.closed += 1
 
 
 def served(monkeypatch, run):
-    """Run main() with a fake Browser and a fake server, and return the two of them."""
+    """Run main() with a fake Browser, a fake server and no way of really exiting."""
     browser = FakeBrowser()
     handlers = {}
+    left = []
 
     class FakeServer:
         def run(self, transport):
@@ -254,21 +258,29 @@ def served(monkeypatch, run):
     monkeypatch.setattr(mcp_server, "Browser", lambda: browser)
     monkeypatch.setattr(mcp_server, "build_server", lambda given: FakeServer())
     monkeypatch.setattr(mcp_server.signal, "signal", lambda number, handler: handlers.setdefault(number, handler))
-    return browser, handlers
+
+    def leave(code=0):
+        left.append(code)
+        raise SystemExit(code)
+
+    monkeypatch.setattr(mcp_server, "leave", leave)
+    return browser, handlers, left
 
 
 def test_the_server_closes_its_browser_when_the_client_disconnects(monkeypatch):
-    browser, _handlers = served(monkeypatch, lambda _handlers: None)
+    browser, _handlers, left = served(monkeypatch, lambda _handlers: None)
     mcp_server.main()
     assert browser.closed == 1
+    assert left == []
 
 
-def test_sigterm_ends_the_run_so_the_browser_is_closed(monkeypatch):
+def test_sigterm_closes_the_browser_and_then_stops_the_process(monkeypatch):
     def terminated(handlers):
         handlers[signal.SIGTERM](signal.SIGTERM, None)
 
-    browser, handlers = served(monkeypatch, terminated)
+    browser, handlers, left = served(monkeypatch, terminated)
     with pytest.raises(SystemExit):
         mcp_server.main()
     assert signal.SIGTERM in handlers
     assert browser.closed == 1
+    assert left == [0]

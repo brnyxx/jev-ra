@@ -1,7 +1,9 @@
 """MCP stdio server. One browser session per process, shared by every tool."""
 
 import logging
+import os
 import signal
+import sys
 import time
 
 from mcp.server.mcpserver import Image, MCPServer
@@ -278,15 +280,26 @@ def build_server(browser=None):
     return mcp
 
 
-def terminate(_number, _frame):
-    """End the run the way a clean exit does, so what the server holds is still released."""
-    raise SystemExit(0)
+def leave(code=0):
+    """Exit now. Everything this process held has already been released."""
+    sys.stdout.flush()
+    sys.stderr.flush()
+    os._exit(code)
 
 
 def main():
     """Run the stdio MCP server."""
     logging.basicConfig(level=logging.WARNING)
     browser = Browser()
+
+    def terminate(_number, _frame):
+        # Raising SystemExit here instead would unwind through the transport's task group, which
+        # answers it with a forty-line "unhandled errors in a TaskGroup" on stderr, and then the
+        # interpreter would wait at exit for the worker thread blocked in the stdin read. Both
+        # were measured against a real stdio client. Nothing here needs that unwinding.
+        browser.close()
+        leave(0)
+
     # A client that goes away sends SIGTERM and nothing else. Without this the process dies where
     # it stands and leaves its Chrome and its target behind for whoever looks at the machine next.
     signal.signal(signal.SIGTERM, terminate)
