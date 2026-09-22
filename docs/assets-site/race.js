@@ -28,7 +28,7 @@
     const reset = () => {
       const k = TASKS[key];
       ticks(J, k.js); ticks(B, k.bs);
-      root.dataset.task = key; root.classList.remove("over");
+      root.dataset.showing = key; root.classList.remove("over");
       J.classList.remove("won"); B.classList.remove("won");
       shown = -1; t0 = performance.now();
       $(".result", root).textContent = "";
@@ -65,9 +65,9 @@
       raf = requestAnimationFrame(frame);
     };
 
-    root.querySelectorAll("[data-task]").forEach((b) => b.addEventListener("click", () => {
+    root.querySelectorAll(".taskbar [data-task]").forEach((b) => b.addEventListener("click", () => {
       key = b.dataset.task;
-      root.querySelectorAll("[data-task]").forEach((x) => x.setAttribute("aria-selected", String(x === b)));
+      root.querySelectorAll(".taskbar [data-task]").forEach((x) => x.setAttribute("aria-selected", String(x === b)));
       reset();
     }));
     document.addEventListener("visibilitychange", () => {

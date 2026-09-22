@@ -4,7 +4,7 @@
   const MAP = [
     ["nav.how", "nav .links a[href='#how'] span"], ["nav.arch", "nav .links a[href='#arch'] span"], ["nav.bench", "nav .links a[href='#bench'] span"], ["nav.install", "nav .links a[href='#install'] span"],
     ["hero.hud", ".hud"], ["hero.h1", "h1"], ["hero.sub", ".sub"], ["hero.copy", ".pill small"], ["hero.star", ".ghost"],
-    ["race.t1", "[data-task='wiki']"], ["race.t2", "[data-task='flights']"], ["race.t3", "[data-task='olive']"], ["race.jurl", ".lane.jr .url"], ["race.burl", ".lane.bu .url"], ["race.jl", ".lane.jr .lapsl"], ["race.bl", ".lane.bu .lapsl"], ["race.run", "#t-running"], ["race.done", "#t-done"], ["race.res", "#t-result"], ["race.note", "#race-note"],
+    ["race.t1", ".taskbar [data-task='wiki']"], ["race.t2", ".taskbar [data-task='flights']"], ["race.t3", ".taskbar [data-task='olive']"], ["race.jurl", ".lane.jr .url"], ["race.burl", ".lane.bu .url"], ["race.jl", ".lane.jr .lapsl"], ["race.bl", ".lane.bu .lapsl"], ["race.run", "#t-running"], ["race.done", "#t-done"], ["race.res", "#t-result"], ["race.note", "#race-note"],
     ["works.label", ".works > span"], ["works.mcp", ".works a[data-tab='mcp']:nth-of-type(4)"], ["works.cli", ".works a[data-tab='cli']"],
     
     ["demo.h", "#demo h2"], ["demo.lead", "#demo .lead"], ["demo.legend", "#demo .legend"],
