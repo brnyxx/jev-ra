@@ -149,6 +149,16 @@ def classify(task, row):
     return check(task.verify, row)
 
 
+def step_trace(step):
+    """One executed step, as much of it as a results row keeps: what it did and what it typed."""
+    return {
+        "operation": step.get("operation"),
+        "target": step.get("target"),
+        "label": step.get("target_label", ""),
+        "text": step.get("text"),
+    }
+
+
 def run_task(task, config, decide):
     """One live attempt at one task."""
     session = Session(config)
@@ -171,6 +181,7 @@ def run_task(task, config, decide):
             "url": result.url,
             "text": (result.final_page.get("text") or "")[:TEXT_CHARS],
             "elements": result.final_page.get("elements") or [],
+            "trace": [step_trace(step) for step in result.steps],
         }
     except JevRaError as error:
         row = {
@@ -188,6 +199,7 @@ def run_task(task, config, decide):
             "url": task.url,
             "text": str(error)[:TEXT_CHARS],
             "elements": [],
+            "trace": [],
         }
     finally:
         session.close()

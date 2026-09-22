@@ -166,6 +166,24 @@ def test_a_run_records_what_the_page_showed_and_closes_the_session(stub):
     assert FakeSession.instances[0].closed is True
 
 
+def test_a_run_records_what_it_typed_so_the_results_file_can_be_checked(stub):
+    stub(
+        Result(
+            status="done",
+            steps=[
+                {"operation": "TYPE_TEXT", "target": "e2", "target_label": "Search", "text": "1040"},
+                {"operation": "CLICK", "target": "e3", "target_label": "Search", "text": None},
+            ],
+            final_page=page(),
+        )
+    )
+    row = corpus.run_task(task(verify={"text_contains": ["hello"]}), config=None, decide=lambda *_: {})
+    assert row["trace"] == [
+        {"operation": "TYPE_TEXT", "target": "e2", "label": "Search", "text": "1040"},
+        {"operation": "CLICK", "target": "e3", "label": "Search", "text": None},
+    ]
+
+
 def test_a_failing_engine_is_a_failed_row_not_a_crashed_corpus(stub):
     stub(JevRaError("Chrome is not reachable."))
     row = corpus.run_task(task(), config=None, decide=lambda *_: {})
@@ -275,6 +293,18 @@ def test_results_are_appended_without_the_bulky_page(tmp_path):
     first = json.loads(lines[0])
     assert "text" not in first and "elements" not in first
     assert first["task"] == "a"
+
+
+def test_a_results_row_keeps_the_steps_it_typed(tmp_path):
+    rows = [
+        {
+            "task": "a",
+            "status": "done",
+            "trace": [{"operation": "TYPE_TEXT", "target": "e1", "label": "Search", "text": "1040"}],
+        }
+    ]
+    first = json.loads(corpus.write_results(rows, tmp_path).read_text().strip())
+    assert first["trace"] == [{"operation": "TYPE_TEXT", "target": "e1", "label": "Search", "text": "1040"}]
 
 
 def test_the_cli_lists_the_corpus_without_touching_the_network(capsys):

@@ -74,5 +74,5 @@ the row names the command that proves it. Rows without a command yet are debt, l
 
 ## Debt (no command yet)
 
-- `scripts/check_no_invented_input.py`, `scripts/soak.py`, `jev-ra trace`, `jev-ra serve`,
+- `scripts/soak.py`, `jev-ra trace`, `jev-ra serve`,
   profiles, Dockerfile, Windows job, macOS cold-start job, `scripts/check_site.py`.
