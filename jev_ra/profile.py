@@ -11,6 +11,8 @@ from contextlib import contextmanager
 
 MEASURED = ("snapshot_ms", "actions_ms", "decide_ms", "act_ms", "wait_ms")
 CATEGORIES = (*MEASURED, "overhead_ms")
+LABEL_CHARS = 28
+COLUMNS = ("n", "operation", "target", *(name[:-3] for name in CATEGORIES), "total")
 
 
 class StepTimer:
@@ -60,6 +62,59 @@ class NullTimer:
     def result(self):
         """Zeros, so a caller can merge them without checking."""
         return dict.fromkeys((*CATEGORIES, "total_ms"), 0)
+
+
+def clip(text, limit):
+    """One line of at most `limit` characters, with an ellipsis where it was cut."""
+    line = " ".join(str(text or "").split())
+    return line if len(line) <= limit else line[: limit - 1] + "…"
+
+
+def rows(payload):
+    """One row per step: what it was, and the milliseconds each part of it took."""
+    return [
+        {
+            "n": str(step.get("n", "")),
+            "operation": step.get("operation", ""),
+            "target": clip(step.get("target_label") or step.get("target"), LABEL_CHARS),
+            **{name[:-3]: str(step.get(name) or 0) for name in CATEGORIES},
+            "total": str(step.get("total_ms") or 0),
+        }
+        for step in payload.get("steps", [])
+    ]
+
+
+def table(payload):
+    """Where one run's time went, step by step, as lines a terminal prints."""
+    steps = payload.get("steps") or []
+    body = rows(payload)
+    summed = totals(steps)
+    inside = sum(step.get("total_ms") or 0 for step in steps)
+    body.append(
+        {
+            "n": "",
+            "operation": "total",
+            "target": f"{len(steps)} step{'' if len(steps) == 1 else 's'}",
+            **{name[:-3]: str(summed[name]) for name in CATEGORIES},
+            "total": str(inside),
+        }
+    )
+    widths = {name: max(len(name), *(len(row[name]) for row in body)) for name in COLUMNS}
+    header = "  ".join(name.ljust(widths[name]) for name in COLUMNS)
+    lines = [
+        f"run {payload.get('run_id', '')} · {payload.get('status', '')} · {payload.get('reason', '')}",
+        "",
+        header,
+        "-" * len(header),
+    ]
+    lines += ["  ".join(row[name].ljust(widths[name]) for name in COLUMNS) for row in body]
+    wall = payload.get("elapsed_ms", 0)
+    outside = max(0, wall - inside)
+    lines += ["", f"{wall} ms in the run, {outside} ms of it outside the steps (the first page, and the last)"]
+    prefetched = sum(1 for step in steps if step.get("prefetched"))
+    if payload.get("speculations"):
+        lines.append(f"{prefetched} of {payload['speculations']} decisions were ready before the page was")
+    return lines
 
 
 def totals(steps):

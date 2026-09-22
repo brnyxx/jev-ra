@@ -175,6 +175,7 @@ positional arguments:
     screenshot  save a JPEG of the viewport
     close       close the session kept by `open`
     clean       stop what jev-ra started and empty its profile
+    profile     print where a stored run's time went, step by step
     trace       render a stored run by its run id
     mcp         run the MCP stdio server
     serve       run the same tools over HTTP and SSE

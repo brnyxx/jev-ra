@@ -142,6 +142,7 @@ Every response carries `elapsed_ms`, and `decisions` plus `cost` whenever Jev wa
 | `screenshot [PATH]` | save a JPEG of the viewport |
 | `close` | close the session kept by `open` |
 | `clean [--dry-run] [--keep-profile] [--daemons]` | stop what jev-ra started and empty its profile |
+| `profile RUN_ID` | print where a stored run's time went, step by step |
 | `trace RUN_ID [--html PATH]` | render a stored run by its run id |
 | `mcp` | run the MCP stdio server |
 | `serve [--host ADDR] [--port N] [--quota N]` | run the same tools over HTTP and SSE |

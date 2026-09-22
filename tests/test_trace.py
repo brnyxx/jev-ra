@@ -9,6 +9,7 @@ import pytest
 
 from jev_ra import cli, runs, trace
 from jev_ra.agent import Result
+from jev_ra.profile import CATEGORIES
 from tests.test_agent import CLICK_SUBMIT, DONE, FakeSession, agent_with, decider
 
 DEMO = Path(__file__).resolve().parents[1] / "docs" / "assets-site" / "demo-run.json"
@@ -131,3 +132,27 @@ def test_a_page_escapes_whatever_the_site_put_in_the_run():
     html = trace.page(result.as_dict())
     assert "</script><img" not in html
     assert "<\\/script>" in html or "\\u003c/script" in html
+
+
+def test_profile_prints_where_the_run_went(state, capsys):
+    result = a_run()
+    assert cli.main(["profile", result.run_id]) == 0
+    printed = capsys.readouterr().out
+    assert result.run_id in printed
+    assert "decide" in printed and "wait" in printed
+    assert "1 step " in printed
+    assert "outside the steps" in printed
+
+
+def test_profile_json_carries_the_totals_and_the_steps(state, capsys):
+    result = a_run()
+    assert cli.main(["profile", result.run_id, "--json"]) == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["run_id"] == result.run_id
+    assert set(payload["totals"]) == set(CATEGORIES)
+    assert payload["steps"] == result.steps
+
+
+def test_profile_refuses_a_run_it_does_not_have(state, capsys):
+    assert cli.main(["profile", "0123456789ab"]) == 1
+    assert "0123456789ab" in capsys.readouterr().err

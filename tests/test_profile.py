@@ -4,7 +4,7 @@ import pytest
 
 from jev_ra import bench, config
 from jev_ra.agent import Agent
-from jev_ra.profile import CATEGORIES, MEASURED, NullTimer, StepTimer, shares, totals
+from jev_ra.profile import CATEGORIES, MEASURED, NullTimer, StepTimer, shares, table, totals
 from tests.test_agent import DONE, FakeSession, agent_with, decider
 
 CLICK = {
@@ -138,3 +138,41 @@ def test_the_profile_table_renders(session):
     table = bench.profile_table(bench.run_offline(config.load({}), session=session))
     assert table.splitlines()[0] == "| category | ms | share |"
     assert "| snapshot |" in table
+
+
+def test_the_table_names_every_category_and_adds_them_up():
+    payload = {
+        "run_id": "abc123",
+        "status": "done",
+        "reason": "goal_achieved",
+        "elapsed_ms": 1500,
+        "steps": [
+            {
+                "n": 1,
+                "operation": "CLICK",
+                "target_label": "Search flights",
+                "snapshot_ms": 100,
+                "actions_ms": 1,
+                "decide_ms": 300,
+                "act_ms": 40,
+                "wait_ms": 200,
+                "overhead_ms": 9,
+                "total_ms": 650,
+            }
+        ],
+    }
+    lines = table(payload)
+    assert lines[0] == "run abc123 · done · goal_achieved"
+    assert lines[2].split() == ["n", "operation", "target", *(name[:-3] for name in CATEGORIES), "total"]
+    assert lines[4].split() == ["1", "CLICK", "Search", "flights", "100", "1", "300", "40", "200", "9", "650"]
+    assert lines[5].split() == ["total", "1", "step", "100", "1", "300", "40", "200", "9", "650"]
+    assert lines[-1] == "1500 ms in the run, 850 ms of it outside the steps (the first page, and the last)"
+
+
+def test_a_run_with_no_steps_still_renders():
+    assert table({"run_id": "abc123", "status": "escalate", "reason": "stale", "steps": []})[4].split() == [
+        "total",
+        "0",
+        "steps",
+        *["0"] * 7,
+    ]

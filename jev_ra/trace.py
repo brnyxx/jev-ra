@@ -2,17 +2,11 @@
 
 import json
 
-from .profile import CATEGORIES
+from .profile import CATEGORIES, clip
 
 LABEL_CHARS = 32
 TEXT_CHARS = 20
 COLUMNS = ("n", "operation", "target", "text", "p", "decide", "total", "page")
-
-
-def clip(text, limit):
-    """One line of at most `limit` characters, with an ellipsis where it was cut."""
-    line = " ".join(str(text or "").split())
-    return line if len(line) <= limit else line[: limit - 1] + "…"
 
 
 def rows(payload):
