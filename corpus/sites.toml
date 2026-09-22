@@ -292,7 +292,7 @@ verify = { text_any = ["Dark", "Light", "Theme", "OS default"] }
 [[task]]
 name = "gov_kr_search"
 family = "portal"
-url = "https://www.gov.kr/portal/main/nologin"
+url = "https://plus.gov.kr/"
 goal = "Search the portal for 여권 발급 and show the results."
 values = { query = "여권 발급" }
 expect = "done"
