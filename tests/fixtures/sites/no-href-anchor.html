@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Region picker</title>
+<style>
+  body { font: 16px/1.5 system-ui; margin: 24px; }
+  #pointer { cursor: pointer; }
+</style>
+</head>
+<body>
+<h1>Choose a region</h1>
+<a id="role" role="button">Role region</a>
+<a id="tabindex" tabindex="0">Focusable region</a>
+<a id="handler" onclick="document.querySelector('#selected').textContent='Handler region selected'">
+  Handler region
+</a>
+<a id="pointer">Pointer region</a>
+<a id="plain">Plain text</a>
+<p id="selected"></p>
+</body>
+</html>

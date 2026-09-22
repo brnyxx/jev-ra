@@ -103,7 +103,7 @@
   };
   const roles=['button','link','checkbox','radio','switch','tab','menuitem','menuitemradio',
     'option','gridcell','combobox','textbox','searchbox','spinbutton'];
-  const selector='a[href],button,input,textarea,select,summary,iframe,label,[contenteditable="true"],'+
+  const selector='a,button,input,textarea,select,summary,iframe,label,[contenteditable="true"],'+
     roles.map(role=>'[role="'+role+'"]').join(',');
   // A label only counts as a control of its own when the thing it labels has no pixels: a
   // dropdown checkbox sized to nothing, a toggle drawn entirely in CSS. Where the control is
@@ -183,6 +183,9 @@
     for (const e of root.querySelectorAll(selector)) {
       // A frame we can read is traversed, not offered; only an opaque one is an element.
       if (e.tagName==='IFRAME' && contentOf(e)?.body) continue;
+      if (e.tagName==='A' && !e.hasAttribute('href') && !e.getAttribute('role') &&
+          !e.hasAttribute('tabindex') && typeof e.onclick!=='function' &&
+          getComputedStyle(e).cursor!=='pointer') continue;
       if (e.tagName==='LABEL' && !standIn(e)) continue;
       if (!safe(e) || !rendered(e) || e.matches(':disabled') || e.closest('[aria-disabled="true"]')) continue;
       const r=e.getBoundingClientRect(), [dx,dy]=cache.offset(e), rname=role(e);
