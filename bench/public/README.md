@@ -8,6 +8,12 @@ tasks each is a smoke, not a score.** It is enough to prove that the submission 
 and that the judges accept them; it is not enough to compare against a 300-task leaderboard entry,
 and the numbers are reported here only so that the method has something attached to it.
 
+Every table below reports **before** and **after**: the first pass, and a rerun of the same twenty
+tasks with the same judges after four jev-ra fixes the first pass had traced - a post-input settle
+that timed out, a browser that spoke the machine's language, no final answer on a question-shaped
+task, and a site wall read as a task that failed. `REPORT.md` in the repository root has the fixes
+and what each of them moved.
+
 ## What is here
 
 | file | what it does |
@@ -24,15 +30,18 @@ and the numbers are reported here only so that the method has something attached
 
 ```sh
 export OPENROUTER_API_KEY=sk-or-...
+# The language every session asks sites for. jev-ra defaults to en-US and sends it both to a Chrome
+# it launched (--lang, --accept-lang) and to one it attached to (setLocaleOverride, Accept-Language).
+export JEV_RA_LOCALE=en-US
 # jev-ra never invents a field value. Without a text helper, every task that has to type
 # something escalates `needs_value` instead of doing it.
 export JEV_RA_TEXT_MODEL=openai/gpt-4o-mini
 export JEV_RA_TEXT_BASE_URL=https://openrouter.ai/api/v1
 export JEV_RA_TEXT_API_KEY="$OPENROUTER_API_KEY"
 
-# A Chrome of your own, in English. Sites serve the machine's locale otherwise: flightaware.com
-# answered the first pass in Korean. If another jev-ra session is already holding a browser, give
-# this one its own daemon with BH_RUNTIME_DIR, or `Session()` refuses to attach.
+# A Chrome of your own. The language flags are jev-ra's own now, and are repeated here only so the
+# browser and the session agree from the first request. If another jev-ra session is already
+# holding a browser, give this one its own daemon with BH_RUNTIME_DIR, or `Session()` refuses.
 chrome --remote-debugging-port=9222 --user-data-dir="$(mktemp -d)" \
   --window-size=1280,900 --lang=en-US --accept-lang=en-US,en about:blank &
 export BU_CDP_URL=http://127.0.0.1:9222
@@ -75,73 +84,98 @@ WebVoyager's 643 tasks are in its own repository, fetched at the pinned commit.
 | ACT-2 (GPT-5.4) | 92.3 % | leaderboard's `auto_o4-mini` sheet | 300 |
 | Browser Use (gpt-4o) | 26 % | leaderboard's `auto_o4-mini` sheet | 300 |
 | **jev-ra 0.1.3** | **30 % (3/10)** | WebJudge (o4-mini), unmodified prompts | **10, a smoke** |
+| **jev-ra, after the four fixes** | **30 % and 20 % (3/10, 2/10)** | the same WebJudge, same ten tasks | **10, twice** |
 
 WebVoyager is saturated - the field reports up to 99.19 % - so it is a regression gate here, not a
-score. jev-ra 0.1.3 was run twice over the same ten tasks, back to back, and its own evaluator
-scored the two passes **3/10** and **0/10**. Both are published below. On ten live tasks the spread
-between two passes of the same agent is larger than the gap between most leaderboard entries, which
-is the single most important thing this page has to say about a ten-task number.
+score. Each pass is ten tasks run back to back, and its own evaluator scored them:
 
-### What the ten Online-Mind2Web runs actually did
-
-3 of 10 by WebJudge. What ended each run, by jev-ra's own status:
-
-| outcome | tasks | what it means |
+| WebVoyager | pass A | pass B |
 |---|---|---|
-| `blocked` | 5 | the model saw no supported operation that would progress |
-| `stuck_loop` | 2 | three steps in a row moved nothing |
-| `done` | 1 | jev-ra verified the goal on the page |
-| `needs_value` | 1 | a field wanted a value the text helper could not write |
-| `provider_error` | 1 | the decision endpoint timed out mid-run |
+| before the fixes | **3 / 10** | **0 / 10** |
+| after the fixes | **4 / 10** | **3 / 10** |
 
-Two of the five `blocked` runs never saw a website at all: carvana.com answered with Cloudflare's
-*Sorry, you have been blocked* and marriott.com with Akamai's *Access Denied*, both on the first
-request, both in 0 steps. That is the failure class `docs/ROADMAP_COMMERCIAL.md` Track B names, and
-on this corpus it is a third of the losses rather than a footnote.
+On ten live tasks the spread between two passes of the same agent is larger than the gap between
+most leaderboard entries, which is still the single most important thing this page has to say about
+a ten-task number: before the fixes two passes differed by three tasks, after them by one.
 
-The judge and jev-ra disagree in both directions, which is worth seeing:
+### What the Online-Mind2Web runs actually did
 
-- `4091bdd3fa64a5b0d912bc08eaf9c824` ended `blocked` and WebJudge scored it a **pass** - the MTA
-  neighbourhood maps were on the page jev-ra gave up on.
-- `046138801a05ddf56ad94e8672942496` ended `provider_error` after the decision endpoint timed out,
-  and WebJudge scored it a **pass** from the trajectory up to that point.
-- `ade4c09ad3fdb1607209750924cd232f` is the only run where both agreed on a pass.
+What ended each run, by jev-ra's own status:
 
-### What the twenty WebVoyager runs did
+| outcome | before | after A | after B | what it means |
+|---|---|---|---|---|
+| `blocked` | 5 | 4 | 3 | the model saw no supported operation that would progress |
+| `stuck_loop` | 2 | 2 | 2 | three steps in a row moved nothing |
+| `done` | 1 | 3 | 3 | jev-ra verified the goal on the page |
+| `blocked_by_site` | 0 | 1 | 1 | the host refused the browser instead of serving a page |
+| `unverified_done` | 0 | 0 | 1 | DONE the model could not confirm on the page |
+| `needs_value` | 1 | 0 | 0 | a field wanted a value the text helper could not write |
+| `provider_error` | 1 | 0 | 0 | the decision endpoint timed out mid-run |
 
-Two passes over the same ten sites, run back to back:
+Before the fixes, two of the five `blocked` runs never saw a website at all: carvana.com answered
+with Cloudflare's *Sorry, you have been blocked* and marriott.com with Akamai's *Access Denied*,
+both on the first request, both in 0 steps, and both were reported as the task being impossible.
+carvana refused both reruns the same way and is now reported as `blocked_by_site` in 0 steps and
+0 decisions. marriott served the real site to both reruns, so its refusal is not in these numbers
+and could not be re-measured. That failure class is what `docs/ROADMAP_COMMERCIAL.md` Track B names.
 
-| task | first pass | second pass |
-|---|---|---|
-| Allrecipes--0 | `blocked`, FAIL | `blocked`, FAIL |
-| Amazon--0 | `done`, FAIL | `done`, FAIL |
-| Apple--0 | `blocked`, **PASS** | `provider_error`, FAIL |
-| ArXiv--0 | `ChromeError`, FAIL | `ChromeError`, FAIL |
-| BBC News--0 | `blocked`, FAIL | `blocked`, FAIL |
-| Booking--33 | `blocked`, **PASS** | `blocked`, FAIL |
-| Cambridge Dictionary--0 | `stuck_loop`, FAIL | `blocked`, FAIL |
-| Coursera--0 | `done`, **PASS** | `stuck_loop`, FAIL |
-| ESPN--0 | `blocked`, FAIL | `blocked`, FAIL |
-| GitHub--0 | `needs_value`, FAIL | `done`, FAIL |
-| | **3 / 10** | **0 / 10** |
+The judge and jev-ra disagree in both directions, and the disagreement did not settle down:
 
-Two things stand out. Four of the twenty runs ended `done` - jev-ra verified the goal on the page
-itself - and the evaluator agreed with exactly one of them; meanwhile two of its three PASSes went
-to runs that had given up. A run can verify its goal and still not have done what the task asked,
-and a run that stopped can still have left the answer on screen. And `ArXiv--0` fails the same way
-in both passes - see *Known limits* below; that one is a jev-ra bug, not a judgement.
+| task | before | after A | after B |
+|---|---|---|---|
+| `ade4c09ad3fdb1607209750924cd232f` | `done`, **PASS** | `done`, **PASS** | `done`, **PASS** |
+| `4091bdd3fa64a5b0d912bc08eaf9c824` | `blocked`, **PASS** | `done`, FAIL | `done`, FAIL |
+| `046138801a05ddf56ad94e8672942496` | `provider_error`, **PASS** | `blocked`, FAIL | `unverified_done`, FAIL |
+| `fb7b4f784cfde003e2548fdf4e8d6b4f` | not published | `done`, **PASS** | `done`, **PASS** |
+| `561693d6eec7bbfba3fefe9e4b26decb` | not published | `stuck_loop`, **PASS** | `stuck_loop`, FAIL |
+
+`4091bdd3` is the clearest single case on this page: WebJudge passed the run that gave up on the
+MTA maps page and failed both runs that reached the same page, verified the goal on it and wrote
+out the list of Brooklyn maps as a final answer. Nothing about the judge was changed between them.
+
+### What the WebVoyager runs did
+
+Four passes over the same ten sites, two before the fixes and two after:
+
+| task | before A | before B | after A | after B |
+|---|---|---|---|---|
+| Allrecipes--0 | `blocked`, FAIL | `blocked`, FAIL | `blocked`, FAIL | `blocked`, FAIL |
+| Amazon--0 | `done`, FAIL | `done`, FAIL | `blocked`, FAIL | `done`, FAIL |
+| Apple--0 | `blocked`, **PASS** | `provider_error`, FAIL | `done`, **PASS** | `blocked`, **PASS** |
+| ArXiv--0 | `ChromeError`, FAIL | `ChromeError`, FAIL | `done`, **PASS** | `done`, **PASS** |
+| BBC News--0 | `blocked`, FAIL | `blocked`, FAIL | `blocked`, FAIL | `blocked`, FAIL |
+| Booking--33 | `blocked`, **PASS** | `blocked`, FAIL | `done`, **PASS** | `blocked`, FAIL |
+| Cambridge Dictionary--0 | `stuck_loop`, FAIL | `blocked`, FAIL | `blocked`, FAIL | `blocked`, FAIL |
+| Coursera--0 | `done`, **PASS** | `stuck_loop`, FAIL | `done`, **PASS** | `stuck_loop`, FAIL |
+| ESPN--0 | `blocked`, FAIL | `blocked`, FAIL | `blocked`, FAIL | `blocked`, **PASS** |
+| GitHub--0 | `needs_value`, FAIL | `done`, FAIL | `done`, FAIL | `done`, FAIL |
+| | **3 / 10** | **0 / 10** | **4 / 10** | **3 / 10** |
+
+`ArXiv--0` is the one row that moved for a reason and stayed moved: it failed both earlier passes
+with `ChromeError: Runtime.evaluate timed out after 5s` and passes both reruns. Its Enter step now
+takes 69 s of settle on arxiv.org's listing, which is exactly the wait the 5 s budget cut short.
+
+Everything else still says what it said before. Four of the twenty reruns ended `done` and the
+evaluator agreed with three of them; three of its seven PASSes went to runs that had given up. A
+run can verify its goal and still not have done what the task asked, and a run that stopped can
+still have left the answer on screen.
 
 ### Cost and wall, measured
 
-| measurement | Online-Mind2Web, 10 tasks | WebVoyager, 10 tasks |
-|---|---|---|
-| jev-ra cost, whole pass | **$0.0122** | **$0.0078** and **$0.0074** |
-| jev-ra cost, median task | $0.00084 | $0.00079 |
-| wall, whole pass | 178 s | 113 s and 114 s |
-| wall, median task | 6.8 s | 10.3 s and 11.2 s |
-| decisions / steps | 91 / 76 | see `summary.jsonl` |
-| text-helper calls | 2 | 5 (first pass) |
-| screenshots written | 96 | 53 first pass, 43 second |
+| measurement | Online-Mind2Web, before | after A | after B | WebVoyager, before | after A | after B |
+|---|---|---|---|---|---|---|
+| jev-ra cost, whole pass | **$0.0122** | **$0.0103** | **$0.0117** | **$0.0078**, **$0.0074** | **$0.0099** | **$0.0119** |
+| wall, whole pass | 178 s | 150 s | 175 s | 113 s, 114 s | 180 s | 163 s |
+| decisions / steps | 91 / 76 | 77 / 63 | 83 / 63 | see `summary.jsonl` | 63 / 42 | 71 / 56 |
+| text-helper calls | 2 | 7 | 6 | 5 (first pass) | 9 | 7 |
+| screenshots written | 96 | 83 | 83 | 53, 43 | 55 | 66 |
+
+Two of those columns moved for a reason and not by chance. The WebVoyager wall went **up** by about
+50 s a pass because `ArXiv--0` now waits out a settle it used to die in: one task spends 69 s where
+it used to spend 5 s and then end the run. And the text-helper calls went up because a question-
+shaped goal now asks for a final answer as well as for field values - one extra call on the 4 of 10
+Online-Mind2Web tasks and the 1 of 10 WebVoyager tasks that read as questions, including on a task
+that ended on a wall, where the helper is asked about a page that cannot answer and says so.
 
 **The judges' own cost is not measured.** Neither harness records the usage its calls report, and
 this lane does not patch them to. What is exact is the call count: WebJudge makes one key-point
@@ -161,11 +195,13 @@ om2w-2026-09-22/<task_id>/trajectory/*.jpg   # one frame per step
 om2w-2026-09-22/summary.jsonl                # one row per task: status, cost, run_id, page seen
 om2w-2026-09-22-judge/...                    # WebJudge's own results file, one JSON per line
 om2w-2026-09-22-judge.log                    # what the judge printed
+om2w-2026-09-22-fixed/, -fixed-b/            # the two reruns, same ten tasks, and their -judge dirs
 
 webvoyager-2026-09-22/task<id>/interact_messages.json
 webvoyager-2026-09-22/task<id>/screenshot<n>.png
 webvoyager-2026-09-22/skipped.json           # the time-sensitive tasks held back, with the date each named
 webvoyager-2026-09-22-b/...                  # the second pass over the same ten
+webvoyager-2026-09-22-fixed/, -fixed-b/      # the two reruns
 ```
 
 `summary.jsonl` carries the `run_id` of every attempt, so `uv run jev-ra trace <run_id>` replays
@@ -196,12 +232,14 @@ do it.
 
 ## What jev-ra hands the judge, and what it does not
 
-- **No invented answer.** jev-ra has no model that writes prose. The Online-Mind2Web submission
-  therefore sets `agent_final_answer` to `null` and ends on a bare `TASK_COMPLETE`, which is what
-  the benchmark asks for ("do not include the final response ... they may contain hallucinated
-  content"). WebJudge does not read that field, so nothing is lost there; the leaderboard's top
-  entries note that they *do* include a final response, so this is a real gap on question-shaped
-  tasks and an obvious next step.
+- **One sentence on a question, nothing on an instruction.** A goal that reads as a question - it
+  ends in `?`, or opens with what, which, how many, when, who or find the - now gets one sentence
+  from jev-ra's configured text helper, taken from the page the run finished on. It is carried in
+  `agent_final_answer` and on the submission's `TASK_COMPLETE; ANSWER:` line, and in the `ANSWER`
+  the WebVoyager evaluator reads. An instruction never asks for one, and without a text helper the
+  field stays `null` and the run's payload says which of the two it was. WebJudge does not read
+  that field at all, so on Online-Mind2Web this changes what the submission says and not what the
+  judge scores; on these twenty tasks 5 read as questions, so it is a small surface either way.
 - **No thoughts.** Every step's `thought` is `null`, present and explicit, because jev-ra's
   decision is a probability over an enumerated action space, not a sentence.
 - **Refs, not coordinates.** jev-ra deliberately never sends the model geometry, so a step's target
@@ -217,14 +255,16 @@ do it.
 ## Known limits of these numbers
 
 - Ten tasks. The run-to-run spread on live sites is larger than the difference between most
-  leaderboard entries.
-- Site walls. Two of ten Online-Mind2Web sites refused the browser outright from this address.
-- The mirror is one task revision behind the gated file.
-- `ArXiv--0` failed both WebVoyager passes with `ChromeError: Runtime.evaluate timed out after 5s`.
-  Traced to `jev_ra/browser/session.py:352`: the post-input settle is the one `Runtime.evaluate`
-  that does not pass `timeout=EVALUATE_TIMEOUT_S`, so it runs on the 5 s default while awaiting a
-  promise that arxiv.org's listing outlasts, and the session is dropped. A jev-ra bug this lane
-  found and did not fix; `jev_ra/` is another lane's.
+  leaderboard entries, and it is what most of the movement between any two passes here is.
+- Site walls. carvana.com refused the browser outright from this address in every pass. It is now
+  reported as `blocked_by_site` rather than as a task that failed, which is a truer row and not a
+  passed task: the wall class itself is untouched.
+- The address, not the language. uniqlo.com answered `https://www.uniqlo.com/` with
+  `https://www.uniqlo.com/kr/ko/` on every pass, and does so whether the session asks for `en-US`
+  or `ja-JP`, so its Korean pages are this machine's address and not its `Accept-Language`. The
+  locale fix moved flightaware.com to English and did not move uniqlo.
+- The mirror is one task revision behind the gated file. No `HF_TOKEN` was in the environment for
+  any pass on this page, before or after, so every one of them used the pinned mirror.
 - The judges' cost is unmeasured, as above.
 
 ## Reproducing the CI smoke

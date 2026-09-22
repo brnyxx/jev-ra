@@ -195,16 +195,22 @@ those benchmarks publish rather than by `corpus.check`. Method, exact commands, 
 commits, what had to be worked around to run each judge at all, and where the trajectories are:
 [`bench/public/README.md`](../bench/public/README.md).
 
-| benchmark | jev-ra 0.1.3 | judged by | scale |
-|---|---|---|---|
-| Online-Mind2Web | 3 / 10 = 30 % | WebJudge (o4-mini), the benchmark's own | 10 tasks, a smoke |
-| WebVoyager | 3 / 10 and 0 / 10, two passes | `evaluation/auto_eval.py`, the benchmark's own, on gpt-4o | 10 tasks, twice |
+| benchmark | before | after four fixes | judged by | scale |
+|---|---|---|---|---|
+| Online-Mind2Web | 3 / 10 = 30 % | 3 / 10 and 2 / 10 | WebJudge (o4-mini), the benchmark's own | 10 tasks, a smoke |
+| WebVoyager | 3 / 10 and 0 / 10 | 4 / 10 and 3 / 10 | `evaluation/auto_eval.py`, the benchmark's own, on gpt-4o | 10 tasks, twice |
 
-Ten tasks is a smoke, not a score: the two WebVoyager passes are the same ten tasks back to back,
-and they differ by three. The published bars are 90.53 % on Online-Mind2Web (ABP + Claude Opus 4.6,
-human-evaluated, 285 of 300) and a saturated 99.19 % on WebVoyager. Two of the ten Online-Mind2Web
-sites refused the browser outright - Cloudflare on carvana.com, Akamai on marriott.com - which is
-the wall class `ROADMAP_COMMERCIAL.md` Track B names.
+Ten tasks is a smoke, not a score: every pass is the same ten tasks, and two passes of the same
+build differ by one to three of them, which is more than the gap between most leaderboard entries.
+The published bars are 90.53 % on Online-Mind2Web (ABP + Claude Opus 4.6, human-evaluated, 285 of
+300) and a saturated 99.19 % on WebVoyager.
+
+The reruns followed four fixes the first pass had traced: a post-input settle on the plain call
+budget (which failed `ArXiv--0` twice and now passes it twice), a browser that asked sites for the
+machine's language, no final answer on a question-shaped task, and a site wall reported as a task
+that failed. Only the settle moved a judged verdict and held it across both passes; carvana.com
+still refuses the browser from this address and is now reported as `blocked_by_site` rather than
+as an impossible task - the wall class `ROADMAP_COMMERCIAL.md` Track B names is unchanged.
 
 ## Cost and latency per call
 
