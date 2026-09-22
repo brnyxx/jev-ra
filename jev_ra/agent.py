@@ -2,6 +2,7 @@
 
 import logging
 import time
+import uuid
 from dataclasses import asdict, dataclass, field, replace
 
 from .browser import actions
@@ -64,10 +65,16 @@ class Agent:
         self.session = session or Session(self.config)
         self.run_id = None
         self._client = client
+        self._run_id = ""
         if decide is None:
             self._client = client or DecisionClient(self.config)
             decide = self._client.decide
         self.decide = decide
+
+    def identify(self):
+        """The id a run carries: the decision session's, or a fresh one for a scripted run."""
+        session_id = getattr(self._client, "session_id", "")
+        return session_id or uuid.uuid4().hex[:12]
 
     def open(self, url):
         """Navigate to a url and observe."""
@@ -83,7 +90,13 @@ class Agent:
             try:
                 return observe(*args)
             except StalePage as error:
-                logger.info("Page went stale while reading it (%s/%s): %s", attempt + 1, STALE_RETRIES, error)
+                logger.info(
+                    "[%s] Page went stale while reading it (%s/%s): %s",
+                    self._run_id,
+                    attempt + 1,
+                    STALE_RETRIES,
+                    error,
+                )
         return None
 
     def said(self, error):
@@ -107,6 +120,7 @@ class Agent:
         limit = max_steps or budgets.max_steps
         binder = ValueBinder(values, self.config)
         run = _Run(self, goal, binder, started)
+        self._run_id = run.run_id
         page = self.read(self.session.open, url) if url else self.read(self.session.observe)
         if page is None:
             return run.escalate("stale", BLANK_PAGE, detail={"error": "The page never settled to be read."})
@@ -128,7 +142,7 @@ class Agent:
                 run.decisions += 1
                 if reasked:
                     return run.escalate("invalid_decision", page, detail={"error": self.said(error)})
-                logger.warning("Unusable answer set; asking once more: %s", error)
+                logger.warning("[%s] Unusable answer set; asking once more: %s", run.run_id, error)
                 reasked = True
                 continue
             except JevError as error:
@@ -146,7 +160,7 @@ class Agent:
                 combo = (error.operation, error.target)
                 if combo in exclude:
                     return run.escalate("invalid_decision", page, detail={"error": str(error)})
-                logger.warning("Re-asking without %s: %s", combo, error)
+                logger.warning("[%s] Re-asking without %s: %s", run.run_id, combo, error)
                 exclude.add(combo)
                 continue
             exclude, reasked = set(), False
@@ -172,10 +186,12 @@ class Agent:
                 best = max(best, score)
                 if look is not None:
                     looks += 1
-                    logger.info("DONE at %.2f; looking below the fold (%s/%s)", score, looks, MAX_LOOKS)
+                    logger.info(
+                        "[%s] DONE at %.2f; looking below the fold (%s/%s)", run.run_id, score, looks, MAX_LOOKS
+                    )
                 else:
                     waited = True
-                    logger.info("DONE at %.2f; waiting for the page to finish loading", score)
+                    logger.info("[%s] DONE at %.2f; waiting for the page to finish loading", run.run_id, score)
                 chosen = look if look is not None else wait
                 if chosen is None:
                     return run.escalate("unverified_done", page, decision)
@@ -183,7 +199,7 @@ class Agent:
                     self.session.act(chosen, page, timer=timer)
                 except StalePage:
                     # The page moved while it was being looked at, which is itself new information.
-                    logger.info("The page moved before it could be looked at; reading it again")
+                    logger.info("[%s] The page moved before it could be looked at; reading it again", run.run_id)
                     page = self.read(self.session.observe, timer) or page
                     continue
                 after = self.read(self.session.observe, timer)
@@ -218,7 +234,7 @@ class Agent:
                         # page was read. Read it again and ask once more before handing the
                         # missing value back to the host.
                         reasked_value = True
-                        logger.info("No field for the supplied values; reading the page again")
+                        logger.info("[%s] No field for the supplied values; reading the page again", run.run_id)
                         page = self.read(self.session.observe) or page
                         continue
                     return run.escalate("needs_value", page, decision, detail=error.detail)
@@ -229,7 +245,7 @@ class Agent:
                 stale_retries += 1
                 if stale_retries > STALE_RETRIES:
                     return run.escalate("stale", page, decision, detail={"error": str(error)})
-                logger.info("Page went stale; re-observing (%s/%s)", stale_retries, STALE_RETRIES)
+                logger.info("[%s] Page went stale; re-observing (%s/%s)", run.run_id, stale_retries, STALE_RETRIES)
                 page = self.session.observe()
                 continue
             stale_retries = 0
@@ -336,6 +352,7 @@ class _Run:
         self.goal = goal
         self.binder = binder
         self.started = started
+        self.run_id = agent.identify()
         self.history = []
         self.steps = []
         self.decisions = 0

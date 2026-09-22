@@ -734,3 +734,62 @@ def test_a_rejected_key_is_its_own_reason_and_never_carries_the_key():
     assert key not in result.detail["error"]
     assert session.acted == []
     assert result.decisions == 1
+def test_a_scripted_run_carries_a_stable_run_id():
+    result = agent_with(decider([CLICK_SUBMIT, DONE])).run("find flights")
+    assert len(result.run_id) == 12
+    assert all(character in "0123456789abcdef" for character in result.run_id)
+
+
+def test_a_real_client_lends_its_decision_session_id_to_the_run():
+    settings = config.load({"OPENROUTER_API_KEY": "sk-or-v1-test"})
+    client = DecisionClient(
+        settings,
+        transport=httpx.MockTransport(lambda _request: httpx.Response(200, json={"answers": {}})),
+    )
+    agent = Agent(session=FakeSession(), config=settings, client=client, decide=decider([DONE]))
+    result = agent.run("confirm the page")
+    assert result.run_id == client.session_id
+
+
+def test_the_run_id_is_what_the_agent_logs(monkeypatch, capsys):
+    import logging
+
+    from jev_ra import logs
+
+    root = logging.getLogger()
+    saved_handlers, saved_level = root.handlers[:], root.level
+    root.handlers = []
+    monkeypatch.setenv("JEV_RA_LOG_LEVEL", "DEBUG")
+    try:
+        logs.configure()
+        weak_done = {"operation": answer("DONE"), "goal_achieved": {"noul": 0.2}}
+        result = agent_with(decider([weak_done])).run("find flights")
+    finally:
+        root.handlers, root.level = saved_handlers, saved_level
+    assert result.run_id in capsys.readouterr().err
+
+
+def test_the_default_log_level_keeps_agent_info_lines_off_stderr(monkeypatch, capsys):
+    import logging
+
+    from jev_ra import logs
+
+    root = logging.getLogger()
+    saved_handlers, saved_level = root.handlers[:], root.level
+    root.handlers = []
+    monkeypatch.delenv("JEV_RA_LOG_LEVEL", raising=False)
+    try:
+        logs.configure()
+        weak_done = {"operation": answer("DONE"), "goal_achieved": {"noul": 0.2}}
+        result = agent_with(decider([weak_done])).run("find flights")
+    finally:
+        root.handlers, root.level = saved_handlers, saved_level
+    assert result.run_id not in capsys.readouterr().err
+
+
+def test_an_unknown_log_level_falls_back_to_warning():
+    from jev_ra import logs
+
+    assert logs.level({}) == "WARNING"
+    assert logs.level({"JEV_RA_LOG_LEVEL": "debug"}) == "DEBUG"
+    assert logs.level({"JEV_RA_LOG_LEVEL": "loud"}) == "WARNING"

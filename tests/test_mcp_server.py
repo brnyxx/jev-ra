@@ -130,7 +130,33 @@ def test_browser_run_returns_the_result_json():
     assert result["cost"] == pytest.approx(0.0001)
     assert result["elapsed_ms"] >= 0
     assert result["steps"] == []
+    assert result["run_id"]
     assert "final_page" in result
+
+
+def clicks_then_done():
+    seen = []
+
+    def decide(_state, questions):
+        seen.append(questions)
+        if len(seen) == 1:
+            answers = {"operation": answer("CLICK"), "click_target": answer("e2"), "goal_achieved": {"noul": 0.1}}
+        else:
+            answers = {"operation": answer("DONE"), "goal_achieved": {"noul": 0.95}}
+        return Reply(answers=answers, latency_ms=5, usage={"cost": 0.0001})
+
+    return decide
+
+
+def test_browser_run_keeps_the_per_step_timings():
+    server, _browser, _session = server_with(decide=clicks_then_done())
+    call(server, "browser_open", url="http://127.0.0.1/form.html")
+    result = payload(call(server, "browser_run", goal="find flights"))
+    assert result["run_id"]
+    step = result["steps"][0]
+    assert step["n"] == 1
+    for name in ("snapshot_ms", "actions_ms", "decide_ms", "act_ms", "wait_ms", "overhead_ms", "total_ms"):
+        assert name in step, name
 
 
 def test_tools_refuse_to_work_on_a_closed_session():

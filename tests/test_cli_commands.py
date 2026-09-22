@@ -66,6 +66,7 @@ def test_run_json_prints_the_result(state_home, fake_browser, capsys):
     assert result["status"] == "done"
     assert result["decisions"] == 1
     assert result["cost"] == pytest.approx(0.0003)
+    assert result["run_id"]
     assert fake_browser[0].closed is True
 
 

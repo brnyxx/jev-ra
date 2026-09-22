@@ -21,6 +21,7 @@ from .config import MAX_PAGES_LIMIT, MAX_STEPS_LIMIT, SERVE_HOST, SERVE_PORT, cl
 from .decide.client import DecisionClient
 from .errors import JevError, JevRaError, render
 from .extract import MODES, extract
+from .logs import configure
 
 logger = logging.getLogger(__name__)
 
@@ -902,6 +903,7 @@ def build_parser():
 
 def main(argv=None):
     """Run one command and return its exit code."""
+    configure()
     parser = build_parser()
     args = parser.parse_args(argv)
     if not getattr(args, "handler", None):

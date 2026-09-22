@@ -20,6 +20,7 @@ from .config import MAX_PAGES_LIMIT, MAX_STEPS_LIMIT, MAX_VALUE_CHARS, MAX_VALUE
 from .decide.client import DecisionClient
 from .errors import ChromeError, JevRaError, render
 from .extract import MODES, extract
+from .logs import configure
 from .search import MAX_PAGES, search
 
 logger = logging.getLogger(__name__)
@@ -109,7 +110,7 @@ class Browser:
 
     def agent(self):
         """An agent bound to the shared session and the decision model."""
-        return Agent(session=self.require(), config=self.config, decide=self.decider())
+        return Agent(session=self.require(), config=self.config, decide=self.decider(), client=self.client)
 
     def stepper(self):
         """An agent for the direct tools: they move the browser without asking Jev anything."""
@@ -350,7 +351,7 @@ def leave(code=0):
 
 def main():
     """Run the stdio MCP server."""
-    logging.basicConfig(level=logging.WARNING)
+    configure()
     browser = Browser()
 
     def terminate(_number, _frame):
