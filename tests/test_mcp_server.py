@@ -287,6 +287,8 @@ def test_sigterm_closes_the_browser_and_then_stops_the_process(monkeypatch):
     assert signal.SIGTERM in handlers
     assert browser.closed == 1
     assert left == [0]
+
+
 class Blocking(FakeSession):
     """A session whose observe() stays inside the tool body until the test lets go of it."""
 

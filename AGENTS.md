@@ -84,6 +84,7 @@ Rules that keep it fast and safe:
 | `needs_value` | supply the missing string in `values` and call `browser_run` again with the same goal |
 | `stuck_loop` | the page is not changing. Read `page.text`, pick a candidate, use `browser_click(ref)` once, then continue with `browser_run` |
 | `unverified_done` | Jev thinks it is done but could not verify. Check with `browser_extract`; if the end state is there, treat as done |
+| `provider_error` | the decision provider would not answer (rejected key, dead connection). Check the key and the route with `jev-ra doctor`; do not retry the goal |
 | `stale` | the page kept changing under it (animations, live feeds). Call `browser_wait()` then retry once |
 | `budget` | steps or time ran out. Narrow the goal or split it |
 | `too_many_controls` | more than 250 controls in view. Scroll or open the relevant section first, then retry |
