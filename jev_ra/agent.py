@@ -674,6 +674,8 @@ def question_shaped(goal):
     if said.endswith("?"):
         return True
     return said in QUESTION_STARTS or said.startswith(tuple(f"{start} " for start in QUESTION_STARTS))
+
+
 def entry(decision, text, changed):
     """One line of the history a decision is given: what was done and whether the page moved."""
     return {
