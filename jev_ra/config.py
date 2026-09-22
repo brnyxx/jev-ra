@@ -34,6 +34,25 @@ ENV_VARIABLES = (
 )
 
 
+# What one call may ask a tool for. These are not budgets the caller is spending, they are the range
+# the tool can answer for at all: a run of ten thousand steps, a search of four hundred pages or a
+# snapshot of every node on a large page is a mistake at the edge, not a decision worth making.
+MAX_STEPS_LIMIT = 200
+MAX_PAGES_LIMIT = 10
+MAX_VALUES = 50
+MAX_VALUE_CHARS = 20000
+
+
+def clamp(value, low, high, label):
+    """One integer argument held inside the range a tool can answer for."""
+    if value is None:
+        return None
+    held = max(low, min(high, int(value)))
+    if held != value:
+        logger.info("%s %s is outside %s..%s; using %s", label, value, low, high, held)
+    return held
+
+
 @dataclass(frozen=True)
 class Viewport:
     """The window size every session emulates."""

@@ -13,9 +13,9 @@ from mcp.types import ToolAnnotations
 
 from . import __version__
 from .agent import Agent
-from .browser import actions
+from .browser import MAX_ELEMENTS, actions
 from .browser.session import Session
-from .config import load
+from .config import MAX_PAGES_LIMIT, MAX_STEPS_LIMIT, MAX_VALUE_CHARS, MAX_VALUES, clamp, load
 from .decide.client import DecisionClient
 from .errors import ChromeError, JevRaError, render
 from .extract import MODES, extract
@@ -124,6 +124,22 @@ class Browser:
                 self.client = None
 
 
+def checked_values(values):
+    """The caller's values, or a ToolError naming the limit they went past.
+
+    Unlike the numbers, these cannot be clamped: silently dropping half a host's values would fill
+    the wrong fields, so an oversized payload is refused before anything is typed or posted.
+    """
+    if not values:
+        return values
+    if len(values) > MAX_VALUES:
+        raise ToolError(f"values takes at most {MAX_VALUES} entries; {len(values)} were supplied")
+    total = sum(len(str(name)) + len(str(text)) for name, text in values.items())
+    if total > MAX_VALUE_CHARS:
+        raise ToolError(f"values takes at most {MAX_VALUE_CHARS} characters in all; {total} were supplied")
+    return values
+
+
 def refuse(_state, _questions):
     """Guard for tools that must never reach the decision model."""
     raise ToolError("This tool never calls the decision model")
@@ -178,13 +194,16 @@ def build_server(browser=None):
     def browser_run(goal: str, values: dict[str, str] | None = None, max_steps: int | None = None) -> dict:
         """Pursue a whole goal on the current page. Supply values for anything that must be typed."""
         started = time.perf_counter()
+        values = checked_values(values)
+        steps = clamp(max_steps, 1, MAX_STEPS_LIMIT, "max_steps")
         agent = browser.agent()
-        return run_result(guarded(lambda: agent.run(goal, values=values, max_steps=max_steps)), started)
+        return run_result(guarded(lambda: agent.run(goal, values=values, max_steps=steps)), started)
 
     @mcp.tool(annotations=hints())
     def browser_act(instruction: str, values: dict[str, str] | None = None) -> dict:
         """Take one decided step towards an instruction on the current page."""
         started = time.perf_counter()
+        values = checked_values(values)
         agent = browser.agent()
         return run_result(guarded(lambda: agent.act(instruction, values=values)), started)
 
@@ -192,12 +211,13 @@ def build_server(browser=None):
     def browser_search(query: str, goal: str | None = None, max_pages: int = MAX_PAGES) -> dict:
         """Search the web, read the best results in parallel tabs, and rank them against the goal."""
         started = time.perf_counter()
+        pages = clamp(max_pages, 1, MAX_PAGES_LIMIT, "max_pages")
         decide = browser.decider()
         payload = guarded(
             lambda: search(
                 query,
                 goal,
-                max_pages,
+                pages,
                 config=browser.config,
                 decide=decide,
                 session_factory=browser.session_factory,
@@ -211,8 +231,9 @@ def build_server(browser=None):
         """List the observed controls and the visible text of the current page."""
         started = time.perf_counter()
         session = browser.require()
+        wanted = clamp(max_elements, 1, MAX_ELEMENTS, "max_elements")
         page = guarded(session.observe)
-        space = actions.build(page, max_elements or session.max_elements)
+        space = actions.build(page, wanted or session.max_elements)
         return {
             "url": page.get("url", ""),
             "title": page.get("title", ""),

@@ -14,10 +14,10 @@ from pathlib import Path
 
 from . import __version__
 from .agent import Agent
-from .browser import actions
+from .browser import MAX_ELEMENTS, actions
 from .browser.chrome import alive, find_browser, forget_pid, forget_port, profile_dir, read_pid, read_port, url_for
 from .browser.session import Session
-from .config import load, redact, state_path
+from .config import MAX_PAGES_LIMIT, MAX_STEPS_LIMIT, clamp, load, redact, state_path
 from .decide.client import DecisionClient
 from .errors import JevError, JevRaError, render
 from .extract import MODES, extract
@@ -734,6 +734,15 @@ def cmd_mcp(_args):
     return 0
 
 
+def bounded(low, high, label):
+    """An argparse type that keeps a flag inside the range the command can answer for."""
+
+    def parse(text):
+        return clamp(int(text), low, high, label)
+
+    return parse
+
+
 def add_json(parser):
     """Give a subcommand a --json flag."""
     parser.add_argument("--json", action="store_true", help="print the raw JSON payload")
@@ -750,7 +759,9 @@ def build_parser():
     run.add_argument("url")
     run.add_argument("goal")
     run.add_argument("--value", action="append", metavar="NAME=TEXT", help="a value the agent may type")
-    run.add_argument("--max-steps", type=int, help="override the configured step budget")
+    run.add_argument(
+        "--max-steps", type=bounded(1, MAX_STEPS_LIMIT, "max_steps"), help="override the configured step budget"
+    )
     run.set_defaults(handler=cmd_run)
 
     opened = add_json(sub.add_parser("open", help="open a URL and keep the session for later commands"))
@@ -758,7 +769,7 @@ def build_parser():
     opened.set_defaults(handler=cmd_open)
 
     observe = add_json(sub.add_parser("observe", help="list the controls and text of the open page"))
-    observe.add_argument("--max-elements", type=int)
+    observe.add_argument("--max-elements", type=bounded(1, MAX_ELEMENTS, "max_elements"))
     observe.set_defaults(handler=cmd_observe)
 
     extract_parser = add_json(sub.add_parser("extract", help="pull structured data out of the open page"))
@@ -825,7 +836,7 @@ def build_parser():
     search.add_argument("query")
     search.add_argument("goal", nargs="?", help="what the pages have to answer; defaults to the query")
     search.add_argument("--goal", dest="goal_flag", metavar="TEXT", help="what the pages have to answer")
-    search.add_argument("--max-pages", type=int, default=3)
+    search.add_argument("--max-pages", type=bounded(1, MAX_PAGES_LIMIT, "max_pages"), default=3)
     search.set_defaults(handler=cmd_search)
 
     bench = add_json(sub.add_parser("bench", help="time the offline fixtures, and the live tasks with --live"))
