@@ -1,8 +1,11 @@
 import json
+import signal
+import subprocess
 
 import pytest
 
 from jev_ra import cli
+from jev_ra.browser import chrome
 from jev_ra.decide import Reply
 from tests.test_agent import FakeSession, answer
 
@@ -305,3 +308,109 @@ def test_search_takes_the_goal_as_a_flag_too(state_home, fake_browser, monkeypat
         "goal": "the exact release date, with source",
         "max_pages": 3,
     }
+
+
+@pytest.fixture
+def cleanable(tmp_path, monkeypatch):
+    """A jev-ra profile with a port file, a recorded pid and some bytes in it."""
+    monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "state"))
+    profile = tmp_path / "state" / "jev-ra" / "chrome-profile"
+    (profile / "Default").mkdir(parents=True)
+    (profile / chrome.PORT_FILE).write_text("41234\n/devtools/browser/abc\n")
+    (profile / chrome.PID_FILE).write_text("4242\n")
+    (profile / "Default" / "History").write_bytes(b"x" * 2048)
+    return profile
+
+
+@pytest.fixture
+def signalled(monkeypatch):
+    """Every pid clean would signal, with no process anywhere near it."""
+    sent = []
+
+    def stop(pid):
+        sent.append(pid)
+        return True
+
+    monkeypatch.setattr(cli, "stop_process", stop)
+    monkeypatch.setattr(cli, "daemon_pids", lambda: [])
+    monkeypatch.setattr(cli, "alive", lambda url, timeout=2.0: url == "http://127.0.0.1:41234")
+    return sent
+
+
+def test_clean_stops_the_recorded_chrome_and_empties_the_profile(cleanable, signalled, capsys):
+    assert cli.main(["clean", "--json"]) == 0
+    report = json.loads(capsys.readouterr().out)
+    assert report["chrome"] == {"port": 41234, "pid": 4242, "running": True, "stopped": True}
+    assert report["profile_removed"] is True
+    assert signalled == [4242]
+    assert not cleanable.exists()
+
+
+def test_clean_dry_run_changes_nothing(cleanable, signalled, capsys):
+    assert cli.main(["clean", "--dry-run"]) == 0
+    out = capsys.readouterr().out
+    assert "would stop pid 4242" in out
+    assert "would remove" in out
+    assert signalled == []
+    assert (cleanable / chrome.PORT_FILE).exists()
+
+
+def test_clean_can_keep_the_profile_and_still_forget_the_dead_chrome(cleanable, signalled, capsys):
+    assert cli.main(["clean", "--keep-profile"]) == 0
+    assert "profile: kept" in capsys.readouterr().out
+    assert signalled == [4242]
+    assert cleanable.exists()
+    assert not (cleanable / chrome.PORT_FILE).exists()
+    assert not (cleanable / chrome.PID_FILE).exists()
+
+
+def test_clean_lists_the_daemons_it_will_not_guess_about(cleanable, signalled, monkeypatch, capsys):
+    monkeypatch.setattr(cli, "daemon_pids", lambda: [111, 222])
+    assert cli.main(["clean"]) == 0
+    out = capsys.readouterr().out
+    assert "111, 222" in out
+    assert "--daemons" in out
+    assert signalled == [4242]
+
+
+def test_clean_stops_the_daemons_when_it_is_told_to(cleanable, signalled, monkeypatch, capsys):
+    monkeypatch.setattr(cli, "daemon_pids", lambda: [111, 222])
+    assert cli.main(["clean", "--daemons", "--json"]) == 0
+    report = json.loads(capsys.readouterr().out)
+    assert report["daemons"] == {"found": [111, 222], "stopped": [111, 222]}
+    assert signalled == [4242, 111, 222]
+
+
+def test_clean_says_when_nothing_answered_on_the_recorded_port(cleanable, signalled, monkeypatch, capsys):
+    monkeypatch.setattr(cli, "alive", lambda _url, timeout=2.0: False)
+    assert cli.main(["clean"]) == 0
+    assert "nothing answered" in capsys.readouterr().out
+    assert signalled == []
+
+
+def test_the_daemons_are_read_from_pgrep_and_a_missing_pgrep_is_not_fatal():
+    def run(argv, **_kwargs):
+        assert "browser_harness.daemon" in argv
+        return subprocess.CompletedProcess(argv, 0, stdout="222\n111\n", stderr="")
+
+    assert cli.daemon_pids(run=run) == [111, 222]
+
+    def missing(argv, **_kwargs):
+        raise OSError("pgrep: command not found")
+
+    assert cli.daemon_pids(run=missing) == []
+
+
+def test_a_process_that_is_already_gone_is_not_an_error():
+    sent = []
+
+    def kill(pid, number):
+        sent.append((pid, number))
+
+    assert cli.stop_process(4242, kill=kill) is True
+    assert sent == [(4242, signal.SIGTERM)]
+
+    def gone(_pid, _number):
+        raise ProcessLookupError(3, "No such process")
+
+    assert cli.stop_process(4242, kill=gone) is False

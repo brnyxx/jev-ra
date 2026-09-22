@@ -170,6 +170,7 @@ positional arguments:
     wait        wait a moment and observe again
     screenshot  save a JPEG of the viewport
     close       close the session kept by `open`
+    clean       stop what jev-ra started and empty its profile
     mcp         run the MCP stdio server
     skill       print the agent guide, for saving as a skill file
     install     register jev-ra as an MCP server with a coding agent

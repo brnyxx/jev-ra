@@ -16,6 +16,7 @@ from ..errors import ChromeError
 logger = logging.getLogger(__name__)
 
 PORT_FILE = "DevToolsActivePort"
+PID_FILE = "jev-ra-chrome.pid"
 STDERR_LOG = "chrome-stderr.log"
 STARTUP_TIMEOUT_S = 30.0
 PROBE_TIMEOUT_S = 2.0
@@ -108,6 +109,15 @@ def read_port(profile):
     return int(first) if first.isdigit() else None
 
 
+def read_pid(profile):
+    """The pid of the Chrome jev-ra launched on this profile, or None when it did not launch one."""
+    try:
+        first = (Path(profile) / PID_FILE).read_text().strip()
+    except OSError:
+        return None
+    return int(first) if first.isdigit() else None
+
+
 def url_for(port):
     """The CDP base url for a port on loopback."""
     return f"http://127.0.0.1:{port}"
@@ -191,8 +201,10 @@ def launch(binary, profile, viewport=(1280, 900), env=None):
     """Start Chrome on its own profile with an ephemeral debugging port."""
     profile = Path(profile)
     profile.mkdir(parents=True, exist_ok=True)
-    # A stale port file from a dead Chrome would otherwise be read as a live one.
+    # A stale port file from a dead Chrome would otherwise be read as a live one, and a stale pid
+    # would be signalled by `jev-ra clean` long after the kernel gave the number to someone else.
     (profile / PORT_FILE).unlink(missing_ok=True)
+    (profile / PID_FILE).unlink(missing_ok=True)
     log = profile / STDERR_LOG
     log.unlink(missing_ok=True)
     argv = [
@@ -209,9 +221,12 @@ def launch(binary, profile, viewport=(1280, 900), env=None):
     # Chrome explains itself on stderr and then exits. Thrown away, every refusal looks the same.
     handle = log.open("wb")
     try:
-        return subprocess.Popen(argv, stdout=subprocess.DEVNULL, stderr=handle, start_new_session=True)
+        process = subprocess.Popen(argv, stdout=subprocess.DEVNULL, stderr=handle, start_new_session=True)
     finally:
         handle.close()
+    # Its own session means nothing reaps it when we exit, so record who to stop later.
+    (profile / PID_FILE).write_text(f"{process.pid}\n")
+    return process
 
 
 def said(message, profile):
@@ -267,6 +282,11 @@ LAUNCHED_URL = None
 def forget_port(profile):
     """Drop the port file, so a dead Chrome is not read as a live one later."""
     (Path(profile) / PORT_FILE).unlink(missing_ok=True)
+
+
+def forget_pid(profile):
+    """Drop the pid file, so a Chrome that has been stopped is not signalled again."""
+    (Path(profile) / PID_FILE).unlink(missing_ok=True)
 
 
 def remembered(url, profile):

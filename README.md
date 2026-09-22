@@ -132,6 +132,7 @@ Every response carries `elapsed_ms`, and `decisions` plus `cost` whenever Jev wa
 | `wait` | wait a moment and observe again |
 | `screenshot [PATH]` | save a JPEG of the viewport |
 | `close` | close the session kept by `open` |
+| `clean [--dry-run] [--keep-profile] [--daemons]` | stop what jev-ra started and empty its profile |
 | `mcp` | run the MCP stdio server |
 | `skill` | print the agent guide, for saving as a skill file |
 | `install claude\|codex [--scope user\|project\|local]` | register jev-ra as an MCP server with a coding agent |

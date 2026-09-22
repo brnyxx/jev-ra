@@ -288,3 +288,19 @@ def test_a_dead_url_the_user_set_is_reported_not_replaced(monkeypatch, tmp_path)
     assert "http://127.0.0.1:9222" in rendered
     assert "unset BU_CDP_URL" in rendered
     assert env["BU_CDP_URL"] == "http://127.0.0.1:9222"
+
+
+def test_the_launched_pid_is_recorded_next_to_the_port(monkeypatch, tmp_path):
+    class Started:
+        pid = 4242
+
+    profile = tmp_path / "profile"
+    profile.mkdir()
+    (profile / chrome.PID_FILE).write_text("99999\n")
+    monkeypatch.setattr(chrome, "browser_version", lambda *_a, **_k: None)
+    monkeypatch.setattr(chrome.subprocess, "Popen", lambda *_a, **_k: Started())
+    assert chrome.launch("/opt/chrome", profile).pid == 4242
+    assert chrome.read_pid(profile) == 4242
+    chrome.forget_pid(profile)
+    assert chrome.read_pid(profile) is None
+    assert chrome.read_pid(tmp_path / "missing") is None

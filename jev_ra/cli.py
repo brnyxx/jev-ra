@@ -6,6 +6,7 @@ import logging
 import os
 import shlex
 import shutil
+import signal
 import subprocess
 import sys
 import time
@@ -14,7 +15,7 @@ from pathlib import Path
 from . import __version__
 from .agent import Agent
 from .browser import actions
-from .browser.chrome import find_browser, profile_dir
+from .browser.chrome import alive, find_browser, forget_pid, forget_port, profile_dir, read_pid, read_port, url_for
 from .browser.session import Session
 from .config import load, redact, state_path
 from .decide.client import DecisionClient
@@ -368,6 +369,116 @@ def chrome_check(config):
         session.close()
 
 
+DAEMON_PATTERN = "browser_harness.daemon"
+
+
+def daemon_pids(run=None):
+    """The browser-harness daemons this user is running, or nothing when pgrep cannot say."""
+    run = run or subprocess.run
+    argv = ["pgrep", "-f", DAEMON_PATTERN]
+    if hasattr(os, "getuid"):
+        argv[1:1] = ["-u", str(os.getuid())]
+    try:
+        done = run(argv, capture_output=True, text=True, timeout=5)
+    except (OSError, subprocess.SubprocessError):
+        return []
+    return sorted(int(line) for line in done.stdout.split() if line.isdigit())
+
+
+def stop_process(pid, kill=None):
+    """Ask one process to exit, reporting whether it was still there to ask."""
+    kill = kill or os.kill
+    try:
+        kill(pid, signal.SIGTERM)
+    except OSError:
+        return False
+    return True
+
+
+def directory_size(path):
+    """How many bytes a directory holds, skipping whatever it will not let us read."""
+    total = 0
+    for item in Path(path).rglob("*"):
+        try:
+            if item.is_file():
+                total += item.stat().st_size
+        except OSError:
+            continue
+    return total
+
+
+def clean_chrome(profile, report, lines, acting):
+    """Stop the Chrome jev-ra launched on this profile, if one is still answering."""
+    port = read_port(profile)
+    pid = read_pid(profile)
+    running = bool(port) and alive(url_for(port))
+    report["chrome"] = {"port": port, "pid": pid, "running": running, "stopped": False}
+    if not running:
+        where = f"the recorded port ({port})" if port else "any recorded port"
+        lines.append(f"chrome: nothing answered on {where}")
+        return
+    if pid is None:
+        lines.append(f"chrome: a Chrome answers on {url_for(port)}, but jev-ra did not start it; left alone")
+        return
+    if not acting:
+        lines.append(f"chrome: would stop pid {pid} on {url_for(port)}")
+        return
+    report["chrome"]["stopped"] = stop_process(pid)
+    lines.append(f"chrome: stopped pid {pid} on {url_for(port)}")
+    forget_port(profile)
+    forget_pid(profile)
+
+
+def clean_daemons(report, lines, acting, wanted):
+    """Stop the browser-harness daemons, but only once someone has said which are ours."""
+    found = daemon_pids()
+    report["daemons"] = {"found": found, "stopped": []}
+    if not found:
+        lines.append("daemons: none running")
+        return
+    listed = ", ".join(str(pid) for pid in found)
+    if not wanted:
+        lines.append(
+            f"daemons: {len(found)} running ({listed}); jev-ra cannot tell which of them are its own, "
+            "so they were left alone. Pass --daemons to stop them."
+        )
+        return
+    if not acting:
+        lines.append(f"daemons: would stop {listed}")
+        return
+    report["daemons"]["stopped"] = [pid for pid in found if stop_process(pid)]
+    lines.append(f"daemons: stopped {listed}")
+
+
+def clean_profile(profile, report, lines, acting, keep):
+    """Delete the automation profile, which nothing else caps the size of."""
+    if keep:
+        lines.append(f"profile: kept {profile}")
+        return
+    if not profile.exists():
+        lines.append(f"profile: nothing at {profile}")
+        return
+    size = directory_size(profile) / 1e6
+    if not acting:
+        lines.append(f"profile: would remove {profile} ({size:.1f} MB)")
+        return
+    shutil.rmtree(profile, ignore_errors=True)
+    report["profile_removed"] = not profile.exists()
+    lines.append(f"profile: removed {profile} ({size:.1f} MB)")
+
+
+def cmd_clean(args):
+    """Stop what jev-ra started and empty its profile."""
+    profile = profile_dir()
+    acting = not args.dry_run
+    report = {"profile": str(profile), "dry_run": bool(args.dry_run), "profile_removed": False}
+    lines = []
+    clean_chrome(profile, report, lines, acting)
+    clean_daemons(report, lines, acting, args.daemons)
+    clean_profile(profile, report, lines, acting, args.keep_profile)
+    return emit(args, report, lines)
+
+
 def cmd_doctor(args):
     """Check the key, the route, Chrome and one live decision."""
     config = load()
@@ -671,6 +782,12 @@ def build_parser():
 
     close = add_json(sub.add_parser("close", help="close the session kept by `open`"))
     close.set_defaults(handler=cmd_close)
+
+    clean = add_json(sub.add_parser("clean", help="stop what jev-ra started and empty its profile"))
+    clean.add_argument("--dry-run", action="store_true", help="print what would happen and touch nothing")
+    clean.add_argument("--keep-profile", action="store_true", help="leave the Chrome profile where it is")
+    clean.add_argument("--daemons", action="store_true", help="also stop the browser-harness daemons it lists")
+    clean.set_defaults(handler=cmd_clean)
 
     sub.add_parser("mcp", help="run the MCP stdio server").set_defaults(handler=cmd_mcp)
 
