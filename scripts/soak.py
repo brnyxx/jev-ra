@@ -61,6 +61,7 @@ def run_once(task, session, config, decide):
             decisions=0,
             cost=0.0,
             url=task.url,
+            site_error=False,
             text="",
             elements=[],
         )
@@ -71,6 +72,7 @@ def run_once(task, session, config, decide):
             decisions=result.decisions,
             cost=result.cost,
             url=result.url,
+            site_error=result.site_error,
             text=(result.final_page.get("text") or "")[:TEXT_CHARS],
             elements=result.final_page.get("elements") or [],
         )
@@ -99,6 +101,7 @@ def summarise(rows):
         "decisions_total": sum(decisions),
         "reasons": dict(sorted(reasons.items(), key=lambda item: item[1], reverse=True)),
         "raised": sum(1 for row in rows if row.get("raised")),
+        "site_error": sum(1 for row in rows if row.get("site_error")),
     }
 
 
@@ -109,6 +112,7 @@ def report(summary, name):
     lines.append(f"  seconds: median {summary['median_s']}, p95 {summary['p95_s']}")
     lines.append(f"  decisions: median {summary['decisions_median']}, total {summary['decisions_total']}")
     lines.append("  reasons: " + (", ".join(f"{key} x{value}" for key, value in summary["reasons"].items()) or "none"))
+    lines.append(f"  site errors: {summary['site_error']}")
     lines.append(f"  raised: {summary['raised']}")
     return lines
 

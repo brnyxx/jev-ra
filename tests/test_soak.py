@@ -14,7 +14,7 @@ def soak():
     return load(ROOT / "scripts" / "soak.py", "soak")
 
 
-def result_row(status, reason, elapsed_ms, decisions, passed, why="", raised=None):
+def result_row(status, reason, elapsed_ms, decisions, passed, why="", raised=None, site_error=False):
     row = {
         "task": "t",
         "family": "f",
@@ -25,6 +25,7 @@ def result_row(status, reason, elapsed_ms, decisions, passed, why="", raised=Non
         "cost": 0.0,
         "passed": passed,
         "why": why,
+        "site_error": site_error,
     }
     if raised:
         row["raised"] = raised
@@ -44,6 +45,33 @@ def test_the_summary_reports_pass_count_seconds_decisions_and_reasons(soak):
     assert summary["decisions_median"] == 4 and summary["decisions_total"] == 16
     assert summary["reasons"] == {"ChromeError": 1, "stuck_loop": 1}
     assert summary["raised"] == 1
+    assert summary["site_error"] == 0
+
+
+def test_the_summary_counts_the_attempts_a_site_answered_with_an_error(soak):
+    rows = [
+        result_row("done", "goal_achieved", 1000, 3, True),
+        result_row("escalate", "blocked_by_site", 900, 0, False, "escalate:blocked_by_site", site_error=True),
+        result_row("escalate", "blocked_by_site", 950, 0, False, "escalate:blocked_by_site", site_error=True),
+    ]
+    summary = soak.summarise(rows)
+    assert summary["site_error"] == 2
+    assert "site errors: 2" in "\n".join(soak.report(summary, "httpbin_form_submit"))
+
+
+def test_a_soak_row_keeps_whether_the_site_answered_with_an_error(monkeypatch, soak):
+    from jev_ra.agent import Result
+
+    class Agent:
+        def __init__(self, **_kwargs):
+            pass
+
+        def run(self, *_args, **_kwargs):
+            return Result(status="escalate", reason="blocked_by_site", site_error=True, http_status=502)
+
+    monkeypatch.setattr(soak, "Agent", Agent)
+    row = soak.run_once(soak.task_named("httpbin_form_submit"), object(), object(), lambda *_: None)
+    assert row["site_error"] is True and row["status"] == "escalate"
 
 
 def test_a_clean_soak_has_no_reasons_and_no_raises(soak):
@@ -63,6 +91,7 @@ def test_an_empty_soak_reports_nothing_rather_than_dividing_by_zero(soak):
         "decisions_total": 0,
         "reasons": {},
         "raised": 0,
+        "site_error": 0,
     }
 
 
@@ -78,6 +107,7 @@ def test_the_report_prints_the_numbers_and_the_reasons(soak):
     assert "median 2.0, p95 3.0" in text
     assert "decisions: median 6, total 12" in text
     assert "stuck_loop x1" in text and "raised: 0" in text
+    assert "site errors: 0" in text
 
 
 def test_a_calls_soak_with_no_growth_and_no_new_tab_does_not_leak(soak):
