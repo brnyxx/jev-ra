@@ -277,6 +277,12 @@ def test_a_page_that_answers_with_a_refusal_is_the_site_refusing():
     assert result.decisions == 0
 
 
+def test_a_long_page_that_mentions_a_refusal_is_not_serving_one():
+    article = "Protect routes from bots with an invisible check instead of a CAPTCHA. " + "word " * 400
+    result = agent_with(decider([CLICK_SUBMIT]), session=FakeSession([walled(article)])).run("read the docs")
+    assert result.reason != "blocked_by_site"
+
+
 def test_every_listed_wall_phrase_is_read_as_one():
     from jev_ra.agent import WALL_PHRASES
 

@@ -62,3 +62,9 @@ def test_an_ordinary_page_is_not_a_wall(session, fixture_server):
     decide = always_click("Documentation")
     result = run_on(session, f"{fixture_server}/sites/off-site-links.html", decide)
     assert result.reason != "blocked_by_site"
+
+
+def test_a_page_about_walls_is_not_a_wall(session, fixture_server):
+    decide = always_click("Read the deployment protection guide")
+    result = run_on(session, f"{fixture_server}/sites/captcha-mention.html", decide)
+    assert result.reason != "blocked_by_site"

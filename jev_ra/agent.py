@@ -39,6 +39,10 @@ STALE_OBSERVATION = "the page changed since that observation, observe again"
 # decision can act on, and reporting it as BLOCKED says the task was impossible rather than that
 # the site would not serve it. Matched lowercased, against everything the opened page says.
 WALL_PHRASES = ("captcha", "접속이 차단", "unusual traffic", "bots use", "access denied")
+# A refusal is the whole page. Past this much text the page is about something else and merely
+# mentions the word: vercel.com/docs offers "an invisible check instead of a CAPTCHA" six
+# thousand characters in, and reading that as a wall costs a task that was working.
+WALL_TEXT_CHARS = 1500
 # A wall that says nothing at all still says it every time. One thin page is an ordinary login
 # form; three opens in a row on one host that answer with nothing is the host answering.
 THIN_TEXT_CHARS = 200
@@ -428,21 +432,24 @@ class _Run:
     def walled(self, page, before=None):
         """How this site is refusing to serve the machine, or an empty string.
 
-        A refusal in the page's own words counts wherever it is read: a challenge that replaces
-        the page after a click is the same wall as one served on arrival. Saying nothing counts
-        only on a page the run opened, because a wall answers every fresh address that way, while
-        a page the run is still working on says nothing about the host either way.
+        A refusal in the page's own words counts wherever it is read, as long as the refusal is
+        all the page says: a challenge that replaces the page after a click is the same wall as
+        one served on arrival, and a documentation page about bot protection is neither. Saying
+        nothing counts only on a page the run opened, because a wall answers every fresh address
+        that way, while a page the run is still working on says nothing about the host either way.
         """
         text = page_text(page)
-        lowered = text.lower()
-        phrase = next((phrase for phrase in WALL_PHRASES if phrase in lowered), "")
-        if phrase:
-            return f"the page answered with {phrase!r}"
+        said = text.strip()
+        if len(said) < WALL_TEXT_CHARS:
+            lowered = text.lower()
+            phrase = next((phrase for phrase in WALL_PHRASES if phrase in lowered), "")
+            if phrase:
+                return f"the page answered with {phrase!r}"
         url = page.get("url", "")
         if before is not None and url == before.get("url", ""):
             return ""
         host = urlsplit(url).hostname or ""
-        if not host or len(text.strip()) >= THIN_TEXT_CHARS:
+        if not host or len(said) >= THIN_TEXT_CHARS:
             self.opens = ()
             return ""
         self.opens = (*self.opens, host) if not self.opens or self.opens[-1] == host else (host,)

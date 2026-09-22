@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Bot protection</title>
+<style>body { font: 14px/1.5 system-ui; margin: 0; padding: 32px; max-width: 46em; }</style>
+</head>
+<body>
+<!-- A documentation page about walls is not a wall. vercel.com/docs says "instead of a CAPTCHA"
+     in a feature blurb, six thousand characters into a page with forty controls on it. -->
+<h1>Bot protection</h1>
+<nav><a href="/sites/empty.html">Overview</a> <a href="/sites/disclosure.html">Deployments</a></nav>
+<p id="body"></p>
+<p>Protect sensitive routes from sophisticated bots with an invisible check instead of a CAPTCHA.</p>
+<p><a href="/sites/off-site-links.html">Read the deployment protection guide</a></p>
+<script>
+  const words = [];
+  for (let n = 0; n < 40; n++) words.push('Every deployment gets its own protected preview URL.');
+  document.getElementById('body').textContent = words.join(' ');
+</script>
+</body>
+</html>
