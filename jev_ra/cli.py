@@ -385,13 +385,32 @@ def daemon_pids(run=None):
     return sorted(int(line) for line in done.stdout.split() if line.isdigit())
 
 
+EXIT_TIMEOUT_S = 10.0
+EXIT_INTERVAL_S = 0.2
+
+
+def wait_for_exit(pid, timeout=EXIT_TIMEOUT_S, kill=None):
+    """Wait for a stopped process to go, so what it writes on its way out is deleted with it."""
+    kill = kill or os.kill
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        try:
+            kill(pid, 0)
+        except OSError:
+            return True
+        time.sleep(EXIT_INTERVAL_S)
+    logger.warning("Process %s was asked to exit %g s ago and is still running", pid, timeout)
+    return False
+
+
 def stop_process(pid, kill=None):
-    """Ask one process to exit, reporting whether it was still there to ask."""
+    """Ask one process to exit and wait for it, reporting whether it was there to ask."""
     kill = kill or os.kill
     try:
         kill(pid, signal.SIGTERM)
     except OSError:
         return False
+    wait_for_exit(pid, kill=kill)
     return True
 
 

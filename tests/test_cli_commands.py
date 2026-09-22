@@ -401,15 +401,20 @@ def test_the_daemons_are_read_from_pgrep_and_a_missing_pgrep_is_not_fatal():
     assert cli.daemon_pids(run=missing) == []
 
 
-def test_a_process_that_is_already_gone_is_not_an_error():
+def test_a_process_is_asked_to_exit_and_waited_for():
     sent = []
 
     def kill(pid, number):
+        if number == 0:
+            raise ProcessLookupError(3, "No such process")
         sent.append((pid, number))
 
     assert cli.stop_process(4242, kill=kill) is True
     assert sent == [(4242, signal.SIGTERM)]
+    assert cli.wait_for_exit(4242, kill=kill) is True
 
+
+def test_a_process_that_is_already_gone_is_not_an_error():
     def gone(_pid, _number):
         raise ProcessLookupError(3, "No such process")
 
