@@ -473,7 +473,7 @@ wheels = [
 
 [[package]]
 name = "jev-ra"
-version = "0.2.2"
+version = "0.2.3"
 source = { editable = "." }
 dependencies = [
     { name = "browser-harness", extra = ["mcp"] },

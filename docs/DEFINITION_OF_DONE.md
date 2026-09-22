@@ -51,7 +51,7 @@ Measured on main at 0.2.2 (CI green on `371d417`: test x3, image, macos, windows
 | tests without a browser | green | 731 passed, 91.3 % |
 | tests with a browser | green | 925 passed, 95.62 % |
 | CI | green | `371d417` |
-| real-site corpus | red | 201/219 possible tasks = 91.8 % (bar 95 %), `12f49f1` 3 runs |
+| real-site corpus | red | 207/234 possible tasks = 88.5 % on `f26087c`, 3 runs via TypeSafe direct; run-to-run noise about ±5 of 240 (docs/BENCHMARKS.md) |
 | head-to-head | green | docs/BENCHMARKS.md, browser-use 29/40 = 72 % at 19.4 s vs 102/120 = 85 % at 3.1 s |
 | recorded tasks | not measured | needs a quiet machine, 5 runs |
 | recovery, live | green | docs/PRODUCTION_REVIEW_2026-09-22.md sequence, 22.5 s relaunch |
@@ -60,7 +60,7 @@ Measured on main at 0.2.2 (CI green on `371d417`: test x3, image, macos, windows
 
 What remains, in the order it pays off:
 
-1. **Decision quality** (lane `fix/decisions`, paused at `dc5938f` with the late-route fixture written and the snapshot naming each link's address; the wait itself is not wired). Three mechanisms: a link click waited out by the address (nhk), href-less anchors offered as controls (JMA), a date picker driven as a grid (Google Flights). Then the state carries the last step's effect and each candidate's evidence, measured on the corpus and the public twenty; then `JEV_RA_HYBRID` as an experiment with its cost. This is the gate that moves the corpus from 91.8 % to 95 %.
+1. **Decision quality**. The three mechanisms (late-route wait, href-less anchors, date grid) are on main as of 0.2.3 and hold on their fixtures; nhk still ends 0/5 live, so the late push is not the whole story there. The state-evidence change and the `JEV_RA_HYBRID` helper sit on `fix/decisions` (`416273c`, `3f2f950`): the first makes hackernews_page_two read as BLOCKED on every rerun and is not merged until that is understood; the second depends on it. Measuring either on the public twenty needs OpenRouter credits (judges are o4-mini and gpt-4o).
 2. **Walled sites**: gov.kr (now plus.gov.kr) and oliveyoung join the walls in corpus/egress.md; eight sites need a `JEV_RA_PROXY` egress to be measured at all.
 3. **Public benchmarks at full size**: Online-Mind2Web all 300 through WebJudge, trajectories published; WebVoyager as the regression gate.
 4. **Recorded tasks**: `uv run jev-ra bench --live --runs 5` on a quiet machine, against 1.5 / 5.0 / 2.0 s.

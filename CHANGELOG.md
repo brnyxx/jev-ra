@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.2.3 - 2026-09-22
+
+### Changed
+- A click on a link whose router pushes the address late is waited out by the address, and the
+  route counts as arrived only when the page's title, text or controls changed with it.
+- An `<a>` without `href` that carries a role, a tabindex, a handler or a pointer cursor is offered
+  as a control; ordinary pages gain no controls from this.
+- A date picker is driven from its calendar cells: once a click opened a grid of dates, the cells
+  are offered first and the opener is not clicked again.
+- A corpus spec may write a date as `{today+N}`, so a booking task never asks for a day the site's
+  picker no longer offers.
+- `docs/BENCHMARKS.md` records the corpus at this release on both trees, three runs each, and what
+  run-to-run noise on live sites looks like.
+
 ## 0.2.2 - 2026-09-22
 
 ### Added

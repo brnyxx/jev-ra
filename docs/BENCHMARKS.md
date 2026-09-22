@@ -247,3 +247,24 @@ uv run python scripts/render_side_by_side.py docs/recordings/wikipedia/jev-ra \
 
 `render_side_by_side.py` accepts several recording directories and lays them out as columns with a
 running clock each, at 1× speed. It writes a GIF always, and an MP4 as well when ffmpeg is on PATH.
+
+## The corpus at 0.2.3, and what run-to-run noise looks like
+
+Measured 2026-09-22 through the TypeSafe direct route (OpenRouter was out of credits), three runs
+each, same eighty specs with the Flights date now written as `{today+30}`. Raw rows:
+[`2026-09-22-v0.2/`](benchmarks/2026-09-22-v0.2/).
+
+| tree | passed / 240 | possible tasks (walled sites excluded) |
+|---|---|---|
+| main `f26087c` (0.2.2 + the date placeholder) | 207 = 86.2 % | 207 / 234 = 88.5 % |
+| candidate `1f87f60` (+ late-route wait, href-less anchors, date picker, route content) | 202 = 84.2 % | 202 / 234 = 86.3 % |
+
+The five-task gap is not the code. The eight tasks that differed were rerun five times each on
+both trees: amazon, hackernews, tailwind 5/5 on both; the two httpbin form tasks went 0/5 on main
+and 5/5 on the candidate (httpbin.org answers with an error page for minutes at a time, which the
+run reads as `blocked`); nhk 0/5 on both; react 2/5 against 1/5. So a single three-run pass moves
+by about ±5 of 240 on site weather alone, and a change is only read as a gain or a loss when a
+per-task rerun agrees. The three mechanisms in the candidate hold on their fixtures (late route
+3/3, href-less anchors 2/2, date grid 2/2) and cost nothing on the corpus; the state-evidence
+change tried in the same lane (`416273c` on `fix/decisions`) was left out because it turned
+hackernews_page_two from 3/3 into 0/3 on every rerun.
