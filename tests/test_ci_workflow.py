@@ -40,7 +40,7 @@ def test_the_workflow_is_well_formed():
     blocks(text)
     assert text.startswith("name: ci\n")
     assert re.search(r"^jobs:$", text, re.MULTILINE)
-    assert text.count("steps:") == 2
+    assert text.count("steps:") == 4
 
 
 def test_the_release_workflow_is_well_formed():
@@ -116,6 +116,35 @@ def test_ci_runs_lint_and_the_browser_tests_without_skipping_them():
     assert "uv run pytest -q -m browser" in text
     assert 'JEV_RA_REQUIRE_BROWSER: "1"' in text
     assert "not browser" not in text
+
+
+def job(name):
+    """One job out of the workflow: everything under its name up to the next job's."""
+    chunk = WORKFLOW.read_text().split(f"\n  {name}:\n", 1)[1]
+    following = re.search(r"^  \w[\w-]*:$", chunk, re.MULTILINE)
+    return chunk[: following.start()] if following else chunk
+
+
+def test_ci_starts_cold_on_windows_and_macos():
+    assert "runs-on: windows-latest" in job("windows")
+    assert "runs-on: macos-latest" in job("macos")
+    # Cold means the browser jev-ra finds and launches itself, so neither job may point it at one.
+    for name in ("windows", "macos"):
+        assert "BU_CDP_URL:" not in job(name)
+        assert "export BU_CDP_URL" not in job(name)
+        assert "doctor --json" in job(name)
+        assert "chrome" in job(name)
+
+
+def test_the_windows_job_says_why_it_is_not_blocking_yet():
+    windows = job("windows")
+    assert "continue-on-error: true" in windows
+    reason = [line.strip(" #") for line in windows.splitlines() if line.strip().startswith("#")]
+    assert any("never been run on Windows" in line for line in reason), reason
+
+
+def test_the_macos_job_is_blocking():
+    assert "continue-on-error" not in job("macos")
 
 
 def test_ci_also_type_checks():

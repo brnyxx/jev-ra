@@ -96,3 +96,51 @@ jobs:
           docker run --rm jev-ra:ci doctor --json > doctor.json || true
           cat doctor.json
           python -c "import json; assert json.load(open('doctor.json'))['chrome']['ok']"
+
+  macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: uv sync --locked
+
+      # No BU_CDP_URL and no key: this is the first run on a machine, and it has to find the
+      # preinstalled Chrome, launch one on a profile of its own, and answer.
+      - name: Cold start finds and launches a Chrome
+        run: |
+          uv run jev-ra doctor --json > doctor.json || true
+          cat doctor.json
+          uv run python -c "import json; assert json.load(open('doctor.json'))['chrome']['ok']"
+
+  windows:
+    runs-on: windows-latest
+    # Not blocking yet, and the reason is that jev-ra has never been run on Windows at all - not
+    # on a runner, not on a desk. Chrome and Edge are both on the image and their paths are in
+    # jev_ra/browser/chrome.py, but nothing has exercised that launch path: browser-harness
+    # reaches its daemon over TCP loopback there instead of a unix socket, and Chrome is started
+    # windowed because platform_flags only adds --headless on Linux. This job exists to find out
+    # what really happens; make it blocking the first time it passes.
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: uv sync --locked
+
+      - name: Cold start finds and launches a Chrome
+        shell: bash
+        run: |
+          uv run jev-ra doctor --json > doctor.json || true
+          cat doctor.json
+          uv run python -c "import json; assert json.load(open('doctor.json'))['chrome']['ok']"
