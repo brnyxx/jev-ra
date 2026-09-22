@@ -10,7 +10,7 @@ from .config import load, redact
 from .decide.client import DecisionClient
 from .decide.policy import InvalidDecision, build_questions, build_state, read_answers
 from .decide.questions import CANDIDATES, GOAL_ACHIEVED_THRESHOLD
-from .errors import JevBadResponse, JevError, StalePage, render
+from .errors import Escalated, JevBadResponse, JevError, StalePage, render
 from .profile import CATEGORIES, StepTimer
 from .text import NeedsValue, ValueBinder
 
@@ -270,7 +270,20 @@ class Agent:
         return self.control("wait")
 
     def press(self, key):
-        """Press a key and observe again."""
+        """Press a key and observe again, through the check a decided press already gets.
+
+        Enter lands on whatever holds focus, so a snapshot offers it only as `press_enter` naming
+        the field it would submit, and acting on that action re-checks the field right before the
+        key goes out. A direct press used to skip all of it and send the key into the void.
+        Escape and Tab name no field and submit nothing, so there is nothing for them to check.
+        """
+        page = self.session.observe()
+        action = next((a for a in page["actions"] if a["kind"] == "press" and a.get("key") == key), None)
+        if action is not None:
+            self.session.act(action, page)
+            return self.session.observe()
+        if key == "Enter":
+            raise Escalated("Nothing is focused, so Enter has nothing to submit.")
         self.session.press(key)
         return self.session.observe()
 

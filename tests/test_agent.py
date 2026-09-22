@@ -5,6 +5,7 @@ from jev_ra import config
 from jev_ra.agent import Agent
 from jev_ra.browser.session import StalePage
 from jev_ra.decide import DecisionClient, JevBadResponse, Reply
+from jev_ra.errors import Escalated
 
 FORM_ACTIONS = [
     {"id": "e1", "node": 1, "role": "textbox", "kind": "fill", "label": "City", "value": ""},
@@ -303,11 +304,34 @@ class PressSession(FakeSession):
         self.pressed.append(key)
 
 
-def test_press_sends_the_key_and_reads_the_page_again():
-    session = PressSession()
+PRESS_ENTER = {"id": "press_enter", "node": 1, "kind": "press", "key": "Enter", "label": "Press Enter to submit City"}
+
+
+def test_a_direct_enter_goes_through_the_observed_action_a_decided_one_would_use():
+    focused = page(0)
+    session = PressSession(pages=[{**focused, "actions": [*FORM_ACTIONS, PRESS_ENTER]}])
     agent = agent_with(decider([DONE]), session=session)
     assert agent.press("Enter")["title"] == "Booking form"
-    assert session.pressed == ["Enter"]
+    assert session.acted == [("press_enter", "press", None)]
+    assert session.pressed == []
+
+
+def test_a_direct_enter_with_nothing_focused_is_refused_rather_than_pressed():
+    session = PressSession()
+    agent = agent_with(decider([DONE]), session=session)
+    with pytest.raises(Escalated) as caught:
+        agent.press("Enter")
+    assert "nothing is focused" in caught.value.render().lower()
+    assert session.pressed == []
+    assert session.acted == []
+
+
+def test_escape_and_tab_have_no_field_to_check_and_still_go_out():
+    session = PressSession()
+    agent = agent_with(decider([DONE]), session=session)
+    assert agent.press("Escape")["title"] == "Booking form"
+    assert agent.press("Tab")["title"] == "Booking form"
+    assert session.pressed == ["Escape", "Tab"]
 
 
 def test_close_closes_the_decision_client_it_owns():

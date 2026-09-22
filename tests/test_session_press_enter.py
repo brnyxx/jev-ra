@@ -2,7 +2,9 @@
 
 import pytest
 
-from jev_ra.errors import StalePage
+from jev_ra import config
+from jev_ra.agent import Agent
+from jev_ra.errors import Escalated, StalePage
 
 pytestmark = pytest.mark.browser
 
@@ -33,3 +35,22 @@ def test_enter_submits_the_field_that_was_observed(session, fixture_server):
     page = session.open(fixture_server + FIXTURE)
     session.act(press_action(page), page)
     assert session.evaluate("document.getElementById('out').textContent") == "coupon SAVE10"
+
+
+def refusing(_state, _questions):
+    raise AssertionError("a direct press never asks the model")
+
+
+def test_a_direct_press_submits_the_field_that_was_observed(session, fixture_server):
+    session.open(fixture_server + FIXTURE)
+    Agent(session=session, config=config.load({}), decide=refusing).press("Enter")
+    assert session.evaluate("document.getElementById('out').textContent") == "coupon SAVE10"
+
+
+def test_a_direct_press_with_nothing_focused_refuses_instead_of_pressing_into_the_void(session, fixture_server):
+    session.open(fixture_server + FIXTURE)
+    session.evaluate("document.getElementById('coupon').blur()")
+    agent = Agent(session=session, config=config.load({}), decide=refusing)
+    with pytest.raises(Escalated):
+        agent.press("Enter")
+    assert session.evaluate("document.getElementById('out').textContent") == "nothing submitted"
