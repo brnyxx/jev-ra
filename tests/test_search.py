@@ -49,6 +49,12 @@ def test_blocked_resources_cover_images_fonts_and_media():
     assert not any(pattern.endswith((".html", ".js", ".css")) for pattern in search.BLOCKED_URLS)
 
 
+def test_normalized_url_strips_the_fragment_and_a_trailing_slash():
+    assert search.normalized_url("https://x.test/doc#intro") == "https://x.test/doc"
+    assert search.normalized_url("https://x.test/doc/") == "https://x.test/doc"
+    assert search.normalized_url("https://x.test/doc?a=1#b") == "https://x.test/doc?a=1"
+
+
 class RecordingSession:
     def __init__(self, calls):
         self.calls = calls
@@ -285,3 +291,43 @@ def test_search_owns_and_closes_the_session_and_skips_links_without_an_href(monk
     assert [item["url"] for item in payload["results"]] == ["https://two.test/"]
     assert payload["decisions"] == 2
     assert engine.closed is True
+
+
+THREE_LINK_SERP = {
+    **SERP_PAGE,
+    "elements": [
+        {"ref": "e1", "node": 1, "role": "link", "label": "First result", "value": ""},
+        {"ref": "e2", "node": 2, "role": "link", "label": "Second result", "value": ""},
+        {"ref": "e3", "node": 3, "role": "link", "label": "Third result", "value": ""},
+    ],
+    "actions": [
+        {"id": "e1", "node": 1, "role": "link", "kind": "click", "label": "First result"},
+        {"id": "e2", "node": 2, "role": "link", "kind": "click", "label": "Second result"},
+        {"id": "e3", "node": 3, "role": "link", "kind": "click", "label": "Third result"},
+    ],
+}
+
+
+def test_a_url_appears_once_and_keeps_its_best_rank():
+    engine = FakeTab(
+        page=THREE_LINK_SERP,
+        hrefs={1: "https://one.test/doc#intro", 2: "https://one.test/doc/", 3: "https://two.test/"},
+    )
+    tabs = []
+
+    def factory():
+        tab = FakeTab(page=CONTENT_PAGE)
+        tabs.append(tab)
+        return tab
+
+    payload = search.search(
+        "godel",
+        max_pages=3,
+        config=config.load({}),
+        decide=greedy_decide,
+        session=engine,
+        session_factory=factory,
+        engine="https://engine.test/serp?q={query}",
+    )
+    assert [item["url"] for item in payload["results"]] == ["https://one.test/doc#intro", "https://two.test/"]
+    assert len(tabs) == 2

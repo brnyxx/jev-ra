@@ -4,7 +4,7 @@ import logging
 import os
 import time
 from concurrent.futures import ThreadPoolExecutor
-from urllib.parse import quote_plus
+from urllib.parse import quote_plus, urlsplit, urlunsplit
 
 from .browser import actions
 from .browser.session import Session
@@ -66,7 +66,7 @@ def block_resources(session, urls=BLOCKED_URLS):
     return list(urls)
 
 
-def rank_results(space, decide, goal, page, limit):
+def rank_results(space, decide, goal, page, limit=None):
     """One choice question over the SERP links; the probabilities are the ranking."""
     links = {
         target: action for target, action in space.targets.get("CLICK", {}).items() if action.get("role") == "link"
@@ -82,20 +82,44 @@ def rank_results(space, decide, goal, page, limit):
     reply = decide(build_state(page, space, goal), questions)
     probabilities = reply.answers["result"]["probabilities"]
     ranked = sorted(links, key=lambda target: probabilities.get(target, 0.0), reverse=True)
+    chosen = ranked if limit is None else ranked[:limit]
     picked = [
         {
             "target": target,
             "label": links[target].get("label", ""),
             "probability": round(probabilities.get(target, 0.0), 6),
         }
-        for target in ranked[:limit]
+        for target in chosen
     ]
     return picked, reply
+
+
+def normalized_url(url):
+    """A url without its fragment or a trailing slash, so the same page is named once."""
+    parsed = urlsplit(url)
+    return urlunsplit((parsed.scheme, parsed.netloc, parsed.path.rstrip("/"), parsed.query, ""))
 
 
 def href_for(session, action):
     """The href behind an observed link, read from the node itself."""
     return session.evaluate(f"window.__jevRa?.nodes.get({action['node']})?.href ?? null")
+
+
+def distinct_results(session, space, picked, limit):
+    """`(item, href)` keeping the best-ranked instance of each url, at most `limit` of them."""
+    seen, chosen = set(), []
+    for item in picked:
+        href = href_for(session, space.action("CLICK", item["target"]))
+        if not href:
+            continue
+        key = normalized_url(href)
+        if key in seen:
+            continue
+        seen.add(key)
+        chosen.append((item, href))
+        if len(chosen) >= limit:
+            break
+    return chosen
 
 
 def read_page(session_factory, decide, goal, url):
@@ -146,12 +170,8 @@ def search(
         block_resources(session)
         page = session.open(engine_url(query, engine))
         space = actions.build(page, session.max_elements)
-        picked, reply = rank_results(space, decide, goal, page, max_pages)
-        urls = []
-        for item in picked:
-            href = href_for(session, space.action("CLICK", item["target"]))
-            if href:
-                urls.append((item, href))
+        picked, reply = rank_results(space, decide, goal, page)
+        urls = distinct_results(session, space, picked, max_pages)
     finally:
         if owned:
             session.close()
