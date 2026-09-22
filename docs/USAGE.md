@@ -11,6 +11,8 @@ jev-ra 0.1.2
 
 Take one decided step towards an instruction on the current page.
 
+Hints: read-only no, destructive no, idempotent no, open-world yes.
+
 | argument | type | required | default |
 |---|---|---|---|
 | `instruction` | str | yes | - |
@@ -20,6 +22,8 @@ Take one decided step towards an instruction on the current page.
 
 Click one observed element by its ref.
 
+Hints: read-only no, destructive no, idempotent no, open-world yes.
+
 | argument | type | required | default |
 |---|---|---|---|
 | `ref` | str | yes | - |
@@ -28,11 +32,15 @@ Click one observed element by its ref.
 
 Close the browser session held by this server.
 
+Hints: read-only no, destructive no, idempotent yes, open-world no.
+
 Takes no arguments.
 
 ### `browser_extract`
 
 Pull structured page data from the DOM: text, elements, links, tables or main.
+
+Hints: read-only yes, destructive no, idempotent yes, open-world no.
 
 | argument | type | required | default |
 |---|---|---|---|
@@ -42,6 +50,8 @@ Pull structured page data from the DOM: text, elements, links, tables or main.
 
 List the observed controls and the visible text of the current page.
 
+Hints: read-only yes, destructive no, idempotent yes, open-world no.
+
 | argument | type | required | default |
 |---|---|---|---|
 | `max_elements` | int \| none | no | - |
@@ -49,6 +59,8 @@ List the observed controls and the visible text of the current page.
 ### `browser_open`
 
 Open a URL in the shared browser session and summarise the page.
+
+Hints: read-only no, destructive no, idempotent yes, open-world yes.
 
 | argument | type | required | default |
 |---|---|---|---|
@@ -58,6 +70,8 @@ Open a URL in the shared browser session and summarise the page.
 
 Press Enter, Escape or Tab.
 
+Hints: read-only no, destructive no, idempotent no, open-world yes.
+
 | argument | type | required | default |
 |---|---|---|---|
 | `key` | str | yes | - |
@@ -65,6 +79,8 @@ Press Enter, Escape or Tab.
 ### `browser_run`
 
 Pursue a whole goal on the current page. Supply values for anything that must be typed.
+
+Hints: read-only no, destructive no, idempotent no, open-world yes.
 
 | argument | type | required | default |
 |---|---|---|---|
@@ -76,11 +92,15 @@ Pursue a whole goal on the current page. Supply values for anything that must be
 
 Capture the current viewport as a JPEG.
 
+Hints: read-only yes, destructive no, idempotent yes, open-world no.
+
 Takes no arguments.
 
 ### `browser_scroll`
 
 Scroll the page one viewport step up or down.
+
+Hints: read-only no, destructive no, idempotent no, open-world yes.
 
 | argument | type | required | default |
 |---|---|---|---|
@@ -89,6 +109,8 @@ Scroll the page one viewport step up or down.
 ### `browser_search`
 
 Search the web, read the best results in parallel tabs, and rank them against the goal.
+
+Hints: read-only no, destructive no, idempotent yes, open-world yes.
 
 | argument | type | required | default |
 |---|---|---|---|
@@ -100,6 +122,8 @@ Search the web, read the best results in parallel tabs, and rank them against th
 
 Select an observed dropdown option by its value or label.
 
+Hints: read-only no, destructive no, idempotent yes, open-world yes.
+
 | argument | type | required | default |
 |---|---|---|---|
 | `ref` | str | yes | - |
@@ -109,6 +133,8 @@ Select an observed dropdown option by its value or label.
 
 Type text into one observed field by its ref.
 
+Hints: read-only no, destructive no, idempotent no, open-world yes.
+
 | argument | type | required | default |
 |---|---|---|---|
 | `ref` | str | yes | - |
@@ -117,6 +143,8 @@ Type text into one observed field by its ref.
 ### `browser_wait`
 
 Wait a moment and observe again.
+
+Hints: read-only yes, destructive no, idempotent yes, open-world no.
 
 Takes no arguments.
 

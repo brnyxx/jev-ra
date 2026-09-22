@@ -9,6 +9,7 @@
   <img alt="MCP" src="https://img.shields.io/badge/MCP-stdio-111">
   <img alt="Chrome" src="https://img.shields.io/badge/Chrome-CDP-111">
   <a href="https://github.com/brnyxx/jev-ra/blob/main/LICENSE"><img alt="License" src="https://img.shields.io/badge/license-MIT-green"></a>
+  <a href="https://m8ven.ai/mcp/brnyxx/jev-ra"><img alt="M8ven Score" src="https://m8ven.ai/badge/mcp/brnyxx/jev-ra"></a>
 </p>
 
 [![jev-ra: browser use for coding agents, 3-5× faster than browser-use](https://raw.githubusercontent.com/brnyxx/jev-ra/main/assets/hero.png)](https://github.com/brnyxx/jev-ra/blob/main/docs/BENCHMARKS.md)

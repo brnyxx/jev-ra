@@ -5,6 +5,7 @@ import time
 
 from mcp.server.mcpserver import Image, MCPServer
 from mcp.server.mcpserver.exceptions import ToolError
+from mcp.types import ToolAnnotations
 
 from . import __version__
 from .agent import Agent
@@ -23,6 +24,19 @@ OBSERVE_TEXT_CHARS = 3000
 INSTRUCTIONS = """Drive a real Chrome. browser_open first, then browser_run for a whole goal,
 or the single-step tools when you want to steer. Supply `values` for anything that must be typed:
 without them a TYPE_TEXT step comes back as an escalation instead of a guess."""
+
+
+def hints(read_only=False, idempotent=False, open_world=True):
+    """MCP tool annotations. Nothing here deletes or overwrites anything the user owns, so no tool is
+    destructive; tools that act on a live site are open-world and, when a second call would act
+    again, not idempotent.
+    """
+    return ToolAnnotations(
+        read_only_hint=read_only,
+        destructive_hint=False,
+        idempotent_hint=idempotent,
+        open_world_hint=open_world,
+    )
 
 
 class Browser:
@@ -117,28 +131,28 @@ def build_server(browser=None):
         except (JevRaError, LookupError) as error:
             raise ToolError(render(error)) from None
 
-    @mcp.tool()
+    @mcp.tool(annotations=hints(idempotent=True))
     def browser_open(url: str) -> dict:
         """Open a URL in the shared browser session and summarise the page."""
         started = time.perf_counter()
         session = browser.open()
         return summary(guarded(lambda: session.open(url)), started, session)
 
-    @mcp.tool()
+    @mcp.tool(annotations=hints())
     def browser_run(goal: str, values: dict[str, str] | None = None, max_steps: int | None = None) -> dict:
         """Pursue a whole goal on the current page. Supply values for anything that must be typed."""
         started = time.perf_counter()
         agent = browser.agent()
         return run_result(guarded(lambda: agent.run(goal, values=values, max_steps=max_steps)), started)
 
-    @mcp.tool()
+    @mcp.tool(annotations=hints())
     def browser_act(instruction: str, values: dict[str, str] | None = None) -> dict:
         """Take one decided step towards an instruction on the current page."""
         started = time.perf_counter()
         agent = browser.agent()
         return run_result(guarded(lambda: agent.act(instruction, values=values)), started)
 
-    @mcp.tool()
+    @mcp.tool(annotations=hints(idempotent=True))
     def browser_search(query: str, goal: str | None = None, max_pages: int = MAX_PAGES) -> dict:
         """Search the web, read the best results in parallel tabs, and rank them against the goal."""
         started = time.perf_counter()
@@ -148,7 +162,7 @@ def build_server(browser=None):
         payload["elapsed_ms"] = round((time.perf_counter() - started) * 1000)
         return payload
 
-    @mcp.tool()
+    @mcp.tool(annotations=hints(read_only=True, idempotent=True, open_world=False))
     def browser_observe(max_elements: int | None = None) -> dict:
         """List the observed controls and the visible text of the current page."""
         started = time.perf_counter()
@@ -164,7 +178,7 @@ def build_server(browser=None):
             "elapsed_ms": round((time.perf_counter() - started) * 1000),
         }
 
-    @mcp.tool()
+    @mcp.tool(annotations=hints(read_only=True, idempotent=True, open_world=False))
     def browser_extract(mode: str = "text") -> dict:
         """Pull structured page data from the DOM: text, elements, links, tables or main."""
         started = time.perf_counter()
@@ -175,28 +189,28 @@ def build_server(browser=None):
         payload["elapsed_ms"] = round((time.perf_counter() - started) * 1000)
         return payload
 
-    @mcp.tool()
+    @mcp.tool(annotations=hints())
     def browser_click(ref: str) -> dict:
         """Click one observed element by its ref."""
         started = time.perf_counter()
         session = browser.require()
         return summary(guarded(lambda: browser.stepper().click(ref)), started, session)
 
-    @mcp.tool()
+    @mcp.tool(annotations=hints())
     def browser_type(ref: str, text: str) -> dict:
         """Type text into one observed field by its ref."""
         started = time.perf_counter()
         session = browser.require()
         return summary(guarded(lambda: browser.stepper().type(ref, text)), started, session)
 
-    @mcp.tool()
+    @mcp.tool(annotations=hints(idempotent=True))
     def browser_select(ref: str, option: str) -> dict:
         """Select an observed dropdown option by its value or label."""
         started = time.perf_counter()
         session = browser.require()
         return summary(guarded(lambda: browser.stepper().select(ref, option)), started, session)
 
-    @mcp.tool()
+    @mcp.tool(annotations=hints())
     def browser_scroll(direction: str = "down") -> dict:
         """Scroll the page one viewport step up or down."""
         started = time.perf_counter()
@@ -205,7 +219,7 @@ def build_server(browser=None):
             raise ToolError("direction must be up or down")
         return summary(guarded(lambda: browser.stepper().scroll(direction)), started, session)
 
-    @mcp.tool()
+    @mcp.tool(annotations=hints())
     def browser_press(key: str) -> dict:
         """Press Enter, Escape or Tab."""
         started = time.perf_counter()
@@ -216,20 +230,20 @@ def build_server(browser=None):
             raise ToolError(str(error)) from None
         return summary(page, started, session)
 
-    @mcp.tool()
+    @mcp.tool(annotations=hints(read_only=True, idempotent=True, open_world=False))
     def browser_wait() -> dict:
         """Wait a moment and observe again."""
         started = time.perf_counter()
         session = browser.require()
         return summary(guarded(lambda: browser.stepper().wait()), started, session)
 
-    @mcp.tool()
+    @mcp.tool(annotations=hints(read_only=True, idempotent=True, open_world=False))
     def browser_screenshot() -> Image:
         """Capture the current viewport as a JPEG."""
         session = browser.require()
         return Image(data=guarded(session.screenshot), format="jpeg")
 
-    @mcp.tool()
+    @mcp.tool(annotations=hints(idempotent=True, open_world=False))
     def browser_close() -> dict:
         """Close the browser session held by this server."""
         started = time.perf_counter()

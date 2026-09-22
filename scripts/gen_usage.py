@@ -50,11 +50,26 @@ def render_type(schema):
     return {"integer": "int", "number": "float", "string": "str", "boolean": "bool", "null": "none"}.get(kind, kind)
 
 
+def render_hints(annotations):
+    """The MCP annotation hints as one line, in the order the spec lists them."""
+    names = (
+        ("read_only_hint", "read-only"),
+        ("destructive_hint", "destructive"),
+        ("idempotent_hint", "idempotent"),
+        ("open_world_hint", "open-world"),
+    )
+    return (
+        "Hints: " + ", ".join(f"{label} {'yes' if getattr(annotations, attr) else 'no'}" for attr, label in names) + "."
+    )
+
+
 def render_tool(tool):
     schema = tool.input_schema or {}
     properties = schema.get("properties", {})
     required = set(schema.get("required", []))
     lines = [f"### `{tool.name}`", "", (tool.description or "").strip(), ""]
+    if tool.annotations is not None:
+        lines += [render_hints(tool.annotations), ""]
     if not properties:
         lines += ["Takes no arguments.", ""]
         return lines

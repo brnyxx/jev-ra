@@ -70,6 +70,24 @@ def test_the_tool_list_matches_the_design_table():
     assert all(tool.description for tool in tools)
 
 
+HINTS = ("read_only_hint", "destructive_hint", "idempotent_hint", "open_world_hint")
+READ_ONLY = {"browser_observe", "browser_extract", "browser_screenshot", "browser_wait"}
+CLOSED_WORLD = {"browser_observe", "browser_extract", "browser_screenshot", "browser_wait", "browser_close"}
+
+
+def test_every_tool_declares_all_four_annotation_hints():
+    # MCP tool annotations. Clients and directories (OpenAI's rejects tools missing any of the
+    # four) use them to decide what to confirm with the user, so an unset hint is a wrong hint.
+    server, _browser, _session = server_with()
+    for tool in asyncio.run(tools_of(server)):
+        assert tool.annotations is not None, tool.name
+        for hint in HINTS:
+            assert isinstance(getattr(tool.annotations, hint), bool), (tool.name, hint)
+        assert tool.annotations.read_only_hint is (tool.name in READ_ONLY), tool.name
+        assert tool.annotations.open_world_hint is (tool.name not in CLOSED_WORLD), tool.name
+        assert tool.annotations.destructive_hint is False, tool.name
+
+
 def test_readme_lists_every_tool():
     server, _browser, _session = server_with()
     registered = {tool.name for tool in asyncio.run(tools_of(server))}
