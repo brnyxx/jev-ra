@@ -188,6 +188,24 @@ agent failure; those tasks were rerun with a fresh Chrome per task and the rerun
 rows. The port 9333 first chosen for that Chrome was held by Docker on 127.0.0.1, so Chrome bound
 IPv6 only; 9444 was used.
 
+## The public benchmarks
+
+jev-ra also runs on the task sets the field cites, through one adapter, judged by the harnesses
+those benchmarks publish rather than by `corpus.check`. Method, exact commands, the pinned upstream
+commits, what had to be worked around to run each judge at all, and where the trajectories are:
+[`bench/public/README.md`](../bench/public/README.md).
+
+| benchmark | jev-ra 0.1.3 | judged by | scale |
+|---|---|---|---|
+| Online-Mind2Web | 3 / 10 = 30 % | WebJudge (o4-mini), the benchmark's own | 10 tasks, a smoke |
+| WebVoyager | 3 / 10 and 0 / 10, two passes | `evaluation/auto_eval.py`, the benchmark's own, on gpt-4o | 10 tasks, twice |
+
+Ten tasks is a smoke, not a score: the two WebVoyager passes are the same ten tasks back to back,
+and they differ by three. The published bars are 90.53 % on Online-Mind2Web (ABP + Claude Opus 4.6,
+human-evaluated, 285 of 300) and a saturated 99.19 % on WebVoyager. Two of the ten Online-Mind2Web
+sites refused the browser outright - Cloudflare on carvana.com, Akamai on marriott.com - which is
+the wall class `ROADMAP_COMMERCIAL.md` Track B names.
+
 ## Cost and latency per call
 
 | measurement | value |
