@@ -199,6 +199,7 @@ def recording_cdp(fails_on):
 def no_chrome_needed(monkeypatch):
     monkeypatch.setattr(session_module, "ensure_chrome", lambda **_k: ("http://127.0.0.1:9222", "BU_CDP_URL"))
     monkeypatch.setattr(session_module, "ensure_daemon", lambda *_a, **_k: None)
+    monkeypatch.setattr(session_module, "verify_attached", lambda *_a, **_k: None)
 
 
 def test_a_target_whose_setup_fails_is_closed_again(monkeypatch, no_chrome_needed):
