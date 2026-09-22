@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.1.3 - 2026-09-22
+
+### Added
+- Every MCP tool declares the four annotation hints (`readOnlyHint`, `destructiveHint`,
+  `idempotentHint`, `openWorldHint`). Clients use them to decide what to confirm with the user, and
+  some directories reject tools that leave any unset. No tool is destructive; observe, extract,
+  screenshot and wait are read-only; the tools that act on a live site are open-world. `docs/USAGE.md`
+  shows the hints per tool.
+
 ## 0.1.2 - 2026-09-21
 
 ### Changed
