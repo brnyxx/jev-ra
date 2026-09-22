@@ -2,7 +2,7 @@
 
 import pytest
 
-from jev_ra import cli
+from jev_ra import cli, config
 from jev_ra.browser import chrome as chrome_module
 from jev_ra.browser import session as session_module
 from jev_ra.errors import ChromeError
@@ -12,6 +12,7 @@ class Bare(session_module.Session):
     """A Session without a browser behind it, for the calls this module is about."""
 
     def __init__(self):
+        self.config = config.load({})
         self.session_id = "s1"
         self.cache = {}
         self.after_input = None

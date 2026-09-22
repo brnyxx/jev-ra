@@ -26,6 +26,7 @@ ENV_VARIABLES = (
     "JEV_RA_MAX_DECISIONS",
     "JEV_RA_TIMEOUT_S",
     "JEV_RA_BLOCK_RESOURCES",
+    "JEV_RA_ALLOW_FILE_URLS",
     "JEV_RA_SEARCH_URL",
     "JEV_RA_TEXT_MODEL",
     "JEV_RA_TEXT_BASE_URL",
@@ -71,6 +72,7 @@ class Config:
     viewport: Viewport = field(default_factory=Viewport)
     budgets: Budgets = field(default_factory=Budgets)
     block_resources: bool = True
+    allow_file_urls: bool = False
 
     @property
     def provider(self):
@@ -237,4 +239,5 @@ def load(env=None, path=None):
         viewport=read_viewport(env.get("JEV_RA_VIEWPORT") or stored.get("viewport")),
         budgets=read_budgets(env, stored.get("budgets")),
         block_resources=read_flag(env.get("JEV_RA_BLOCK_RESOURCES", stored.get("block_resources")), True),
+        allow_file_urls=read_flag(env.get("JEV_RA_ALLOW_FILE_URLS", stored.get("allow_file_urls")), False),
     )

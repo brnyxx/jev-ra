@@ -245,6 +245,7 @@ Jev가 *당신이 준* 값 중 어느 것이 그 필드에 들어갈지 고른�
 | `JEV_RA_VIEWPORT` | 예: `1280x900` (기본값) |
 | `JEV_RA_MAX_STEPS`, `JEV_RA_MAX_DECISIONS`, `JEV_RA_TIMEOUT_S` | 예산 (40 / 80 / 120) |
 | `JEV_RA_BLOCK_RESOURCES` | `0`이면 폰트/미디어 차단을 끈다 |
+| `JEV_RA_ALLOW_FILE_URLS` | `1`이면 세션이 `file:` URL을 열 수 있다 |
 | `JEV_RA_SEARCH_URL` | 검색 엔드포인트 템플릿, `{query}`가 치환된다 |
 | `JEV_RA_TEXT_MODEL`, `JEV_RA_TEXT_BASE_URL`, `JEV_RA_TEXT_API_KEY` | 선택적 텍스트 헬퍼, 기본은 꺼짐 |
 

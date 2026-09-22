@@ -16,6 +16,7 @@ TAXONOMY = (
     errors.JevAuthError,
     errors.JevUnavailable,
     errors.JevBadResponse,
+    errors.BadUrl,
     errors.StalePage,
     errors.Escalated,
 )

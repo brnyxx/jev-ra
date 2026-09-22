@@ -238,6 +238,7 @@ PASS/FAIL。[方法、browser-use 原始数据与复现步骤](../BENCHMARKS.md)
 | `JEV_RA_VIEWPORT` | 例如 `1280x900`(默认值) |
 | `JEV_RA_MAX_STEPS`, `JEV_RA_MAX_DECISIONS`, `JEV_RA_TIMEOUT_S` | 预算 (40 / 80 / 120) |
 | `JEV_RA_BLOCK_RESOURCES` | 设为 `0` 可关闭字体与媒体的拦截 |
+| `JEV_RA_ALLOW_FILE_URLS` | 设为 `1` 可让会话打开 `file:` URL |
 | `JEV_RA_SEARCH_URL` | 搜索端点模板，`{query}` 会被替换 |
 | `JEV_RA_TEXT_MODEL`, `JEV_RA_TEXT_BASE_URL`, `JEV_RA_TEXT_API_KEY` | 可选的文本助手，默认关闭 |
 

@@ -5,12 +5,13 @@ import json
 import logging
 import sys
 import time
+from urllib.parse import urlsplit
 
 from browser_harness.admin import ensure_daemon
 from browser_harness.helpers import cdp
 
 from ..config import load
-from ..errors import ChromeError, StalePage
+from ..errors import BadUrl, ChromeError, StalePage
 from ..profile import NullTimer
 from . import MAX_ELEMENTS, guard_expression, marker_expression, snapshot_expression
 from .chrome import ensure as ensure_chrome
@@ -117,6 +118,12 @@ PANEL_ROLES = frozenset(
         "tabpanel",
     }
 )
+# A url is an instruction to the browser, and only some of them mean "fetch a page". `javascript:`
+# runs in whatever document is open and never commits a navigation, so Page.navigate waits out its
+# whole budget; `file:` reads the disk, and the text it reads goes to the decision endpoint with
+# everything else on the page. The web schemes are what a run is for; a local file is opt-in.
+WEB_SCHEMES = frozenset({"http", "https"})
+BLANK = "about:blank"
 OPEN_MIN_CONTROLS = 4
 # The marker, as snapshot.js builds it: origin, address, scroll, size, then the page itself.
 MARKER_ORIGIN, MARKER_URL, MARKER_CONTROLS = 0, 1, 8
@@ -304,6 +311,7 @@ class Session:
 
     def open(self, url):
         """Navigate, wait for the load to finish, and observe."""
+        url = check_url(url, self.config)
         self.after_input = None
         self.invalidate()
         self.call("Page.navigate", timeout=NAVIGATE_TIMEOUT_S, url=url)
@@ -597,6 +605,24 @@ class Session:
 
     def __exit__(self, *_args):
         self.close()
+
+
+def check_url(url, config):
+    """The url a session may navigate to, or a refusal naming the scheme it would not open."""
+    text = (url or "").strip()
+    scheme = urlsplit(text).scheme.lower()
+    if scheme in WEB_SCHEMES or text.lower() == BLANK:
+        return text
+    if scheme == "file":
+        if config.allow_file_urls:
+            return text
+        raise BadUrl(
+            "jev-ra does not open file: URLs, and the file's text would go to the decision endpoint.",
+            next_step="Set JEV_RA_ALLOW_FILE_URLS=1 if you meant to read a local file.",
+        )
+    if scheme:
+        raise BadUrl(f"jev-ra does not open {scheme}: URLs.")
+    raise BadUrl(f"{text!r} names no scheme.")
 
 
 def observed(node):

@@ -53,6 +53,12 @@ class JevBadResponse(JevError):
     next_step = "Nothing was executed. Retry; if it persists the provider is returning invalid answers."
 
 
+class BadUrl(JevRaError):
+    """A url jev-ra will not open: a scheme that is not the web, or a local file without consent."""
+
+    next_step = "Open an http or https URL instead."
+
+
 class StalePage(JevRaError, ValueError):
     """A decision no longer refers to the observed page."""
 
