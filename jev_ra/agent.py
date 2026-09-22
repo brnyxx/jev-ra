@@ -428,9 +428,10 @@ class _Run:
     def walled(self, page, before=None):
         """How this site is refusing to serve the machine, or an empty string.
 
-        Only a page the run opened is read this way. A wall answers a fresh address with a
-        challenge, a refusal, or with nothing at all, and it answers every address that way; a
-        page the run is still working on says nothing about the host.
+        A refusal in the page's own words counts wherever it is read: a challenge that replaces
+        the page after a click is the same wall as one served on arrival. Saying nothing counts
+        only on a page the run opened, because a wall answers every fresh address that way, while
+        a page the run is still working on says nothing about the host either way.
         """
         text = page_text(page)
         lowered = text.lower()
