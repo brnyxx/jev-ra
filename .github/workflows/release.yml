@@ -58,7 +58,7 @@ jobs:
     runs-on: ubuntu-latest
     environment: pypi
     permissions:
-      id-token: write
+      contents: read
     steps:
       - uses: actions/download-artifact@v4
         with:
@@ -67,6 +67,9 @@ jobs:
 
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          password: ${{ secrets.PYPI_API_TOKEN }}
+          skip-existing: true
 
   npm:
     needs: build

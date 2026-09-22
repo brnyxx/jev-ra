@@ -4,12 +4,20 @@ The maintainer's runbook for a release, written for 0.1.0. Everything here comes
 `.github/workflows/release.yml`, `pyproject.toml`, `npm/package.json` and
 `scripts/check_versions.py`; when those files change, change this one with them.
 
-## One-time PyPI trusted publisher
+## One-time PyPI token
 
-There is no PyPI token to store. The `pypi` job publishes with
-`pypa/gh-action-pypi-publish@release/v1` and `permissions: id-token: write`, so PyPI trusts the
-GitHub Actions OIDC claims instead. Enter these values once in the `jev-ra` project's publishing
-settings on pypi.org (a pending publisher before the first upload):
+The `pypi` job publishes with `pypa/gh-action-pypi-publish@release/v1` authenticated by the
+repository secret `PYPI_API_TOKEN`, an API token from the maintainer's PyPI account scoped to the
+`jev-ra` project (the same token `~/.pypirc` holds for `twine`). `skip-existing: true` makes a
+re-run of the job on a tag whose files are already on PyPI succeed instead of failing on the
+duplicate. Set the secret once:
+
+```sh
+gh secret set PYPI_API_TOKEN --repo brnyxx/jev-ra < token-file
+```
+
+Trusted publishing (OIDC) was the first design and failed every 0.1.x and 0.2.0 run with
+`invalid-publisher`; the values it would need on pypi.org are kept here in case it is revisited:
 
 | form field | value |
 |---|---|
@@ -98,7 +106,7 @@ do the two independent publish jobs run, each gated by its variable:
 
 | job | environment | publishes |
 |---|---|---|
-| `pypi` | `pypi` | the built wheel and sdist via trusted publishing |
+| `pypi` | `pypi` | the built wheel and sdist with `PYPI_API_TOKEN` |
 | `npm` | `npm` | the launcher via `npm publish --provenance --access public` |
 
 `workflow_dispatch` also runs `build`, but both publish jobs require a `refs/tags/v*` ref, so a
@@ -117,16 +125,11 @@ Each prints the key, the route, Chrome and one live decision; the last line is
 `decision: DONE in <n> ms via <model>`. The `npx` run exercises the npm launcher, which contains no
 jev-ra code and runs the same pinned Python package through `uvx`.
 
-## If the `pypi` job says `invalid-publisher`
+## If the `pypi` job fails
 
-The OIDC token was valid but pypi.org has no publisher whose four values match the claims the job
-prints (`repository_owner`, `repository`, `workflow_ref`, `environment`). Both 0.1.x runs on
-2026-09-21 failed this way. Compare the project's publishing settings
-(https://pypi.org/manage/project/jev-ra/settings/publishing/) with the claims in the log, letter
-for letter; the environment name is the one most often left blank.
-
-Until it matches, upload what CI built rather than a local build, so the files on PyPI are the
-ones the run tested:
+`403` with `Invalid or non-existent authentication information` means `PYPI_API_TOKEN` is missing,
+revoked or scoped to another project; set it again from the maintainer's account. Until it works,
+upload what CI built rather than a local build, so the files on PyPI are the ones the run tested:
 
 ```sh
 gh run download <run id> --dir /tmp/jev-ra-release        # the `dist` artifact of the tag's run
@@ -135,7 +138,8 @@ uv run --with twine twine upload --non-interactive /tmp/jev-ra-release/dist/*
 ```
 
 `twine` reads the API token from `~/.pypirc` (`username = __token__`). The `npm` job is not
-affected; do not re-run `pypi` after a manual upload, the version exists and PyPI rejects it.
+affected. Re-running `pypi` after a manual upload is safe: `skip-existing` passes over the files
+already there.
 
 ## If PyPI succeeds and npm fails
 

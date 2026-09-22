@@ -71,14 +71,15 @@ def test_the_release_workflow_builds_and_uploads_on_tags():
     assert "jev-ra --version" in text
 
 
-def test_publishing_is_gated_on_trusted_publishing_being_configured():
+def test_pypi_publishes_with_the_maintainer_token_and_skips_what_is_already_there():
     text = RELEASE.read_text()
     assert "vars.PYPI_TRUSTED == 'true'" in text
-    assert "id-token: write" in text
     assert "pypa/gh-action-pypi-publish@release/v1" in text
-    # Nothing may fall back to a long-lived token.
-    assert "PYPI_API_TOKEN" not in text
-    assert "secrets.PYPI" not in text
+    assert "password: ${{ secrets.PYPI_API_TOKEN }}" in text
+    assert "skip-existing: true" in text
+    pypi_job = text[text.index("  pypi:") : text.index("  npm:")]
+    # The token is the credential; the job asks for no OIDC token it would not use.
+    assert "id-token: write" not in pypi_job
 
 
 def test_the_release_workflow_refuses_a_tag_that_does_not_match_the_version():
