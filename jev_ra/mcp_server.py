@@ -13,7 +13,7 @@ from .browser import actions
 from .browser.session import Session
 from .config import load
 from .decide.client import DecisionClient
-from .errors import JevRaError, render
+from .errors import ChromeError, JevRaError, render
 from .extract import MODES, extract
 from .search import MAX_PAGES, search
 
@@ -78,14 +78,22 @@ class Browser:
         """An agent for the direct tools: they move the browser without asking Jev anything."""
         return Agent(session=self.require(), config=self.config, decide=refuse)
 
+    def dropped(self):
+        """Forget the session. Its browser is gone, so the next open has to build another."""
+        self.session = None
+
     def close(self):
         """Close the session and the decision client this server holds."""
         if self.session is not None:
-            self.session.close()
-            self.session = None
+            try:
+                self.session.close()
+            finally:
+                self.session = None
         if self.client is not None:
-            self.client.close()
-            self.client = None
+            try:
+                self.client.close()
+            finally:
+                self.client = None
 
 
 def refuse(_state, _questions):
@@ -129,6 +137,12 @@ def build_server(browser=None):
         """Run a tool body, turning any anticipated failure into the CLI's own sentence."""
         try:
             return call()
+        except ChromeError as error:
+            # The browser this session was attached to is gone. Keeping the session would answer
+            # every later call with the same refusal, browser_open included; dropping it here is
+            # what lets the next browser_open start a Chrome and carry on.
+            browser.dropped()
+            raise ToolError(render(error)) from None
         except (JevRaError, LookupError) as error:
             raise ToolError(render(error)) from None
 
@@ -136,8 +150,12 @@ def build_server(browser=None):
     def browser_open(url: str) -> dict:
         """Open a URL in the shared browser session and summarise the page."""
         started = time.perf_counter()
-        session = browser.open()
-        return summary(guarded(lambda: session.open(url)), started, session)
+
+        def opened():
+            session = browser.open()
+            return summary(session.open(url), started, session)
+
+        return guarded(opened)
 
     @mcp.tool(annotations=hints())
     def browser_run(goal: str, values: dict[str, str] | None = None, max_steps: int | None = None) -> dict:
@@ -248,9 +266,13 @@ def build_server(browser=None):
     def browser_close() -> dict:
         """Close the browser session held by this server."""
         started = time.perf_counter()
-        browser.require()
-        browser.close()
-        return {"ok": True, "elapsed_ms": round((time.perf_counter() - started) * 1000)}
+
+        def closed():
+            browser.require()
+            browser.close()
+            return {"ok": True, "elapsed_ms": round((time.perf_counter() - started) * 1000)}
+
+        return guarded(closed)
 
     return mcp
 

@@ -8,8 +8,9 @@ from mcp import Client
 
 from jev_ra import config
 from jev_ra.decide import Reply
+from jev_ra.errors import ChromeError
 from jev_ra.mcp_server import Browser, build_server
-from tests.test_agent import FakeSession, answer
+from tests.test_agent import FakeSession, answer, page
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -167,3 +168,65 @@ def test_extract_rejects_an_unknown_mode():
     failed = call(server, "browser_extract", mode="summary")
     assert failed.is_error
     assert "mode must be one of" in failed.content[0].text
+
+
+class DeadChrome(FakeSession):
+    """A session whose Chrome was killed under it: it opened once, and refuses everything after."""
+
+    def open(self, url):
+        return page(0)
+
+    def observe(self, timer=None):
+        raise ChromeError("Chrome refused Runtime.evaluate: no close frame received")
+
+    def close(self):
+        raise ChromeError("Chrome refused Target.closeTarget: no close frame received")
+
+
+def browser_with(factory):
+    browser = Browser(config=config.load({}), session_factory=factory, decide=decide_done)
+    return build_server(browser), browser
+
+
+def test_a_dead_chrome_is_reported_and_its_session_is_dropped():
+    server, browser, _session = server_with(session=DeadChrome())
+    payload(call(server, "browser_open", url="http://127.0.0.1/form.html"))
+    failed = call(server, "browser_observe")
+    assert failed.is_error
+    assert "no close frame received" in failed.content[0].text
+    assert "jev-ra doctor" in failed.content[0].text
+    assert browser.session is None
+
+
+def test_the_open_after_a_dead_chrome_builds_a_new_session():
+    built = []
+
+    def factory():
+        built.append(FakeSession() if built else DeadChrome())
+        return built[-1]
+
+    server, _browser = browser_with(factory)
+    call(server, "browser_open", url="http://127.0.0.1/form.html")
+    assert call(server, "browser_observe").is_error
+    assert payload(call(server, "browser_open", url="http://127.0.0.1/form.html"))["title"] == "Booking form"
+    assert len(built) == 2
+
+
+def test_a_close_that_refuses_still_forgets_the_session():
+    server, browser, _session = server_with(session=DeadChrome())
+    call(server, "browser_open", url="http://127.0.0.1/form.html")
+    failed = call(server, "browser_close")
+    assert failed.is_error
+    assert "jev-ra doctor" in failed.content[0].text
+    assert browser.session is None
+
+
+def test_a_session_that_cannot_be_built_says_why():
+    def factory():
+        raise ChromeError("No Chrome, Chromium or Edge found")
+
+    server, _browser = browser_with(factory)
+    failed = call(server, "browser_open", url="http://127.0.0.1/form.html")
+    assert failed.is_error
+    assert "No Chrome, Chromium or Edge found" in failed.content[0].text
+    assert "jev-ra doctor" in failed.content[0].text
