@@ -49,11 +49,12 @@ def page(marker, url="http://127.0.0.1/form.html", title="Booking form", text="B
 class FakeSession:
     """Replays a list of pages; every act() advances to the next one unless told to go stale."""
 
-    def __init__(self, pages=None, stale=0, max_elements=250):
+    def __init__(self, pages=None, stale=0, max_elements=250, profile=None):
         self.pages = list(pages or [page(n) for n in range(60)])
         self.index = 0
         self.stale = stale
         self.max_elements = max_elements
+        self.profile = profile
         self.acted = []
         self.closed = False
         self.target_id = "fake-target"

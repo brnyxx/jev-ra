@@ -58,13 +58,14 @@ Hints: read-only yes, destructive no, idempotent yes, open-world no.
 
 ### `browser_open`
 
-Open a URL in the shared browser session and summarise the page.
+Open a URL in the shared browser session. A named profile keeps its own cookies.
 
 Hints: read-only no, destructive no, idempotent yes, open-world yes.
 
 | argument | type | required | default |
 |---|---|---|---|
 | `url` | str | yes | - |
+| `profile` | str \| none | no | - |
 
 ### `browser_press`
 

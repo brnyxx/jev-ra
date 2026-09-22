@@ -16,6 +16,7 @@ from ..profile import NullTimer
 from . import MAX_ELEMENTS, guard_expression, marker_expression, snapshot_expression
 from .chrome import ensure as ensure_chrome
 from .chrome import ready as chrome_ready
+from .chrome import verify_attached
 
 logger = logging.getLogger(__name__)
 
@@ -219,16 +220,18 @@ FOCUSED_JS = """(node => {
 class Session:
     """One CDP target: observe it, act on it, and never act on a stale reading of it."""
 
-    def __init__(self, config=None, target_id=None, max_elements=MAX_ELEMENTS):
+    def __init__(self, config=None, target_id=None, max_elements=MAX_ELEMENTS, profile=None):
         self.config = config or load()
         self.max_elements = max_elements
+        self.profile = profile
         self.after_input = None
         self.before_input = None
         self.moved_from = None
         self.cache = {}
         viewport = self.config.viewport
-        self.cdp_url, self.chrome_source = ensure_chrome(viewport=(viewport.width, viewport.height))
+        self.cdp_url, self.chrome_source = ensure_chrome(viewport=(viewport.width, viewport.height), profile=profile)
         ensure_daemon()
+        verify_attached(self.cdp_url)
         if self.chrome_source == "launched":
             # We started this Chrome a moment ago. A published debugging port is not a browser
             # that will answer yet, so wait until a target evaluates something before using it.

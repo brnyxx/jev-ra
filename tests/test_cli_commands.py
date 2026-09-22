@@ -225,7 +225,7 @@ def test_screenshot_writes_the_viewport_to_a_path(state_home, fake_browser, tmp_
 
 def test_chrome_check_reports_a_browser_that_will_not_open(monkeypatch):
     class Broken:
-        def __init__(self, _config):
+        def __init__(self, _config, profile=None):
             pass
 
         def open(self, _url):

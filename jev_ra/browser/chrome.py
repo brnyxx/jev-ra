@@ -1,5 +1,6 @@
 """Find, launch and reuse one dedicated automation Chrome. BU_CDP_URL always wins."""
 
+import json
 import logging
 import os
 import re
@@ -40,6 +41,10 @@ BINARIES = {
     ),
 }
 COMMANDS = ("google-chrome", "google-chrome-stable", "chromium", "chromium-browser", "chrome", "msedge")
+DEFAULT_PROFILE = "default"
+# Dots are allowed inside a name and never on their own: `.` and `..` are directories already.
+PROFILE_NAME = re.compile(r"(?!\.+$)[A-Za-z0-9._-]{1,64}")
+NAME_RULE = "A profile name is 1-64 characters of letters, digits, dot, dash or underscore."
 FLAGS = (
     "--no-first-run",
     "--no-default-browser-check",
@@ -71,11 +76,57 @@ UA_PLATFORMS = {
 }
 
 
-def profile_dir(env=None):
-    """The automation profile directory under `$XDG_STATE_HOME`."""
+def profile_dir(env=None, name=None):
+    """The user-data-dir this profile owns: the default one, or a directory of its own per name."""
     env = os.environ if env is None else env
     home = env.get("XDG_STATE_HOME") or Path(env.get("HOME", "~")).expanduser() / ".local" / "state"
-    return Path(home) / "jev-ra" / "chrome-profile"
+    base = Path(home) / "jev-ra"
+    if name is None or name == DEFAULT_PROFILE:
+        return base / "chrome-profile"
+    if not PROFILE_NAME.fullmatch(name):
+        raise ChromeError(f"{name!r} is not a usable profile name.", NAME_RULE)
+    return base / "chrome-profiles" / name
+
+
+def listed_targets(url, timeout=PROBE_TIMEOUT_S):
+    """The target ids the Chrome at this url publishes, or None when it will not say."""
+    try:
+        with urllib.request.urlopen(url.rstrip("/") + "/json/list", timeout=timeout) as answer:
+            listed = json.loads(answer.read())
+    except (urllib.error.URLError, OSError, ValueError):
+        return None
+    return {item.get("id") for item in listed if isinstance(item, dict)}
+
+
+def verify_attached(url, targets=None, listed=None):
+    """Refuse a daemon that is already holding a Chrome other than the profile's own.
+
+    browser-harness keeps one daemon per name and pins it to the browser it first attached to, so
+    a second profile asked for while that daemon is up would be driven against the wrong cookies.
+    Every way of not knowing - a Chrome that will not list, a daemon that will not answer - lets
+    the run through; only a browser that demonstrably holds other targets is refused.
+    """
+    published = (listed or listed_targets)(url)
+    if not published:
+        return
+    if targets is None:
+        from browser_harness.helpers import cdp
+
+        def targets():
+            """The targets the daemon this process talks to can see."""
+            return cdp("Target.getTargets")
+
+    try:
+        held = {info.get("targetId") for info in targets().get("targetInfos", [])}
+    except Exception as error:  # the daemon reports every refusal its own way
+        logger.info("Could not ask the daemon which Chrome it holds: %s", error)
+        return
+    if held and not held & published:
+        raise ChromeError(
+            f"The browser-harness daemon is already driving another Chrome, not the one at {url}.",
+            "One daemon holds one browser: close the other jev-ra session first, "
+            "or give this one a daemon of its own with BH_RUNTIME_DIR.",
+        )
 
 
 def find_browser(platform=None, env=None, exists=None, which=None):
@@ -297,13 +348,18 @@ def remembered(url, profile):
     return port is not None and url == url_for(port)
 
 
-def ensure(env=None, viewport=(1280, 900), allow_launch=True):
-    """Return (cdp_url, source) where source is 'BU_CDP_URL', 'reused' or 'launched'."""
+def ensure(env=None, viewport=(1280, 900), allow_launch=True, profile=None):
+    """Return (cdp_url, source) where source is 'BU_CDP_URL', 'reused' or 'launched'.
+
+    A named profile is asked for because of the cookies in it, so it outranks an ambient
+    BU_CDP_URL; the default profile keeps deferring to whatever Chrome the caller pointed at.
+    """
     global LAUNCHED_URL
     env = os.environ if env is None else env
-    profile = profile_dir(env)
+    named = profile is not None and profile != DEFAULT_PROFILE
+    profile = profile_dir(env, profile)
     configured = env.get("BU_CDP_URL")
-    if configured:
+    if configured and not named:
         if alive(configured):
             return configured, "BU_CDP_URL"
         if not remembered(configured, profile):

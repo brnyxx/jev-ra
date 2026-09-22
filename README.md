@@ -118,9 +118,9 @@ Every response carries `elapsed_ms`, and `decisions` plus `cost` whenever Jev wa
 
 | command | what it does |
 |---|---|
-| `run URL "goal" [--value name=text ...] [--max-steps N]` | pursue a goal from a URL until it is done or escalates |
-| `search "query" ["what the page must answer"] [--max-pages 3]` | search the web and read the best results |
-| `open URL` | open a URL and keep the session for later commands |
+| `run URL "goal" [--value name=text ...] [--max-steps N] [--profile NAME]` | pursue a goal from a URL until it is done or escalates |
+| `search "query" ["what the page must answer"] [--max-pages 3] [--profile NAME]` | search the web and read the best results |
+| `open URL [--profile NAME]` | open a URL and keep the session for later commands |
 | `observe` | list the controls and text of the open page |
 | `extract [--mode text\|elements\|links\|tables\|main]` | pull structured data out of the open page |
 | `act "instruction" [--value name=text ...]` | take one decided step on the open page |
@@ -137,12 +137,18 @@ Every response carries `elapsed_ms`, and `decisions` plus `cost` whenever Jev wa
 | `serve [--host ADDR] [--port N] [--quota N]` | run the same tools over HTTP and SSE |
 | `skill` | print the agent guide, for saving as a skill file |
 | `install claude\|codex [--scope user\|project\|local]` | register jev-ra as an MCP server with a coding agent |
-| `doctor` | check the key, the endpoint, Chrome and one live decision |
+| `doctor [--profile NAME]` | check the key, the endpoint, Chrome and one live decision |
 | `bench [--live]` | time the offline fixtures, and the live tasks with --live |
 | `corpus run` | run the real-site corpus |
 
 `open` … `close` share one browser across invocations through a target id in
 `$XDG_STATE_HOME/jev-ra/session.json`. Add `--json` to any command for the raw payload.
+
+`--profile NAME` gives a run a Chrome user-data-dir of its own under
+`$XDG_STATE_HOME/jev-ra/chrome-profiles/NAME`, so a login done once on that profile is still
+there on the next run; `open` records the profile and the stateful commands reattach to it. The
+MCP tool takes the same thing as `browser_open(url, profile)`. One process drives one browser, so
+a server already on a profile refuses a second one instead of answering from the wrong cookies.
 
 `serve` is the same tool set over MCP's streamable HTTP transport, at `/mcp`, answering with
 server-sent events; `/healthz` answers without a key. Every request carries a key from

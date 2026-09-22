@@ -107,7 +107,7 @@ def test_the_mcp_error_text_equals_the_cli_error_text(capsys, monkeypatch, tmp_p
     from_cli = capsys.readouterr().err.strip()
 
     fake = FakeSession()
-    server = build_server(Browser(config=config.load({}), session_factory=lambda: fake, decide=None))
+    server = build_server(Browser(config=config.load({}), session_factory=lambda profile=None: fake, decide=None))
 
     async def opened():
         async with Client(server, raise_exceptions=False) as client:
@@ -145,7 +145,7 @@ def test_the_mcp_error_payload_carries_the_rendered_error(kind, tmp_path):
     error = kind("something went wrong")
     browser = Browser(
         config=config.load({}, path=tmp_path / "config.json"),
-        session_factory=lambda: RaisingSession(error),
+        session_factory=lambda profile=None: RaisingSession(error),
         decide=None,
     )
     server = build_server(browser)

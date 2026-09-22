@@ -46,7 +46,7 @@ def decide_done(state, questions):
 
 def server_with(session=None, decide=decide_done):
     fake = session or FakeSession()
-    browser = Browser(config=config.load({}), session_factory=lambda: fake, decide=decide)
+    browser = Browser(config=config.load({}), session_factory=lambda profile=None: fake, decide=decide)
     return build_server(browser), browser, fake
 
 

@@ -83,10 +83,11 @@ def read_state():
 
 
 def write_state(session, url):
-    """Remember the target id so later commands reattach to it."""
+    """Remember the target id and the profile it lives on, so later commands reattach to it."""
     path = state_path()
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps({"target_id": session.target_id, "url": url}, indent=2))
+    stored = {"target_id": session.target_id, "url": url, "profile": session.profile}
+    path.write_text(json.dumps(stored, indent=2))
 
 
 def clear_state():
@@ -97,12 +98,12 @@ def clear_state():
 
 
 def attach():
-    """Reattach to the session `open` left behind."""
+    """Reattach to the session `open` left behind, on the profile it was opened on."""
     state = read_state()
     if not state:
         raise SessionMissing("No open session.")
     try:
-        return Session(load(), target_id=state["target_id"])
+        return Session(load(), target_id=state["target_id"], profile=state.get("profile"))
     except RuntimeError as error:
         clear_state()
         raise SessionMissing(f"The stored session is gone ({error}).") from None
@@ -182,7 +183,7 @@ def agent_for(session):
 
 def cmd_run(args):
     """Pursue a goal from a URL in a session of its own."""
-    session = Session(load())
+    session = Session(load(), profile=args.profile)
     agent, client = agent_for(session)
     try:
         result = agent.run(args.goal, values=parse_values(args.value), max_steps=args.max_steps, url=args.url)
@@ -194,7 +195,7 @@ def cmd_run(args):
 
 def cmd_open(args):
     """Open a URL and remember the session for later commands."""
-    session = Session(load())
+    session = Session(load(), profile=args.profile)
     page = session.open(args.url)
     write_state(session, page["url"])
     data = page_summary(page, session)
@@ -352,10 +353,10 @@ def chrome_hint(binary=None, home=None):
     return "\n".join(lines)
 
 
-def chrome_check(config):
+def chrome_check(config, profile=None):
     """Whether a Chrome can be reached, and which one it was."""
     try:
-        session = Session(config)
+        session = Session(config, profile=profile)
     except Exception as error:
         return False, str(error), None
     try:
@@ -519,7 +520,7 @@ def cmd_doctor(args):
         lines.append("Set JEV_RA_API_KEY, TYPESAFE_API_KEY or OPENROUTER_API_KEY, then run `jev-ra doctor` again.")
         emit(args, report, lines)
         return 1
-    ok, detail, source = chrome_check(config)
+    ok, detail, source = chrome_check(config, getattr(args, "profile", None))
     report["chrome"] = {"ok": ok, "detail": detail, "source": source}
     lines.append(f"chrome: {'ok, ' + detail if ok else 'unreachable'}")
     if not ok:
@@ -588,7 +589,7 @@ def cmd_search(args):
     from .search import search
 
     config = load()
-    session = Session(config)
+    session = Session(config, profile=args.profile)
     client = DecisionClient(config)
     try:
         payload = search(
@@ -598,7 +599,7 @@ def cmd_search(args):
             config=config,
             decide=client.decide,
             session=session,
-            session_factory=lambda: Session(config),
+            session_factory=lambda: Session(config, profile=args.profile),
         )
     finally:
         client.close()
@@ -756,13 +757,19 @@ def add_json(parser):
     return parser
 
 
+def add_profile(parser):
+    """Give a subcommand the --profile flag that picks which Chrome user-data-dir it drives."""
+    parser.add_argument("--profile", metavar="NAME", help="a named Chrome profile that keeps its own cookies")
+    return parser
+
+
 def build_parser():
     """The full command line parser."""
     parser = argparse.ArgumentParser(prog="jev-ra", description="A fast browser-use layer for CLI coding agents.")
     parser.add_argument("--version", action="version", version=f"jev-ra {__version__}")
     sub = parser.add_subparsers(dest="command", metavar="COMMAND")
 
-    run = add_json(sub.add_parser("run", help="pursue a goal from a URL until it is done or escalates"))
+    run = add_profile(add_json(sub.add_parser("run", help="pursue a goal from a URL until it is done or escalates")))
     run.add_argument("url")
     run.add_argument("goal")
     run.add_argument("--value", action="append", metavar="NAME=TEXT", help="a value the agent may type")
@@ -771,7 +778,7 @@ def build_parser():
     )
     run.set_defaults(handler=cmd_run)
 
-    opened = add_json(sub.add_parser("open", help="open a URL and keep the session for later commands"))
+    opened = add_profile(add_json(sub.add_parser("open", help="open a URL and keep the session for later commands")))
     opened.add_argument("url")
     opened.set_defaults(handler=cmd_open)
 
@@ -842,10 +849,12 @@ def build_parser():
     install.add_argument("--scope", choices=SCOPES, default="user", help="claude only")
     install.set_defaults(handler=cmd_install)
 
-    doctor = add_json(sub.add_parser("doctor", help="check the key, the endpoint, Chrome and one live decision"))
+    doctor = add_profile(
+        add_json(sub.add_parser("doctor", help="check the key, the endpoint, Chrome and one live decision"))
+    )
     doctor.set_defaults(handler=cmd_doctor)
 
-    search = add_json(sub.add_parser("search", help="search the web and read the best results"))
+    search = add_profile(add_json(sub.add_parser("search", help="search the web and read the best results")))
     search.add_argument("query")
     search.add_argument("goal", nargs="?", help="what the pages have to answer; defaults to the query")
     search.add_argument("--goal", dest="goal_flag", metavar="TEXT", help="what the pages have to answer")

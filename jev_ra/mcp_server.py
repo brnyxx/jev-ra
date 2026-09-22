@@ -56,10 +56,11 @@ class Browser:
     def __init__(self, config=None, session_factory=None, decide=None):
         self.config = config or load()
         self.lock = threading.RLock()
-        self.session_factory = session_factory or (lambda: Session(self.config))
+        self.session_factory = session_factory or (lambda profile=None: Session(self.config, profile=profile))
         self.decide = decide
         self.session = None
         self.client = None
+        self.profile = None
 
     def guarded(self, call):
         """Run one tool body alone on this session, in the sentence every other surface uses."""
@@ -78,10 +79,17 @@ class Browser:
         finally:
             self.lock.release()
 
-    def open(self):
-        """Open the shared session, creating it on first use."""
+    def open(self, profile=None):
+        """Open the shared session on a profile, creating it on first use."""
+        if profile is not None and self.profile is not None and profile != self.profile:
+            raise ToolError(
+                f"This server is driving the {self.profile!r} profile. "
+                f"Call browser_close and start a server of its own for {profile!r}: "
+                "browser-harness pins one browser per process."
+            )
         if self.session is None:
-            self.session = self.session_factory()
+            self.session = self.session_factory(profile=profile or self.profile)
+            self.profile = profile or self.profile
         return self.session
 
     def require(self):
@@ -180,12 +188,12 @@ def build_server(browser=None):
     guarded = browser.guarded
 
     @mcp.tool(annotations=hints(idempotent=True))
-    def browser_open(url: str) -> dict:
-        """Open a URL in the shared browser session and summarise the page."""
+    def browser_open(url: str, profile: str | None = None) -> dict:
+        """Open a URL in the shared browser session. A named profile keeps its own cookies."""
         started = time.perf_counter()
 
         def opened():
-            session = browser.open()
+            session = browser.open(profile)
             return summary(session.open(url), started, session)
 
         return guarded(opened)
