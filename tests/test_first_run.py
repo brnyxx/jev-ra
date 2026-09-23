@@ -21,6 +21,7 @@ class Bare(session_module.Session):
         self.max_elements = 250
         self.http_status = None
         self.frame_id = None
+        self.downloads = {}
 
 
 @pytest.fixture

@@ -445,3 +445,10 @@ def test_a_step_that_opened_a_file_chooser_says_what_it_asked_for():
     assert data["file_chooser"] == {"multiple": True, "accept": ".pdf"}
     assert cli.summary_lines(data)[-1] == "The page asked for files (.pdf), which jev-ra never chooses."
     assert "file_chooser" not in cli.page_summary(page(1), FakeSession())
+
+
+def test_a_step_that_saved_a_file_says_so():
+    saved = [{"file": "report.csv", "url": "http://127.0.0.1/report.csv", "state": "completed"}]
+    data = cli.page_summary({**page(1), "downloads": saved}, FakeSession())
+    assert data["downloads"] == saved
+    assert cli.summary_lines(data)[-1] == "Downloaded report.csv (completed)"

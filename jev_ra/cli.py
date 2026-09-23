@@ -14,7 +14,7 @@ from pathlib import Path
 
 from . import __version__, runs
 from .agent import Agent
-from .browser import MAX_ELEMENTS, actions
+from .browser import MAX_ELEMENTS, actions, outside_page
 from .browser.chrome import alive, find_browser, forget_pid, forget_port, profile_dir, read_pid, read_port, url_for
 from .browser.session import Session
 from .config import (
@@ -152,7 +152,7 @@ def page_summary(page, session):
         "text": page.get("text", "")[:SUMMARY_TEXT_CHARS],
         "elements": len(space.elements),
         "omitted": space.omitted,
-        **({"file_chooser": page["file_chooser"]} if "file_chooser" in page else {}),
+        **outside_page(page),
     }
 
 
@@ -179,6 +179,7 @@ def summary_lines(data):
         lines.append(
             f"The page asked for {'files' if asked['multiple'] else 'a file'}{kinds}, which jev-ra never chooses."
         )
+    lines += [f"Downloaded {item['file']} ({item['state']})" for item in data.get("downloads", [])]
     return lines
 
 

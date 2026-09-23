@@ -269,6 +269,7 @@ class Result:
     final_page: dict = field(default_factory=dict)
     candidates: list = field(default_factory=list)
     detail: dict = field(default_factory=dict)
+    downloads: list = field(default_factory=list)
 
     def as_dict(self):
         """The result as plain JSON-safe data."""
@@ -824,6 +825,7 @@ class _Run:
         self.opens = ()
         self.site_error = False
         self.human_wait_ms = 0
+        self.downloads = []
 
     def elapsed_ms(self):
         """Milliseconds since the run started, counting the calls it ran in before this one."""
@@ -843,6 +845,7 @@ class _Run:
         self.cost = stored.get("cost", 0.0)
         self.site_error = bool(stored.get("site_error"))
         self.human_wait_ms = stored.get("human_wait_ms", 0)
+        self.downloads = list(stored.get("downloads") or [])
         self.before_ms = stored.get("elapsed_ms", 0)
         self.binder.used = list(kept.get("spent") or [])
         self.binder.calls = list(stored.get("text_calls") or [])
@@ -928,6 +931,7 @@ class _Run:
             }
         )
         self.history.append(line)
+        self.downloads.extend(after.get("downloads", []))
 
     def walled(self, page, before=None):
         """The wall this site put up instead of the page, or None.
@@ -1035,6 +1039,7 @@ class _Run:
             final_page=self.final_page(page),
             candidates=decision.candidates[:CANDIDATES] if decision else [],
             detail=detail,
+            downloads=self.downloads,
         )
         store_run(result, resume=self.carried(page) if reason == "needs_human" else None)
         return result

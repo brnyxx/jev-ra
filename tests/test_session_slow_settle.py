@@ -17,6 +17,7 @@ class Bare(session_module.Session):
         self.before_input = None
         self.moved_from = None
         self.max_elements = session_module.MAX_ELEMENTS
+        self.downloads = {}
 
 
 def action_for(page, label, kind):

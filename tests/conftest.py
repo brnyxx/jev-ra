@@ -127,6 +127,12 @@ def require_browser():
 
 
 @pytest.fixture(scope="session")
+def downloads_folder(tmp_path_factory):
+    """Where the test browser saves what a test downloads, instead of the Downloads folder of whoever runs it."""
+    return tmp_path_factory.mktemp("downloads")
+
+
+@pytest.fixture(scope="session")
 def chrome():
     url = require_browser()
     from browser_harness.admin import ensure_daemon
@@ -155,11 +161,19 @@ def cdp_target(chrome):
 
 
 @pytest.fixture
-def session(chrome):
-    """A jev-ra Session on its own target, closed after the test."""
+def session(chrome, downloads_folder):
+    """A jev-ra Session on its own target, closed after the test.
+
+    The browser saves what the test downloads in a folder of the test run's own. It is asked again
+    for every test: the setting belongs to the connection that made it, and a test may restart the
+    daemon that holds that connection.
+    """
+    from browser_harness.helpers import cdp
+
     from jev_ra.browser.session import Session
 
     opened = Session()
+    cdp("Browser.setDownloadBehavior", behavior="allow", downloadPath=str(downloads_folder))
     try:
         yield opened
     finally:

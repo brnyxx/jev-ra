@@ -11,11 +11,15 @@ import argparse
 import functools
 import json
 import logging
+import tempfile
 import threading
 import time
 import tomllib
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+
+from browser_harness.admin import ensure_daemon
+from browser_harness.helpers import cdp
 
 from jev_ra.agent import Agent
 from jev_ra.bench.scripted import scripted
@@ -91,6 +95,7 @@ def run_one(entry, base, config, decide, prefetch):
             url=result.url,
             candidates=[candidate["label"] for candidate in result.candidates[:4]],
             detail={key: value for key, value in result.detail.items() if key != "page_text"},
+            downloads=getattr(result, "downloads", []),
         )
     except Exception as error:
         row.update(
@@ -117,6 +122,9 @@ def main():
     config = load()
     server, base = serve()
     client = DecisionClient(config) if args.mode == "live" else None
+    # What a run downloads goes to a folder of its own, not to the Downloads folder of whoever runs it.
+    ensure_daemon()
+    cdp("Browser.setDownloadBehavior", behavior="allow", downloadPath=tempfile.mkdtemp(prefix="capabilities-"))
     rows = []
     try:
         for attempt in range(args.runs):
@@ -143,6 +151,7 @@ def main():
     finally:
         if client is not None:
             client.close()
+        cdp("Browser.setDownloadBehavior", behavior="default")
         server.shutdown()
 
 

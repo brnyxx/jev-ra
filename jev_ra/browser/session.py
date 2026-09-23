@@ -525,6 +525,9 @@ class Session:
     # The file chooser the last input opened, as Chrome announced it, or None. The chooser itself
     # was cancelled; what it asked for is the page's question to whoever holds the file.
     chooser = None
+    # How many of this session's downloads had begun before the last input: the ones after are
+    # what that input saved.
+    downloads_before = 0
 
     def __init__(self, config=None, target_id=None, max_elements=MAX_ELEMENTS, profile=None):
         self.config = config or load()
@@ -540,6 +543,9 @@ class Session:
         # The pages this session left for a window one of them opened, newest last, to return to
         # when that window closes.
         self.openers = []
+        # Every file a page of this session downloaded, by Chrome's id for the download, in the
+        # order they began: the name the site gave it, its url, and how it ended.
+        self.downloads = {}
         viewport = self.config.viewport
         self.cdp_url, self.chrome_source = ensure_chrome(
             viewport=(viewport.width, viewport.height),
@@ -772,6 +778,14 @@ class Session:
                 self.detached = True
             elif method == "Page.fileChooserOpened":
                 self.chooser = params
+            elif method == "Page.downloadWillBegin":
+                self.downloads[params.get("guid")] = {
+                    "file": params.get("suggestedFilename", ""),
+                    "url": params.get("url", ""),
+                    "state": "inProgress",
+                }
+            elif method == "Page.downloadProgress" and params.get("guid") in self.downloads:
+                self.downloads[params["guid"]]["state"] = params.get("state", "inProgress")
             elif method == "Network.responseReceived" and params.get("type") == "Document":
                 if self.frame_id and params.get("frameId") != self.frame_id:
                     continue
@@ -817,8 +831,28 @@ class Session:
         if not page.get("dialog"):
             self.title = page.get("title", "")
         page = {**page, "http_status": self.read_status()}
+        saved = self.saved()
+        if saved:
+            page = {**page, "downloads": saved}
         chooser = self.chooser
         return {**page, "file_chooser": self.asked_file(chooser)} if chooser is not None else page
+
+    def saved(self):
+        """The downloads the last input started, as they stand now."""
+        return [dict(known) for known in list(self.downloads.values())[self.downloads_before :]]
+
+    def fetching(self, budget_s=SETTLE_BUDGET_S):
+        """Wait, within one settle budget, for the downloads the last input started to finish.
+
+        A person who clicked Download waits for the file before calling it downloaded, and a report
+        or an invoice takes a moment to arrive. A download still going when the budget runs out is
+        reported as it stands.
+        """
+        deadline = time.monotonic() + budget_s
+        self.events()
+        while any(item["state"] == "inProgress" for item in self.saved()) and time.monotonic() < deadline:
+            time.sleep(WAIT_SLEEP_S)
+            self.events()
 
     def asked_file(self, chooser):
         """What a file chooser the page opened asked for: one file or several, and of which kinds."""
@@ -864,6 +898,7 @@ class Session:
         # Events still queued belong to the page this call is leaving; the status that matters is
         # what the new document is served with, and read_status only keeps the latest answer.
         self.read_status()
+        self.chooser, self.downloads_before = None, len(self.downloads)
         # An address that names a fragment may be answered by the router of the document already
         # open rather than by a new one, and then there is a view to wait for. Read where the page
         # stands before asking for it; an address without a fragment never pays for this.
@@ -1012,6 +1047,8 @@ class Session:
         self.wait_out(action, was, before, first, timer)
         if was:
             self.arrive(was, timer)
+        with timer.measure("wait"):
+            self.fetching()
 
     def arrive(self, was, timer):
         """Wait for a document the input loaded to arrive, when the step's wait ended before it did.
@@ -1197,7 +1234,7 @@ class Session:
         if not self.fresh(page, action):
             raise StalePage("Page changed since this decision. Observe again.")
         self.before_input = (page.get("url", ""), control_set(page.get("elements")))
-        self.chooser = None
+        self.chooser, self.downloads_before = None, len(self.downloads)
         kind = action["kind"]
         # Any input can open a window - a button, a key, even the answer to a confirm - and the
         # windows already open before it are not what it opened.

@@ -468,3 +468,8 @@ def test_a_step_that_opened_a_file_chooser_says_what_it_asked_for():
     result = mcp_server.summary({**page(1), "file_chooser": asked}, 0.0, FakeSession())
     assert result["file_chooser"] == asked
     assert "file_chooser" not in mcp_server.summary(page(1), 0.0, FakeSession())
+
+
+def test_a_step_that_saved_a_file_says_so():
+    saved = [{"file": "report.csv", "url": "http://127.0.0.1/report.csv", "state": "completed"}]
+    assert mcp_server.summary({**page(1), "downloads": saved}, 0.0, FakeSession())["downloads"] == saved

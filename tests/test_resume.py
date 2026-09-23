@@ -249,3 +249,13 @@ def test_a_timed_out_check_resumes_in_the_browser_and_reaches_the_goal(session, 
     assert "Order confirmed" in resumed.final_page["text"]
     assert [line["action"] for line in decide.calls[0]["recent_actions"]] == ["Check out"]
     assert resumed.human_wait_ms >= stopped.human_wait_ms
+
+
+def test_a_resumed_run_still_lists_what_it_downloaded_before_it_stopped(state):
+    saved = [{"file": "report.csv", "url": "http://127.0.0.1/report.csv", "state": "completed"}]
+    session = FakeSession([page(0), {**page(1), "downloads": saved}, checked(2), page(3)])
+    result = agent_with(decider([CLICK_SUBMIT]), session=session).run("download the report")
+    assert (result.reason, result.downloads) == ("needs_human", saved)
+    session.index = 3
+    resumed = agent_with(decider([DONE]), session=session).run(resume=result.run_id)
+    assert resumed.downloads == saved

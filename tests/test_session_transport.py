@@ -13,6 +13,7 @@ class Bare(session_module.Session):
         self.cache = {}
         self.after_input = None
         self.openers = []
+        self.downloads = {}
 
 
 @pytest.fixture

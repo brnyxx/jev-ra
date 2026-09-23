@@ -305,7 +305,6 @@ goal = "Download the August 2026 revenue report as CSV."
 plan = [["CLICK", "Download CSV"]]
 check = "true"
 downloaded = "revenue-2026-08.csv"
-gap = "a download leaves the page as it was, and nothing tells the run a file was saved"
 
 [[capability]]
 name = "hover_row_actions"

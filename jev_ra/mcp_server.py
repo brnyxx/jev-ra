@@ -14,7 +14,7 @@ from mcp.types import ToolAnnotations
 
 from . import __version__, runs
 from .agent import Agent
-from .browser import MAX_ELEMENTS, actions
+from .browser import MAX_ELEMENTS, actions, outside_page
 from .browser.session import Session
 from .config import MAX_PAGES_LIMIT, MAX_STEPS_LIMIT, MAX_VALUE_CHARS, MAX_VALUES, clamp, load
 from .decide.client import DecisionClient
@@ -180,7 +180,7 @@ def summary(page, started, session):
         "text": page.get("text", "")[:SUMMARY_TEXT_CHARS],
         "elements": len(space.elements),
         "omitted": space.omitted,
-        **({"file_chooser": page["file_chooser"]} if "file_chooser" in page else {}),
+        **outside_page(page),
         "elapsed_ms": round((time.perf_counter() - started) * 1000),
     }
 

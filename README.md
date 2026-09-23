@@ -200,7 +200,10 @@ takes from the page the run finished on, whatever the run ended as. With no text
 `null` and `detail` says so, and a goal that is an instruction never asks for one.
 
 Verification is deterministic: after every action jev-ra compares url, title, text and field state,
-and `page_changed` comes from a semantic page marker, not from the model.
+and `page_changed` comes from a semantic page marker, not from the model. A file an action downloads
+is part of what it did: the step waits for it within its settle budget, and `Result.downloads` lists
+each one with the name the site gave it, its url and whether it completed. Chrome saves it where it
+saves downloads.
 
 While the page settles after an action, jev-ra asks Jev the next question already, against the page
 as it should read with that input applied and nothing else changed. If the settled page offers

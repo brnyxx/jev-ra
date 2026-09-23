@@ -41,6 +41,16 @@ CHALLENGE_JS = """(() => {
 })"""
 
 
+# What a reading carries about what the last input did beyond the page itself: the file the page
+# asked for, and the files it saved.
+OUTSIDE_PAGE = ("file_chooser", "downloads")
+
+
+def outside_page(page):
+    """What the last input did beyond the page, as its reading reports it."""
+    return {key: page[key] for key in OUTSIDE_PAGE if key in page}
+
+
 def snapshot_expression(max_elements=MAX_ELEMENTS):
     """The snapshot call as an evaluable expression, capped at `max_elements`."""
     options = json.dumps({"max_elements": max_elements})
