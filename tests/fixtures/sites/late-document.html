@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Seller hub</title>
+<style>
+  body { font: 16px/1.5 system-ui; margin: 24px; }
+  nav a { margin-right: 12px; }
+</style>
+</head>
+<body>
+<!-- A link whose page arrives as an empty shell and paints itself a moment later. Measured on the
+     public benchmark: discogs.com, qatarairways.com, flightaware.com and traderjoes.com each
+     answered a click with a new document that was blank or a lone spinner when the step read it,
+     and every one of those runs ended BLOCKED on a page that painted a second later. espn.com laid
+     its standings out at opacity 0 behind a painted logo and faded them in over a second.
+     `?page=` picks the page, `?delay=` how long its shell stays empty; `page=blank` never paints,
+     `page=standings` is in place from the start but transparent until the delay is over, and
+     `page=receipt` is a form's answer: words at once and nothing to press. -->
+<header id="top"></header>
+<div id="app"></div>
+<script>
+  const params = new URLSearchParams(location.search);
+  const app = document.getElementById('app');
+  const pages = {
+    hub: ['Seller hub',
+      '<h1>Seller hub</h1><nav>' +
+      '<a href="?page=resources&amp;delay=1200">Seller resources</a>' +
+      '<a href="?page=news&amp;delay=0">Seller news</a>' +
+      '<a href="?page=blank">Seller archive</a>' +
+      '<a href="?page=standings&amp;delay=1200">Seller standings</a>' +
+      '<a href="?page=receipt">Seller receipt</a></nav>'],
+    resources: ['Seller resources',
+      '<h1>Seller resources</h1><p>Guides for sellers.</p>' +
+      '<a href="#grading">Learn grading</a> <a href="#pricing">Learn pricing</a>'],
+    news: ['Seller news', '<h1>Seller news</h1><a href="#latest">Latest updates</a>'],
+    receipt: ['Order received', '<h1>Order received</h1><pre>{"order": 1042, "status": "received"}</pre>'],
+    standings: ['Seller standings',
+      '<h1>Seller standings</h1><p>Top sellers this week.</p><a href="#east">East region</a>'],
+  };
+  const page = params.get('page') || 'hub';
+  const paint = () => { document.title = pages[page][0]; app.innerHTML = pages[page][1]; };
+  const delay = Number(params.get('delay') || 0);
+  if (page === 'hub') paint();
+  else if (page === 'standings') {
+    document.getElementById('top').innerHTML =
+      '<a href="?page=hub" aria-label="Seller hub" style="display:inline-block;width:40px;height:20px;background:#c00"></a>';
+    app.style.opacity = '0';
+    paint();
+    setTimeout(() => { app.style.opacity = '1'; }, delay);
+  } else if (page === 'receipt') paint();
+  else if (page in pages) setTimeout(paint, delay);
+</script>
+</body>
+</html>

@@ -177,6 +177,52 @@ ROUTE_BUDGET_S = 0.8
 # One budget for everything a step waits for. A page that has finished settling says so by going
 # still, and one that never does costs what it always did rather than being asked more often.
 SETTLE_BUDGET_S = 2.0
+# A step that loaded another document is read once that document has arrived: words showing in the
+# viewport or, where the viewport has no words, a control in reach. Two identical readings end a
+# step's wait, and an empty shell, a lone spinner or a screen of words still at opacity 0 reads the
+# same every time until it paints. Measured on the public benchmark: qatarairways.com's help page
+# was still loading and blank when the step read it at 1.4 s; traderjoes.com's store search was a
+# spinner at 0.3 s and painted at 0.4 s; espn.com laid its standings out at opacity 0 behind a
+# painted logo at 0.7 s and showed them at 1.9 s. Each of those runs ended BLOCKED or scrolled past
+# the answer. Words are enough on their own: a form's receipt or an API's JSON has nothing to press
+# and is finished, and a page still streaming its markup is readable once it shows some, which
+# reuters.com's section pages do seconds before they finish loading. Words below the fold are not
+# waited for; a page that has not arrived by the budget is read as it stands. open() keeps its own
+# wait for a first control, which a run's first page needs and pays for once.
+ARRIVAL_BUDGET_S = 5.0
+ARRIVAL_POLL_MS = 50
+ARRIVED_JS = (
+    """(options => new Promise(resolve => {
+  const painted = () => """
+    + PAINTED_JS
+    + """;
+  const words = () => {
+    const walker = document.createTreeWalker(document.body || document.documentElement, NodeFilter.SHOW_TEXT);
+    const range = document.createRange();
+    let veiled = false;
+    for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+      const parent = node.parentElement;
+      if (!parent || !node.textContent.trim() || parent.closest('script,style,noscript,template')) continue;
+      range.selectNodeContents(node);
+      const r = range.getBoundingClientRect();
+      if (!r.width || !r.height || r.bottom <= 0 || r.top >= innerHeight || r.right <= 0 || r.left >= innerWidth)
+        continue;
+      if (parent.checkVisibility({checkOpacity: true, checkVisibilityCSS: true})) return 'shown';
+      veiled = true;
+    }
+    return veiled ? 'veiled' : 'none';
+  };
+  const started = performance.now();
+  const check = () => {
+    const waited = Math.round(performance.now() - started);
+    const said = words();
+    if (said === 'shown' || (said === 'none' && painted())) return resolve({arrived: true, waited});
+    if (waited >= options.budget_ms) return resolve({arrived: false, waited});
+    setTimeout(check, options.poll_ms);
+  };
+  check();
+}))"""
+)
 ROUTE_WAIT_JS = """(options => new Promise(resolve => {
   const started = performance.now();
   const check = () => {
@@ -650,6 +696,41 @@ class Session:
                 # waited for: the timeout is logged and the step goes on to read the marker.
                 logger.debug("Post-input settle was interrupted: %s", error)
         self.wait_out(action, was, before, first, timer)
+        if was:
+            self.arrive(was, timer)
+
+    def arrive(self, was, timer):
+        """Wait for a document the input loaded to arrive, when the step's wait ended before it did.
+
+        A reading that already shows words has arrived, wherever it is, and is kept without asking
+        the page anything more; so is one on the document the step started on. A document that
+        replaces itself while this waits is asked again until the budget runs out.
+        """
+        reading, self.settled = self.settled, None
+        if reading and reading.get("text"):
+            self.settled = reading
+            return
+        try:
+            origin = reading["marker"][MARKER_ORIGIN] if reading else self.evaluate("performance.timeOrigin")
+        except StalePage:
+            origin = None
+        if origin == was[MARKER_ORIGIN]:
+            self.settled = reading
+            return
+        deadline = time.monotonic() + ARRIVAL_BUDGET_S
+        with timer.measure("wait"):
+            while True:
+                options = {"budget_ms": max(0, round((deadline - time.monotonic()) * 1000)), "poll_ms": ARRIVAL_POLL_MS}
+                try:
+                    answer = self.evaluate(f"{ARRIVED_JS}({json.dumps(options)})", await_promise=True)
+                except StalePage:
+                    answer = None
+                if answer is not None:
+                    if answer["arrived"] and not answer["waited"]:
+                        self.settled = reading
+                    return
+                if time.monotonic() >= deadline:
+                    return
 
     def wait_out(self, action, was, before, first=None, timer=None):
         """One budget and one reading per turn for everything a step waits for.
