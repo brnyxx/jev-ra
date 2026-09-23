@@ -145,7 +145,8 @@
   const slides = e => e.tagName!=='INPUT' && e.getAttribute('role')==='slider';
   const roles=['button','link','checkbox','radio','switch','tab','menuitem','menuitemradio',
     'option','gridcell','combobox','textbox','searchbox','spinbutton','slider'];
-  const selector='a,button,input,textarea,select,summary,iframe,label,[contenteditable="true"],'+
+  // contenteditable is on whatever its value, bare or "plaintext-only", unless it says false.
+  const selector='a,button,input,textarea,select,summary,iframe,label,[contenteditable]:not([contenteditable="false"]),'+
     roles.map(role=>'[role="'+role+'"]').join(',');
   // A label only counts as a control of its own when the thing it labels cannot be pressed where
   // it is: a dropdown checkbox sized to nothing, a toggle drawn entirely in CSS, a radio card whose

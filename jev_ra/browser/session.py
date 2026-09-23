@@ -46,8 +46,8 @@ PAINTED_JS = (
   if (("""
     + CHALLENGE_JS
     + """)()) return true;
-  const selector='a[href],button,input,select,textarea,summary,[contenteditable=""],'+
-    '[contenteditable="true"],[role="button"],[role="link"],[role="tab"],[role="checkbox"],'+
+  const selector='a[href],button,input,select,textarea,summary,[contenteditable]:not([contenteditable="false"]),'+
+    '[role="button"],[role="link"],[role="tab"],[role="checkbox"],'+
     '[role="radio"],[role="option"],[role="combobox"],[role="textbox"],[role="searchbox"],[role="slider"]';
   const deepest=(x,y)=>{
     let node=document.elementFromPoint(x,y);
