@@ -174,10 +174,9 @@ name = "infinite_scroll"
 pattern = "Infinite scroll: the target is fetched as the reader nears it"
 page = "/sites/infinite-feed.html"
 goal = "Open the post titled 'Post 27: The station in Hanoi'."
-plan = [["SCROLL_DOWN"], ["WAIT"], ["SCROLL_DOWN"], ["SCROLL_DOWN"], ["SCROLL_DOWN"], ["CLICK", "Post 27: The station in Hanoi"]]
+plan = [["SCROLL_DOWN"], ["WAIT"], ["SCROLL_DOWN"], ["SCROLL_DOWN"], ["CLICK", "Post 27: The station in Hanoi"]]
 check = "document.getElementById('opened').textContent === 'Reading: Post 27: The station in Hanoi'"
 max_steps = 12
-gap = "a wait lasts a tenth of a second, and the next batch arrives after it"
 
 [[capability]]
 name = "load_more"
@@ -195,7 +194,6 @@ plan = [
 ]
 check = "document.getElementById('opened').textContent === 'Viewing: Result 24: Oak standing desk, 120 cm'"
 max_steps = 12
-gap = "a wait lasts a tenth of a second, and the next batch arrives after it"
 
 [[capability]]
 name = "virtual_list"

@@ -151,7 +151,8 @@ QUIESCENCE_JS = (
     // has gets the stillness its caller asked for, measured from the last time it moved.
     const still = !state.leaving && document.readyState === 'complete' &&
       (state.count === 0 || now - state.last >= options.quiet_ms) &&
-      (options.after === null || state.count > options.after);
+      (options.after === null || state.count > options.after ||
+        (options.origin !== undefined && performance.timeOrigin !== options.origin));
     // Two ticks, so a document that has only just been handed the input has had one to answer in.
     if (still && state.frames - first >= 2) return answer(true);
     if (now >= deadline) return answer(false);
@@ -775,15 +776,18 @@ class Session:
         self.paint()
         return self.observe(timer)
 
-    def quiet(self, budget_s, after=None, quiet_ms=QUIET_MS):
+    def quiet(self, budget_s, after=None, quiet_ms=QUIET_MS, origin=None):
         """Wait in the page until it stops changing, and say whether it did.
 
         `{"quiet": ..., "count": ...}`: whether the document went still inside the budget rather
         than running out of it, and how many times it has mutated, which a caller waiting for
-        something that has not happened yet passes back as `after`. None when the document moved
-        under the probe, which is the answer to observe again.
+        something that has not happened yet passes back as `after`. A document other than the one
+        born at `origin` counts as changed whatever its count, which started again at nothing. None
+        when the document moved under the probe, which is the answer to observe again.
         """
         options = {"quiet_ms": quiet_ms, "budget_ms": max(0, round(budget_s * 1000)), "after": after}
+        if origin is not None:
+            options["origin"] = origin
         try:
             return self.evaluate(f"{QUIESCENCE_JS}({json.dumps(options)})", await_promise=True)
         except StalePage:
@@ -838,6 +842,17 @@ class Session:
         before, self.before_input = self.before_input, None
         if action is None:
             return
+        if action["kind"] == "wait":
+            # A wait was chosen because something has not arrived yet: the next batch of a feed,
+            # the results a search is still fetching. What it waits for is the page's next change
+            # after the reading it was chosen on, then the settling any other step gets.
+            with timer.measure("wait"):
+                self.quiet(
+                    SETTLE_BUDGET_S,
+                    after=action.get("mutations"),
+                    quiet_ms=0,
+                    origin=was[MARKER_ORIGIN] if was else None,
+                )
         # Read-only, and only after the action was already recorded: navigation may cut it short.
         first = None
         settling = f"{SETTLE_JS}({json.dumps(action)}).then(() => {snapshot_expression(self.max_elements)})"
@@ -1035,17 +1050,16 @@ class Session:
         kind = action["kind"]
         if action.get("dialog"):
             self.reply(action, text)
-        elif kind == "wait":
-            time.sleep(WAIT_SLEEP_S)
         elif kind == "press":
             self.submit(action)
         elif kind == "scroll":
             point = self.wheel(action)
             self.call("Input.dispatchMouseEvent", type="mouseWheel", deltaX=0, deltaY=action["delta"], **point)
-        else:
+        elif kind != "wait":
             self.input(action, text)
-        self.after_input = action if kind != "wait" else None
-        self.moved_from = page.get("marker") if kind != "wait" else None
+        # A wait sends nothing: waiting is what the settle after it does, for the page's next change.
+        self.after_input = {**action, "mutations": page.get("mutations")} if kind == "wait" else action
+        self.moved_from = page.get("marker")
         self.invalidate()
         return {"executed": action["id"], "kind": kind, "text": text}
 

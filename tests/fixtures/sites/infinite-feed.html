@@ -14,7 +14,7 @@
 </style>
 </head>
 <body>
-<!-- A feed that loads as you read, the way blogs and social timelines do: ten posts arrive with the
+<!-- A feed that loads as you read, the way blogs and social timelines do: fifteen posts arrive with the
      page, and the next twenty are fetched only when a sentinel at the end of the list scrolls into
      view. The post a goal names does not exist in the document until the reader gets near it. -->
 <h1>Journal</h1>
@@ -45,7 +45,7 @@
       feed.appendChild(post);
     }
   };
-  more(10);
+  more(15);
   new IntersectionObserver(entries => {
     if (!entries.some(entry => entry.isIntersecting) || loading || shown >= 60) return;
     loading = true;

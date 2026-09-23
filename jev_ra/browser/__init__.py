@@ -46,7 +46,8 @@ def snapshot_expression(max_elements=MAX_ELEMENTS):
     options = json.dumps({"max_elements": max_elements})
     return (
         f"(() => {{ const quiet={QUIET_STATE_JS}(); const page=({SNAPSHOT_JS})({options}); "
-        f"if (page) {{ page.leaving=quiet.leaving; page.challenge=({CHALLENGE_JS})(); }} return page; }})()"
+        "if (page) { page.leaving=quiet.leaving; page.mutations=quiet.count; "
+        f"page.challenge=({CHALLENGE_JS})(); }} return page; }})()"
     )
 
 
