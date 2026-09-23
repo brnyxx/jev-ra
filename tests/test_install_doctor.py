@@ -45,11 +45,12 @@ def test_install_claude_builds_the_documented_argv(clean_env, monkeypatch, recor
         "-e",
         f"OPENROUTER_API_KEY={SECRET}",
         "--",
-        "jev-ra",
+        "/usr/local/bin/jev-ra",
         "mcp",
     ]
     out = capsys.readouterr().out
-    assert 'claude mcp add jev-ra -s user -e OPENROUTER_API_KEY="$OPENROUTER_API_KEY" -- jev-ra mcp' in out
+    shown = 'claude mcp add jev-ra -s user -e OPENROUTER_API_KEY="$OPENROUTER_API_KEY" -- /usr/local/bin/jev-ra mcp'
+    assert shown in out
     assert "forwarding OPENROUTER_API_KEY" in out
     assert SECRET not in out
 
@@ -65,7 +66,7 @@ def test_install_codex_builds_the_documented_argv(clean_env, monkeypatch, record
         "--env",
         "TYPESAFE_API_KEY=ts-secret",
         "--",
-        "jev-ra",
+        "/usr/local/bin/jev-ra",
         "mcp",
     ]
     assert "ts-secret" not in capsys.readouterr().out
@@ -79,7 +80,7 @@ def test_install_scope_reaches_the_command(clean_env, monkeypatch, recorded):
 
 def test_install_without_a_key_omits_the_env_flag(clean_env, recorded, capsys):
     assert cli.main(["install", "claude"]) == 0
-    assert recorded[0] == ["claude", "mcp", "add", "jev-ra", "-s", "user", "--", "jev-ra", "mcp"]
+    assert recorded[0] == ["claude", "mcp", "add", "jev-ra", "-s", "user", "--", "/usr/local/bin/jev-ra", "mcp"]
     assert "no key variable to forward" in capsys.readouterr().out
 
 

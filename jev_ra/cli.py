@@ -307,11 +307,21 @@ def cmd_close(args):
     return emit(args, {"ok": True}, ["closed"])
 
 
+# `uvx` and `npx` run jev-ra from a cache they may clear, and put that copy on PATH only for the run.
+# An entry point found there would not exist when the agent starts the server later.
+EPHEMERAL_PATHS = ("/archive-v", "/_npx/")
+
+
 def server_command(which=None):
-    """How the agent should start the server: the installed entry point, else uv, else npm."""
+    """How the agent should start the server: an installed entry point, else uv, else npm.
+
+    An installed entry point is named by its full path: the PATH this command runs with (`uv run`
+    adds the project's .venv/bin for the run) is not the PATH the agent starts the server with.
+    """
     which = which or shutil.which
-    if which("jev-ra"):
-        return ["jev-ra", "mcp"]
+    installed = which("jev-ra")
+    if installed and not any(mark in installed for mark in EPHEMERAL_PATHS):
+        return [installed, "mcp"]
     if which("uvx"):
         return ["uvx", "jev-ra", "mcp"]
     if which("npx"):
