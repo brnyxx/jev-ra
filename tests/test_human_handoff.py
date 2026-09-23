@@ -176,3 +176,32 @@ def test_a_refusal_behind_a_check_is_still_a_refusal(session, fixture_server):
     result = agent_on(session, scripted(PLAN)).run(GOAL, values=VALUES, url=url)
     assert (result.status, result.reason) == ("escalate", "blocked_by_site")
     assert result.detail["kind"] == "refusal"
+
+
+def test_a_check_that_clears_itself_during_the_backoff_asks_nobody_and_is_the_runs_own_time(session, fixture_server):
+    person = Person(session, clears=False)
+    session.presenter = person
+
+    def the_moment_passes(_seconds):
+        session.evaluate("postMessage({jevRaCheck: 'solved'}, '*')")
+        session.evaluate("new Promise(resolve => setTimeout(() => resolve(true), 0))", await_promise=True)
+
+    agent = Agent(
+        session=session,
+        config=config.load({}),
+        decide=scripted([]),
+        prefetch=False,
+        pacer=Pacer(sleep=the_moment_passes),
+    )
+    result = agent.run("Send the message.", url=f"{fixture_server}/sites/turnstile-wall.html")
+    assert (result.status, result.reason) == ("done", "goal_achieved")
+    assert person.asked == []
+    assert result.human_wait_ms == 0
+
+
+def test_a_person_who_answers_at_once_is_still_a_person_who_was_asked(session, fixture_server):
+    person = Person(session)
+    session.presenter = person
+    result = agent_on(session, scripted(PLAN)).run(GOAL, values=VALUES, url=fixture_server + CHALLENGE)
+    assert result.status == "done"
+    assert result.human_wait_ms > 0

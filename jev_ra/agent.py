@@ -1,6 +1,7 @@
 """The loop: observe, decide once, verify deterministically, and hand back control when stuck."""
 
 import logging
+import math
 import threading
 import time
 import uuid
@@ -381,36 +382,38 @@ class Agent:
         """Wait out a human check in the run it stopped, and say what the page is once the wait ends.
 
         A check on a page the run opened is backed off and asked for once more first, as a site's
-        error is. What is left is put in front of the person at this machine, when one can see the
-        browser, and watched until it clears or the wait runs out. That time is the person's, not
-        the run's: it is kept apart in human_wait_ms and spends no step and no time budget.
+        error is, and a check that clears itself in that time is the run's own time, as a site's
+        hiccup is. What is left is put in front of the person at this machine, when one can see
+        the browser, and watched until it clears or the wait runs out. From the moment the person
+        is asked the time is theirs, not the run's: it is kept apart in human_wait_ms, rounded up so
+        that a person asked is never 0 ms, and spends no step and no time budget.
 
         Returns the page, the wall still on it (None once it is gone) and why nobody could be
         asked, which is empty when somebody was.
         """
-        started = self.clock()
+        if opened:
+            page, found = self.retried(run, page, found)
+        else:
+            self.pacer.backoff(page.get("url", ""))
+        if found is None or not found.human:
+            return page, found, ""
+        presenter = getattr(self.session, "presenter", None)
+        if presenter is None:
+            return page, found, "the session has no window to show"
+        unseen = presenter.hidden()
+        if unseen:
+            logger.info("[%s] %s, and nobody can clear it: %s", run.run_id, found.said, unseen)
+            return page, found, unseen
+        site = urlsplit(page.get("url", "")).hostname or ""
+        wait = self.config.human_wait_s
+        logger.info("[%s] %s put up a %s; waiting up to %g s for a person", run.run_id, site, found.check, wait)
+        asked = self.clock()
         try:
-            if opened:
-                page, found = self.retried(run, page, found)
-            else:
-                self.pacer.backoff(page.get("url", ""))
-            if found is None or not found.human:
-                return page, found, ""
-            presenter = getattr(self.session, "presenter", None)
-            if presenter is None:
-                return page, found, "the session has no window to show"
-            unseen = presenter.hidden()
-            if unseen:
-                logger.info("[%s] %s, and nobody can clear it: %s", run.run_id, found.said, unseen)
-                return page, found, unseen
-            site = urlsplit(page.get("url", "")).hostname or ""
-            wait = self.config.human_wait_s
-            logger.info("[%s] %s put up a %s; waiting up to %g s for a person", run.run_id, site, found.check, wait)
             presenter.present(site, found.check)
             page, found = self.watch(page, self.clock() + wait)
-            return page, found, ""
         finally:
-            run.human_wait_ms += round((self.clock() - started) * 1000)
+            run.human_wait_ms += math.ceil((self.clock() - asked) * 1000)
+        return page, found, ""
 
     def watch(self, page, deadline):
         """Read the page until it is no longer a human check or the deadline passes.
