@@ -53,16 +53,16 @@ Measured on main at 0.2.2 (CI green on `371d417`: test x3, image, macos, windows
 | CI | green | `371d417` |
 | real-site corpus | red | 207/234 possible tasks = 88.5 % on `f26087c`, 3 runs via TypeSafe direct; run-to-run noise about ±5 of 240 (docs/BENCHMARKS.md) |
 | head-to-head | green | docs/BENCHMARKS.md, browser-use 29/40 = 72 % at 19.4 s vs 102/120 = 85 % at 3.1 s |
-| recorded tasks | not measured | needs a quiet machine, 5 runs |
+| recorded tasks | amber | 0.2.5, 5 runs each: all five verified 5/5 back to back with 0.2.4; oliveyoung 2.66x under the 3x bar on the TypeSafe direct route (docs/BENCHMARKS.md, 0.2.5) |
 | recovery, live | green | docs/PRODUCTION_REVIEW_2026-09-22.md sequence, 22.5 s relaunch |
 | public benchmarks | red | 10 + 10 judged only; Online-Mind2Web 3/10 |
 | quality bar | green | every row names its check; Debt is empty |
 
 What remains, in the order it pays off:
 
-1. **Decision quality**. The three mechanisms (late-route wait, href-less anchors, date grid) are on main as of 0.2.3 and hold on their fixtures; nhk still ends 0/5 live, so the late push is not the whole story there. The state-evidence change and the `JEV_RA_HYBRID` helper sit on `fix/decisions` (`416273c`, `3f2f950`): the first makes hackernews_page_two read as BLOCKED on every rerun and is not merged until that is understood; the second depends on it. Measuring either on the public twenty needs OpenRouter credits (judges are o4-mini and gpt-4o).
+1. **Decision quality**. The three mechanisms (late-route wait, href-less anchors, date grid) are on main as of 0.2.3 and hold on their fixtures; since 0.2.5 a link's click carries its address, so the wait runs on real pages: nhk went from 0/5 to 4/5 live and Google Flights from 0/5 to 5/5 (the field that opens an editor is typed into there). The state-evidence change and the `JEV_RA_HYBRID` helper sit on `fix/decisions` (`416273c`, `3f2f950`): the first makes hackernews_page_two read as BLOCKED on every rerun and is not merged until that is understood; the second depends on it. Measuring either on the public twenty needs OpenRouter credits (judges are o4-mini and gpt-4o).
 2. **Walled sites**: gov.kr (now plus.gov.kr) and oliveyoung join the walls in corpus/egress.md; eight sites need a `JEV_RA_PROXY` egress to be measured at all.
 3. **Public benchmarks at full size**: Online-Mind2Web all 300 through WebJudge, trajectories published; WebVoyager as the regression gate.
-4. **Recorded tasks**: `uv run jev-ra bench --live --runs 5` on a quiet machine, against 1.5 / 5.0 / 2.0 s.
+4. **Recorded tasks**: `uv run jev-ra bench --live --runs 5` through OpenRouter again once it has credits (decisions there take about 300 ms against 575 ms direct), to see whether oliveyoung clears 3x.
 
 Browser tests skip silently when no Chrome answers on 9222; a local pass without one is not a pass. Start one as ci.yml does and run with `JEV_RA_REQUIRE_BROWSER=1`.

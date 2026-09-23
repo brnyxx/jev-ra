@@ -69,7 +69,7 @@ of `npx -y` does the same thing without Node.
 | `--no-install` | never install uv; print how to do it and exit 2 |
 
 Neither reaches the Python side. `JEV_RA_FROM` overrides the pinned package specifier, for a local
-wheel or a fork: `JEV_RA_FROM=./jev_ra-0.2.4-py3-none-any.whl npx jev-ra --version`.
+wheel or a fork: `JEV_RA_FROM=./jev_ra-0.2.5-py3-none-any.whl npx jev-ra --version`.
 
 ## Requirements
 

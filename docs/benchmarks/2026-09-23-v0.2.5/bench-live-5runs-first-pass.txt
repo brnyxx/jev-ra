@@ -1,0 +1,26 @@
+2026-09-23 09:33:47,418 WARNING jev_ra.agent [ab137ed9558a] Unusable answer set; asking once more: operation: choice is not the most probable option
+offline (scripted decisions, local fixtures, no network), 5 run(s) each:
+  form_fill: 5/5 verified, median 309 ms, p90 432 ms, 5 decisions, 0 text calls
+  catalog_sort: 5/5 verified, median 492 ms, p90 566 ms, 3 decisions, 0 text calls
+live, 5 run(s) each, verified on the page:
+  wikipedia: 5/5 verified, median 4401 ms, p90 6300 ms, 4 decisions, 0 text calls
+  flights: 5/5 verified, median 12073 ms, p90 15592 ms, 15 decisions, 0 text calls
+  oliveyoung_sort: 2/5 verified, median 6776 ms, p90 7701 ms, 4 decisions, 0 text calls
+  search_fact: 5/5 verified, median 2648 ms, p90 4019 ms, 4 decisions, 0 text calls
+  form_fill: 5/5 verified, median 1650 ms, p90 1760 ms, 5 decisions, 0 text calls
+ratio (jev-ra median / browser-use flash_mode, >= 3.0x to pass):
+  wikipedia: 4401 ms / 23058 ms = 5.24x, 100% of 5 runs  PASS
+  flights: 12073 ms / 66414 ms = 5.5x, 100% of 5 runs  PASS
+  oliveyoung_sort: 6776 ms / 15071 ms = 2.22x, 40% of 5 runs  FAIL
+  search_fact: 2648 ms / no baseline row = n/a, 100% of 5 runs  PASS
+  form_fill: 1650 ms / no baseline row = n/a, 100% of 5 runs  PASS
+
+| task | runs | successes | success_rate | median_ms | p90_ms | median_steps | median_decisions | median_cost | text_calls |
+|---|---|---|---|---|---|---|---|---|---|
+| wikipedia | 5 | 5 | 1.0 | 4401 | 6300 | 2 | 4 | 0.0 | 0 |
+| flights | 5 | 5 | 1.0 | 12073 | 15592 | 11 | 15 | 0.0 | 0 |
+| oliveyoung_sort | 5 | 2 | 0.4 | 6776 | 7701 | 3 | 4 | 0.0 | 0 |
+| search_fact | 5 | 5 | 1.0 | 2648 | 4019 | 3 | 4 | 0.0 | 0 |
+| form_fill | 5 | 5 | 1.0 | 1650 | 1760 | 4 | 5 | 0.0 | 0 |
+
+FAIL: at least one task is short

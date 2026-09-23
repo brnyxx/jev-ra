@@ -1,5 +1,29 @@
 # Changelog
 
+## 0.2.5 - 2026-09-23
+
+### Fixed
+- A field that opens an editor of its own when pressed (Google Flights' origin and destination) is
+  typed into that editor. Focus that the press moved onto another text field is where the value goes;
+  focus that did not move still goes to the observed field, so a swallowed click never types into
+  whatever held focus before. Google Flights ended in `stuck_loop` 0/5 on both 0.2.3 and 0.2.4.
+- A link's click carries the address it leads to, so the late-route wait added in 0.2.3 actually runs:
+  a site that pushes the new address a moment after the click (NHK's section links) is read after the
+  route, not on the hover menu the pointer opened.
+- The recorded Flights spec reads Zurich the way Google spells it (Zürich).
+
+### Site
+- The landing page opens on a race: the same job for both tools, played at 4x from the measured
+  medians, in four languages. Switching language keeps the race, and the scripts carry a version so a
+  cached copy is not reused.
+- The recorded demo breaks its lines at the width they render, so Japanese, Chinese and Korean stay
+  inside the terminal; its Google page, cursor labels and step log follow the page's language; the
+  calendar starts its weeks on Sunday and the date click lands on the 20th.
+- The page title, description, accessibility labels, copy buttons, units and the remaining labels are
+  translated in Korean, Japanese and Chinese.
+- The README shows the landing page's step and architecture figures, animated, and carries accuracy
+  on real sites, what a site's error page does and where the changelog is, in four languages.
+
 ## 0.2.4 - 2026-09-23
 
 ### Changed

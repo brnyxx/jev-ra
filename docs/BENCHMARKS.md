@@ -295,3 +295,29 @@ Recorded tasks, five runs each, 0.2.3 and this release back to back on the same 
 | Google Flights | 0/5 | 0/5 |
 
 The release is not slower than the one before it. Google Flights fails on both and is open.
+
+## 0.2.5: Google Flights and NHK pass again
+
+Measured 2026-09-23 on the same machine and the same TypeSafe direct route as 0.2.4 (`jev-ra doctor`:
+DONE in 575 ms via jev-1.13.0). Raw rows: [`2026-09-23-v0.2.5/`](benchmarks/2026-09-23-v0.2.5/).
+
+Recorded tasks, five runs each, 0.2.4 and this release back to back:
+
+| task | 0.2.4 | 0.2.5 |
+|---|---|---|
+| Wikipedia | 5/5, 5,015 ms | 5/5, 4,681 ms |
+| Google Flights | 0/5 | 5/5, 11,603 ms |
+| Olive Young sort | 5/5, 7,006 ms | 5/5, 5,675 ms |
+| Search with a citation | 5/5, 2,858 ms | 5/5, 2,491 ms |
+| Form fill | 5/5, 1,923 ms | 5/5, 1,707 ms |
+
+Google Flights is 5.7x faster than browser-use flash_mode's 66,414 ms and Wikipedia 4.9x faster than
+its 23,058 ms. Olive Young is 2.66x faster than its 15,071 ms, under the 3x bar on both trees (0.2.4:
+2.15x); every decision on this route takes about twice the OpenRouter time. The first pass of this
+release had Olive Young at 2/5. Two alternating corpus passes of `oliveyoung_sort_newest` came out
+10/10 on both trees (median 5,457 ms against 5,689 ms), and the back-to-back bench came out 5/5 on
+both, so that pass is counted as the site's minute, not the release.
+
+`ja_nhk_society_section`, five runs: 4/5, median 2,022 ms. The one miss ended on a URL without
+`genre/society`. In the 0.2.3 corpus passes it was 0/5 on both trees.
+
