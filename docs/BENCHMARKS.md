@@ -275,9 +275,10 @@ column counting those attempts.
 
 ## 0.2.4: site weather, and the same machine for the speed check
 
-Measured 2026-09-23 through the TypeSafe direct route (OpenRouter out of credits; decisions take
-495-604 ms there against about 300 ms through OpenRouter, so every live time below is slower than
-the 0.1 table for that reason alone). Raw rows: [`2026-09-23-v0.2.4/`](benchmarks/2026-09-23-v0.2.4/).
+Measured 2026-09-23 through the TypeSafe direct route (OpenRouter out of credits); decisions took
+495-604 ms there. The 0.1 table was measured through OpenRouter on 2026-09-18 at 274-508 ms per
+decision, on a different day and machine load, so the two routes have not been compared under the
+same conditions and the gap is not attributed to either. Raw rows: [`2026-09-23-v0.2.4/`](benchmarks/2026-09-23-v0.2.4/).
 
 Corpus, three runs, 83 tasks (the three httpbin forms now also run against httpbingo.org): 213 / 249.
 On the 80 tasks shared with 0.2.3: 204 / 240 against 207 / 240, inside the ±5 run-to-run noise;
@@ -313,7 +314,8 @@ Recorded tasks, five runs each, 0.2.4 and this release back to back:
 
 Google Flights is 5.7x faster than browser-use flash_mode's 66,414 ms and Wikipedia 4.9x faster than
 its 23,058 ms. Olive Young is 2.66x faster than its 15,071 ms, under the 3x bar on both trees (0.2.4:
-2.15x); every decision on this route takes about twice the OpenRouter time. The first pass of this
+2.15x). Decisions here took about 575 ms against 274-508 ms in the 0.1 OpenRouter runs, but those
+were measured on another day under another load, so the shortfall is not pinned on the route. The first pass of this
 release had Olive Young at 2/5. Two alternating corpus passes of `oliveyoung_sort_newest` came out
 10/10 on both trees (median 5,457 ms against 5,689 ms), and the back-to-back bench came out 5/5 on
 both, so that pass is counted as the site's minute, not the release.
