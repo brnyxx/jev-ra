@@ -88,7 +88,15 @@ def test_the_npm_keywords_cover_how_people_will_look_for_it():
 
 
 def test_the_server_command_prefers_an_installed_entry_point():
-    assert cli.server_command(which=lambda name: f"/usr/local/bin/{name}") == ["jev-ra", "mcp"]
+    assert cli.server_command(which=lambda name: f"/usr/local/bin/{name}") == ["/usr/local/bin/jev-ra", "mcp"]
+
+
+def test_the_server_command_names_a_virtualenv_entry_point_by_its_path():
+    # `uv run` puts the project's .venv/bin on PATH for that run only; the agent starts the server later.
+    def which(name):
+        return {"jev-ra": "/work/jev-ra/.venv/bin/jev-ra", "uvx": "/opt/bin/uvx"}.get(name)
+
+    assert cli.server_command(which=which) == ["/work/jev-ra/.venv/bin/jev-ra", "mcp"]
 
 
 def test_the_server_command_falls_back_to_uvx():
@@ -133,7 +141,7 @@ def test_install_registers_the_uvx_command_when_jev_ra_is_absent():
 def test_install_registers_the_plain_command_when_it_is_on_path():
     resolved = config.load({"OPENROUTER_API_KEY": "sk-or-v1-x"})
     argv = cli.install_argv("codex", "user", resolved, which=lambda name: "/bin/" + name)
-    assert argv[-2:] == ["jev-ra", "mcp"]
+    assert argv[-2:] == ["/bin/jev-ra", "mcp"]
 
 
 def test_the_readme_quick_start_uses_uvx():
@@ -141,3 +149,17 @@ def test_the_readme_quick_start_uses_uvx():
     assert "uvx jev-ra doctor" in readme
     assert "uvx jev-ra install claude" in readme
     assert "uvx jev-ra install codex" in readme
+
+
+def test_the_server_command_skips_the_entry_point_uvx_is_running_from():
+    def which(name):
+        return {"jev-ra": "/Users/me/.cache/uv/archive-v0/Ab12/bin/jev-ra", "uvx": "/opt/bin/uvx"}.get(name)
+
+    assert cli.server_command(which=which) == ["uvx", "jev-ra", "mcp"]
+
+
+def test_the_server_command_skips_the_entry_point_npx_is_running_from():
+    def which(name):
+        return {"jev-ra": "/Users/me/.npm/_npx/9f/node_modules/.bin/jev-ra", "npx": "/opt/bin/npx"}.get(name)
+
+    assert cli.server_command(which=which) == ["npx", "-y", "jev-ra", "mcp"]
