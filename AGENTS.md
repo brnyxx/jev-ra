@@ -28,6 +28,8 @@ uvx jev-ra doctor
 
 Codex asks the user to trust the new MCP server once (`/mcp` inside Codex). Do not try to bypass that prompt.
 
+A human check can hold `browser_run` for up to 120 s (`JEV_RA_HUMAN_WAIT_S`), and Codex stops waiting for a tool after 60 s by default. Add `tool_timeout_sec = 180` under `[mcp_servers.jev-ra]` in `~/.codex/config.toml`, or set `JEV_RA_HUMAN_WAIT_S` below 60.
+
 ### npm launcher (no Python setup)
 
 ```sh
@@ -88,8 +90,9 @@ Rules that keep it fast and safe:
 | `stale` | the page kept changing under it (animations, live feeds). Call `browser_wait()` then retry once |
 | `budget` | steps or time ran out. Narrow the goal or split it |
 | `too_many_controls` | more than 250 controls in view. Scroll or open the relevant section first, then retry |
-| `blocked` | nothing on the page can progress (login, captcha, empty results). Tell the user what you see; do not retry blindly |
-| `blocked_by_site` | the site served a wall instead of a page. Tell the user the site blocks automation; retrying from the same network will not help |
+| `blocked` | nothing on the page can progress (a login wall, empty results). Tell the user what you see; do not retry blindly |
+| `needs_human` | the site put up a check only a person can clear (a CAPTCHA, Cloudflare's "Just a moment...", a press-and-hold). jev-ra already backed off, brought the Chrome window forward, notified the desktop and waited. Tell the user which site (`detail.site`) and which check (`detail.check`) and ask them to clear it in that window; then call `browser_run(resume=detail.resume, values=<the same values>)`. Never try to solve it yourself. If `detail.next_step` says the browser is headless or remote, relay it: rerun where the user can see Chrome, or have them clear it once in a named profile and rerun with that profile |
+| `blocked_by_site` | the site refused outright (`detail.kind` is `refusal`: access denied, a 403 with no check, a geo block) or kept erroring (`error`). Tell the user the site will not serve automation from here; retrying from the same network will not help |
 | `invalid_decision` | the model answered with something that is not on the page, twice. Re-observe and drive the step yourself with `browser_click` |
 
 Report escalations to the user in one sentence with what you tried; do not loop more than twice on the same reason.
