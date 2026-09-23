@@ -51,7 +51,31 @@ WALL_PHRASES = (
     # refusal and marriott.com with Akamai's, and neither said any of the five above.
     "you have been blocked",
     "have permission to access",
+    "verify you are human",
+    "verifying you are human",
+    "press & hold",
+    "press and hold",
+    "checking your browser",
+    "not available in your country",
+    "not available in your region",
 )
+# Of those, the ones that ask a person to prove they are one. A person at the window can answer
+# them and a decision never should, so they are a check to hand over rather than a refusal; a page
+# that says both - "access denied" over a press-and-hold button - is asking, not refusing.
+CHECK_PHRASES = frozenset(
+    {
+        "captcha",
+        "unusual traffic",
+        "bots use",
+        "verify you are human",
+        "verifying you are human",
+        "press & hold",
+        "press and hold",
+        "checking your browser",
+    }
+)
+HUMAN = "human"
+REFUSAL = "refusal"
 # A refusal is the whole page. Past this much text the page is about something else and merely
 # mentions the word: vercel.com/docs offers "an invisible check instead of a CAPTCHA" six
 # thousand characters in, and reading that as a wall costs a task that was working.
@@ -165,6 +189,27 @@ def speculate(page, action, text):
 
 # The two operations that can put something new on the page without leaving it.
 OPENING = ("CLICK", "TYPE_TEXT")
+# The controls a 403 page may carry and still be a page to act on: a sign-in form answered with
+# 403 is asking for a credential, not refusing the caller.
+FIELD_ROLES = frozenset({"textbox", "searchbox", "combobox", "spinbutton"})
+
+
+@dataclass(frozen=True)
+class Wall:
+    """What a site put in front of the page: a check a person can clear, or a refusal."""
+
+    kind: str
+    said: str
+    check: str = ""
+
+    @property
+    def human(self):
+        """Whether a person at the window can clear it."""
+        return self.kind == HUMAN
+
+    def detail(self):
+        """The part of an escalation's detail that says what the wall was."""
+        return {"wall": self.said, "kind": self.kind, **({"check": self.check} if self.check else {})}
 
 
 @dataclass(frozen=True)
@@ -278,15 +323,15 @@ class Agent:
         it - the site's bad minute should cost a retry, not the task - and report what the reload
         cannot fix as the site refusing, with the status it kept answering with.
         """
-        wall = site_error(page)
-        if wall is None:
+        error = site_error(page)
+        if error is None:
             return page, None
         run.site_error = True
-        logger.info("[%s] The site answered %s; reloading once in %s s", run.run_id, wall, SITE_RETRY_S)
+        logger.info("[%s] The site answered %s; reloading once in %s s", run.run_id, error, SITE_RETRY_S)
         time.sleep(SITE_RETRY_S)
         reloaded = self.read(self.session.reload, timer)
         if reloaded is None:
-            return page, wall
+            return page, error
         return reloaded, site_error(reloaded)
 
     def run(self, goal, values=None, max_steps=None, url=None):
@@ -302,9 +347,9 @@ class Agent:
             page = self.read(self.session.open, url) if url else self.read(self.session.observe)
         if page is None:
             return run.escalate("stale", BLANK_PAGE, detail={"error": "The page never settled to be read."})
-        wall = run.walled(page)
-        if wall:
-            return run.escalate("blocked_by_site", page, detail={"wall": wall})
+        found = run.walled(page)
+        if found is not None:
+            return run.escalate("blocked_by_site", page, detail=found.detail())
         exclude, stale_retries, looks, reasked = set(), 0, 0, False
         best, waited, reasked_value = 0.0, False, False
         opened = None
@@ -314,9 +359,9 @@ class Agent:
                 return run.finish("budget", over, page)
             timer = StepTimer()
             with timer.measure("actions"):
-                page, wall = self.site(page, run, timer)
-                if wall:
-                    return run.escalate("blocked_by_site", page, detail={"wall": wall})
+                page, error = self.site(page, run, timer)
+                if error:
+                    return run.escalate("blocked_by_site", page, detail={"wall": error, "kind": "error"})
                 space, state, questions = run.request(page, opened, exclude)
             try:
                 with timer.measure("decide"):
@@ -468,9 +513,9 @@ class Agent:
             before, page = page, after
             run.record(step, page, timer, guessed is not None)
             opened = step.leaves_open(page)
-            wall = run.walled(page, before)
-            if wall:
-                return run.escalate("blocked_by_site", page, decision, detail={"wall": wall})
+            found = run.walled(page, before)
+            if found is not None:
+                return run.escalate("blocked_by_site", page, decision, detail=found.detail())
             stuck = run.stuck(space)
             if stuck:
                 return run.escalate(stuck, page, decision)
@@ -678,34 +723,28 @@ class _Run:
         self.history.append(line)
 
     def walled(self, page, before=None):
-        """How this site is refusing to serve the machine, or an empty string.
+        """The wall this site put up instead of the page, or None.
 
-        A refusal in the page's own words counts wherever it is read, as long as the refusal is
-        all the page says: a challenge that replaces the page after a click is the same wall as
-        one served on arrival, and a documentation page about bot protection is neither. Saying
-        nothing counts only on a page the run opened, because a wall answers every fresh address
-        that way, while a page the run is still working on says nothing about the host either way.
+        A wall in the page's own words or widgets counts wherever it is read: a challenge that
+        replaces the page after a click is the same wall as one served on arrival, and a
+        documentation page about bot protection is neither. Saying nothing counts only on a page
+        the run opened, because a wall answers every fresh address that way, while a page the run
+        is still working on says nothing about the host either way.
         """
-        text = page_text(page)
-        said = text.strip()
-        if len(said) < WALL_TEXT_CHARS:
-            # A refusal that speaks only in the tab's name is still the host refusing: Akamai
-            # titles the page "Access Denied" and gives it an edge reference number for a body.
-            lowered = f"{page.get('title', '')}\n{text}".lower()
-            phrase = next((phrase for phrase in WALL_PHRASES if phrase in lowered), "")
-            if phrase:
-                return f"the page answered with {phrase!r}"
+        found = wall(page)
+        if found is not None:
+            return found
         url = page.get("url", "")
         if before is not None and url == before.get("url", ""):
-            return ""
+            return None
         host = urlsplit(url).hostname or ""
-        if not host or len(said) >= THIN_TEXT_CHARS:
+        if not host or len(page_text(page).strip()) >= THIN_TEXT_CHARS:
             self.opens = ()
-            return ""
+            return None
         self.opens = (*self.opens, host) if not self.opens or self.opens[-1] == host else (host,)
         if len(self.opens) < THIN_OPENS:
-            return ""
-        return f"{host} answered {THIN_OPENS} opens with under {THIN_TEXT_CHARS} characters"
+            return None
+        return Wall(REFUSAL, f"{host} answered {THIN_OPENS} opens with under {THIN_TEXT_CHARS} characters")
 
     def stuck(self, space):
         """The escalation reason if the run is going nowhere, else None."""
@@ -901,6 +940,36 @@ def page_text(page):
         return whole
     shown = set(seen.split("\n"))
     return "\n".join([seen, *(line for line in whole.split("\n") if line not in shown)])
+
+
+def wall(page):
+    """The wall this page is, from the check it shows or what it says, or None.
+
+    A widget waiting for its answer is a check however long the page around it is: it is the
+    vendor's own markup, not a word that an article could also use. Words count only on a page
+    they could be all of, and a word that asks a person to prove something outranks one that
+    refuses, because the page that says both is the one a person can get past. A 403 with nothing
+    on it to fill in is the site refusing in the only way it said anything.
+    """
+    widget = page.get("challenge")
+    if widget:
+        return Wall(HUMAN, f"the page is waiting on a {widget}", widget)
+    text = page_text(page)
+    if len(text.strip()) >= WALL_TEXT_CHARS:
+        return None
+    # A refusal that speaks only in the tab's name is still the host refusing: Akamai titles the
+    # page "Access Denied" and gives it an edge reference number for a body.
+    lowered = f"{page.get('title', '')}\n{text}".lower()
+    phrases = [phrase for phrase in WALL_PHRASES if phrase in lowered]
+    check = next((phrase for phrase in phrases if phrase in CHECK_PHRASES), "")
+    if check:
+        return Wall(HUMAN, f"the page answered with {check!r}", check)
+    if phrases:
+        return Wall(REFUSAL, f"the page answered with {phrases[0]!r}")
+    fields = any(element.get("role") in FIELD_ROLES for element in page.get("elements") or ())
+    if page.get("http_status") == 403 and not fields:
+        return Wall(REFUSAL, "http 403")
+    return None
 
 
 def site_error(page):

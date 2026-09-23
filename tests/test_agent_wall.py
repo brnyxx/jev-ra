@@ -92,4 +92,4 @@ def test_a_long_page_that_merely_quotes_a_refusal_is_not_one():
     run = _Run.__new__(_Run)
     run.opens = ()
     quoted = "Sorry, you have been blocked is what Cloudflare says. " * 40
-    assert run.walled({"url": "https://blog.test/waf", "title": "Access Denied explained", "text": quoted}) == ""
+    assert run.walled({"url": "https://blog.test/waf", "title": "Access Denied explained", "text": quoted}) is None

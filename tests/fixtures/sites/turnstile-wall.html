@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Contact us</title>
+<style>body { font: 14px/1.5 system-ui; margin: 0; padding: 48px; } label { display: block; margin: 8px 0; }</style>
+</head>
+<body>
+<!-- A contact form behind Cloudflare Turnstile. Turnstile renders into a closed shadow root in its
+     cf-turnstile container, so the page sees an empty box and the hidden cf-turnstile-response
+     input the token lands in. The frame inside is a local stand-in on another origin. -->
+<h1>Contact us</h1>
+<form action="/sites/static.html" method="get">
+  <label>Message <textarea name="message"></textarea></label>
+  <div class="cf-turnstile" data-sitekey="1x00000000000000000000AA">
+    <div id="cf-chl-widget-jevra"></div>
+    <input type="hidden" name="cf-turnstile-response" id="cf-chl-widget-jevra_response">
+  </div>
+  <button type="submit">Send</button>
+</form>
+<script>
+  const other = location.hostname === 'localhost' ? '127.0.0.1' : 'localhost';
+  const root = document.getElementById('cf-chl-widget-jevra').attachShadow({mode: 'closed'});
+  const frame = document.createElement('iframe');
+  frame.style.cssText = 'width: 300px; height: 65px; border: none;';
+  frame.src = `${location.protocol}//${other}:${location.port}/sites/challenge-anchor.html`;
+  root.append(frame);
+  addEventListener('message', event => {
+    if (event.data?.jevRaCheck !== 'solved') return;
+    document.getElementById('cf-chl-widget-jevra_response').value = 'jevra-turnstile-token';
+  });
+</script>
+</body>
+</html>

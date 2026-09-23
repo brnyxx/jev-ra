@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en-US">
+<head>
+<meta charset="utf-8">
+<title>Just a moment...</title>
+<style>
+  body { font: 16px/1.5 system-ui; margin: 0; }
+  .main-content { margin: 8rem auto; max-width: 60rem; padding: 0 1.5rem; }
+</style>
+</head>
+<body>
+<!-- Cloudflare's managed challenge, the page a protected site answers with instead of itself:
+     the zone's name, a Turnstile box, window._cf_chl_opt for the challenge script, and the
+     challenge form it posts. Answering it sends the browser on to the page it asked for, which
+     here is the address after ?to=. The Turnstile frame is a local stand-in on another origin. -->
+<div class="main-wrapper" role="main">
+  <div class="main-content">
+    <h1 class="zone-name-title h1">shop.example</h1>
+    <h2 class="h2" id="challenge-question">Verify you are human by completing the action below.</h2>
+    <div id="turnstile-wrapper"><div id="cf-chl-widget-jevra"></div></div>
+    <div class="core-msg spacer">shop.example needs to review the security of your connection before proceeding.</div>
+  </div>
+</div>
+<form id="challenge-form" action="/sites/cloudflare-challenge.html?__cf_chl_f_tk=jevra" method="POST"
+  enctype="application/x-www-form-urlencoded"></form>
+<script>
+  window._cf_chl_opt = {cvId: '3', cZone: 'shop.example', cType: 'managed', cRay: '8c1f0fac13a3ee54'};
+  const other = location.hostname === 'localhost' ? '127.0.0.1' : 'localhost';
+  const root = document.getElementById('cf-chl-widget-jevra').attachShadow({mode: 'closed'});
+  const frame = document.createElement('iframe');
+  frame.style.cssText = 'width: 300px; height: 65px; border: none;';
+  frame.src = `${location.protocol}//${other}:${location.port}/sites/challenge-anchor.html`;
+  root.append(frame);
+  addEventListener('message', event => {
+    if (event.data?.jevRaCheck !== 'solved') return;
+    location.replace(new URLSearchParams(location.search).get('to') || '/sites/static.html');
+  });
+</script>
+</body>
+</html>

@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>challenge</title>
+<style>
+  body { margin: 0; font: 14px/1.4 system-ui; background: #f9f9f9; }
+  label { display: flex; align-items: center; gap: 12px; height: 76px; padding: 0 12px; border: 1px solid #d3d3d3; }
+  input { width: 28px; height: 28px; margin: 0; }
+</style>
+</head>
+<body>
+<!-- The part of a check a person answers. The vendors serve it from their own origin, so the page
+     around it cannot read or press it, and neither can a run: the fixtures load this from the
+     other loopback name, which Chrome treats as another site. Ticking it tells the parent page,
+     which fills in its response field the way the vendors' scripts do. -->
+<label><input id="check" type="checkbox"> I'm not a robot</label>
+<script>
+  document.getElementById('check').addEventListener('change', () => parent.postMessage({jevRaCheck: 'solved'}, '*'));
+</script>
+</body>
+</html>

@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Newsletter</title>
+<style>
+  body { font: 14px/1.5 system-ui; margin: 0; padding: 48px; } label { display: block; margin: 8px 0; }
+  .grecaptcha-badge { position: fixed; right: 0; bottom: 14px; width: 256px; height: 60px; box-shadow: 0 0 5px gray; }
+</style>
+</head>
+<body>
+<!-- Invisible reCAPTCHA: the site scores the visit in the background and shows only the badge in
+     the corner. Nobody is asked to do anything, so this is an ordinary form, not a check. -->
+<h1>Newsletter</h1>
+<form action="/sites/static.html" method="get">
+  <label>Email <input name="email" type="email"></label>
+  <div class="g-recaptcha" data-sitekey="6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI" data-size="invisible">
+    <div class="grecaptcha-badge" data-style="bottomright">
+      <div class="grecaptcha-logo"></div>
+      <textarea id="g-recaptcha-response" name="g-recaptcha-response" class="g-recaptcha-response"
+        style="display: none;"></textarea>
+    </div>
+  </div>
+  <button type="submit">Subscribe</button>
+</form>
+</body>
+</html>

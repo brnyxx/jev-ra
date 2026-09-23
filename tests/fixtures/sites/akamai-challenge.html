@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Challenge Validation</title>
+<style>body { margin: 0; } iframe { width: 100%; height: 480px; border: none; }</style>
+</head>
+<body>
+<!-- Akamai's adaptive challenge, which a protected site serves in place of the page: a document
+     titled Challenge Validation around one frame, sec-cpt-if, loaded from the site's own
+     /_sec/cp_challenge/ path. The frame's content is the challenge; here it is not served at all,
+     which leaves the structure the page shows. -->
+<iframe id="sec-cpt-if" provider="crypto" class="crypto" data-key="" data-duration="5"
+  src="/_sec/cp_challenge/ak-challenge-4-3.htm"></iframe>
+</body>
+</html>

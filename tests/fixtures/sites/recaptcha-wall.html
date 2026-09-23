@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>One more step</title>
+<style>body { font: 14px/1.5 system-ui; margin: 0; padding: 48px; } button { margin-top: 12px; }</style>
+</head>
+<body>
+<!-- A form that will not go on until a person ticks reCAPTCHA's checkbox. The widget is as
+     api.js renders a v2 checkbox into its container: a 304x78 frame served from Google, and the
+     hidden g-recaptcha-response field it fills once the box is ticked. The frame here is a local
+     stand-in on another origin, so nothing is fetched from the network. -->
+<h1>One more step</h1>
+<p>Please complete the security check to continue.</p>
+<form action="/sites/static.html" method="get">
+  <div class="g-recaptcha" data-sitekey="6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI">
+    <div style="width: 304px; height: 78px;">
+      <div><iframe title="reCAPTCHA" width="304" height="78" role="presentation" name="a-jevra0001"
+        frameborder="0" scrolling="no"></iframe></div>
+      <textarea id="g-recaptcha-response" name="g-recaptcha-response" class="g-recaptcha-response"
+        style="width: 250px; height: 40px; margin: 10px 25px; padding: 0; resize: none; display: none;"></textarea>
+    </div>
+  </div>
+  <button type="submit">Continue</button>
+</form>
+<script>
+  const other = location.hostname === 'localhost' ? '127.0.0.1' : 'localhost';
+  document.querySelector('.g-recaptcha iframe').src =
+    `${location.protocol}//${other}:${location.port}/sites/challenge-anchor.html`;
+  addEventListener('message', event => {
+    if (event.data?.jevRaCheck !== 'solved') return;
+    document.getElementById('g-recaptcha-response').value = 'jevra-recaptcha-token';
+  });
+</script>
+</body>
+</html>
