@@ -1,0 +1,3 @@
+# wikipedia, 10 runs per tree through timeline.py, alternating main and branch one run at a time (branch = all three changes)
+main 10/10 verified median 5285.5 runs in order [6698, 6781, 5117, 5219, 5076, 4772, 5352, 4805, 5961, 6157]
+branch 10/10 verified median 5006.5 runs in order [6776, 4825, 5556, 4018, 5188, 4767, 5539, 4764, 4263, 5994]

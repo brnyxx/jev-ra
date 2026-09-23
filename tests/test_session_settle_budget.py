@@ -65,3 +65,23 @@ def test_a_static_page_settles_in_the_time_it_takes_to_see_it(session, fixture_s
     session.settle()
     elapsed = time.monotonic() - started
     assert elapsed < 0.2, f"waited {elapsed:.2f}s for a page that never moves"
+
+
+def test_a_page_that_never_holds_still_is_observed_from_the_reading_the_wait_ended_on(session, fixture_server):
+    page = session.open(fixture_server + "/sites/live-ticker.html")
+    reads = counted(session)
+    wait_out = session.wait_out
+
+    def marked(*args, **kwargs):
+        try:
+            return wait_out(*args, **kwargs)
+        finally:
+            reads.append("the wait ended")
+
+    session.wait_out = marked
+    session.act(action_for(page, "Where from", "fill"), page, text="Zurich")
+    after = session.observe()
+    ended = reads.index("the wait ended")
+    assert ended > 0
+    assert reads[ended + 1 :] == []
+    assert next(e for e in after["elements"] if e["label"] == "Where from")["value"] == "Zurich"

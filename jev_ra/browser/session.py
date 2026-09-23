@@ -710,6 +710,10 @@ class Session:
                 if ready is None:
                     ready = time.monotonic()
                 elif time.monotonic() - ready >= QUIET_BUDGET_S:
+                    # Out of patience rather than proven still, but this reading was taken a moment
+                    # ago and nothing has been waited for since: it is the page as it stands, and
+                    # reading it again would only say the same thing later.
+                    self.settled = reading
                     return
             # Two identical readings of a page that is not moving: only its next change can answer
             # what this wait is still asking, so that is what the next turn waits for.
@@ -717,6 +721,7 @@ class Session:
             previous = marker
             remaining = deadline - time.monotonic()
             if remaining <= 0:
+                self.settled = reading
                 return
             # A click whose answer has already shown up in a reading only has to stop moving; one
             # that has shown nothing yet is given longer, because a panel that mounts a beat later

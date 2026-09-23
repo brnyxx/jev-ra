@@ -1,0 +1,11 @@
+task              main ok  main median  branch ok  branch median
+wikipedia             5/5         4549        5/5           5160
+flights               5/5        13385        5/5          12142
+oliveyoung_sort       4/5       8305.0        5/5           6919
+search_fact           5/5         3130        5/5           3160
+form_fill             5/5         1976        5/5           2021
+wikipedia: r1 main 4410 branch 5342 | r2 main 4549 branch 6009 | r3 main 5115 branch 5160 | r4 main 5993 branch 4139 | r5 main 3564 branch 4152
+flights: r1 main 13385 branch 11919 | r2 main 14196 branch 12142 | r3 main 13111 branch 10956 | r4 main 15213 branch 12484 | r5 main 12598 branch 17693
+oliveyoung_sort: r1 main 7665 branch 8723 | r2 main 8945 branch 5599 | r3 main 9006 branch 6106 | r4 main None branch 9582 | r5 main 6334 branch 6919
+search_fact: r1 main 3130 branch 5529 | r2 main 3963 branch 3160 | r3 main 4533 branch 3089 | r4 main 3096 branch 3064 | r5 main 2622 branch 3912
+form_fill: r1 main 2760 branch 2062 | r2 main 1831 branch 1944 | r3 main 2228 branch 2021 | r4 main 1976 branch 1654 | r5 main 1718 branch 3007
