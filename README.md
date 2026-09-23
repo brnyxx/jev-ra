@@ -208,6 +208,26 @@ for two seconds and reloaded once before anything is decided on it; if it still 
 error, the run stops with `blocked_by_site` and `detail.wall` names the status (`"http 502"`), so a
 site's bad minute is never mistaken for a page to act on.
 
+A site that asks for a person - a CAPTCHA widget, Cloudflare's "Just a moment...", a press-and-hold
+check - is handed to one. jev-ra backs off and asks for the page once more, as it does for an error
+page; if the check is still there, it brings the Chrome window to the front, raises a desktop
+notification naming the site (`JEV_RA_NOTIFY=0` turns it off), and waits up to 120 s
+(`JEV_RA_HUMAN_WAIT_S`) for the page to stop being a check. Then the same run carries on, with the
+same goal, history and values and the steps it has left. The wait is reported apart as
+`Result.human_wait_ms` and spends no step and no time budget. If nobody clears it in time, the run
+stops with `needs_human`: `detail` names the site and the check and carries `resume`, the run id.
+Once the person has cleared it, `browser_run(resume=...)` or `jev-ra run --resume ID` carries the run
+on from that page instead of starting over. A headless browser, or one at a remote CDP address, has
+nobody to show the check to, so the run stops with `needs_human` at once and `detail.next_step` says
+how to rerun where a person can see it. A site that refuses outright - "Access denied", a 403 with no
+check, a geo block - is still `blocked_by_site`, with `detail.kind` set to `refusal`. jev-ra never
+solves a check, never hides that it is automated, and never borrows cookies from another profile.
+
+The navigations a run starts - its first open and the one reload it may spend - are paced per host:
+at least 1 s apart (`JEV_RA_PACE_S`), and a host that answered 429 or put up a check makes the next
+one wait twice as long each time in a row. A run opens its address once, so an ordinary run is never
+held, and the machine the run is on is never paced.
+
 ## Benchmarks
 
 Five tasks, five runs each, every run verified against the page it left behind. Measured 2026-09-18
@@ -258,7 +278,8 @@ when a per-task rerun agrees.
 |---|---|
 | Canvas drawing, games, anything painted rather than marked up | `blocked`: no observed control can advance the goal |
 | File upload | `blocked`: a file input is never offered, and never typed into |
-| CAPTCHA, bot walls, stealth | `blocked`, with the page text, for you to decide |
+| CAPTCHA and other checks a person can clear | handed to the person at the window; `needs_human` with a `resume` token when nobody clears it |
+| Bot walls that refuse outright, stealth | `blocked_by_site` with `detail.kind` `refusal`; jev-ra never disguises itself |
 | Auth flows | `needs_value` with the field named; jev-ra never guesses a credential |
 | Pop-up windows, multi-tab workflows | the run stays on its own target |
 | Cross-origin iframes | reported as one opaque element; open shadow roots and same-origin iframes **are** traversed |
