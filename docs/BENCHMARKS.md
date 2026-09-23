@@ -381,3 +381,26 @@ Decision round trips on 0.2.6, every executed step of the three passes: n = 275,
 p90 320 ms, min 201 ms, max 577 ms, TypeSafe direct. These are the first per-decision latencies
 saved with their raw values; a run's final DONE decision is not a step and is not among them.
 
+## 0.2.7: the human-check handoff costs nothing on a page without one
+
+Measured 2026-09-23 on one machine through the TypeSafe direct route, alternating 0.2.6 and this
+release: 0.2.6, 0.2.7, 0.2.7, 0.2.6. The 0.2.6 side is the 0.2.6 runtime plus the install fix,
+which changes only what `install` registers; the 0.2.7 side is the handoff branch before its last
+commit, which changes behavior only on a page showing a check. Other lanes were running live
+passes on the same machine (load average 12.9-16.2). Raw payloads:
+[`2026-09-23-v0.2.7/`](benchmarks/2026-09-23-v0.2.7/).
+
+| task | 0.2.6 (2 passes) | 0.2.7 (2 passes) |
+|---|---|---|
+| Wikipedia | 10/10, 3,755 / 3,485 ms | 10/10, 3,745 / 3,225 ms |
+| Google Flights | 10/10, 12,355 / 13,862 ms | 10/10, 15,169 / 11,057 ms |
+| Olive Young sort | 10/10, 6,011 / 5,428 ms | 10/10, 6,190 / 5,291 ms |
+| Search with a citation | 10/10, 3,095 / 3,318 ms | 10/10, 3,812 / 2,812 ms |
+| Form fill | 10/10, 1,642 / 1,731 ms | 10/10, 1,697 / 1,689 ms |
+
+The ranges overlap on every task: in the first 0.2.7 pass Flights and search were slower, and in
+the second, run after it, every task was at or under both 0.2.6 passes. No run needed a person and
+no backoff fired. Decision round trips per pass: median 298 / 306 ms on 0.2.6 and 298 / 290 ms on
+0.2.7, the same route. Both trees exit 1 on the 3x bar because Olive Young stays under it
+(2.51x and 2.43x in the first passes).
+

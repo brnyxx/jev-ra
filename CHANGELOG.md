@@ -1,5 +1,48 @@
 # Changelog
 
+## 0.2.7 - 2026-09-23
+
+### Added
+- A human check (a CAPTCHA, Cloudflare's "Just a moment...", a press-and-hold) is handed to a
+  person. jev-ra backs off and asks for the page once more; if the check is still there, it brings
+  the Chrome window to the front, raises a desktop notification (`JEV_RA_NOTIFY=0` turns it off)
+  and waits up to 120 s (`JEV_RA_HUMAN_WAIT_S`) for the page to stop being a check. Then the same
+  run carries on. jev-ra never solves a check, never hides that it is automated and never borrows
+  cookies from another profile.
+- A run nobody cleared the check for stops with the new reason `needs_human`: `detail` names the
+  site and the check and carries `resume`. `browser_run(resume=...)` or `jev-ra run --resume ID`
+  carries the run on from its last page once the person has cleared it. A headless or remote
+  Chrome has nobody to show the check to, so the run stops at once and `detail.next_step` says what
+  to do instead.
+- `blocked_by_site` says which kind of wall it was: `detail.kind` is `refusal` (access denied, a
+  403 with no check, a geo block) or `error`.
+- The navigations a run starts are paced per host, at least 1 s apart (`JEV_RA_PACE_S`), and a host
+  that answered 429 or put up a check is given twice as long each time, up to 30 s. The machine
+  the run is on is never paced.
+- The corpus and the bench count a run that needed a person apart, never as a pass or a failure.
+
+### Changed
+- A page showing a check is never sent to the decision provider, not even as a speculative
+  request made ahead of time.
+- AGENTS.md tells an agent how to hand a `needs_human` check to its user and resume, and tells
+  Codex users to raise `tool_timeout_sec`, since Codex stops waiting for a tool after 60 s.
+- Measured against 0.2.6 on one machine, alternating main, branch, branch, main, 5 runs each: every
+  task 5/5 verified in every round, and the medians overlap (Wikipedia 3.2-3.7 s against 3.5-3.8 s,
+  Google Flights 11.1-15.2 s against 12.4-13.9 s). The handoff costs nothing on a page with no check
+  (docs/benchmarks/2026-09-23-v0.2.7).
+
+### Fixed
+- `uvx jev-ra install claude` (and `npx -y jev-ra install claude`) registered the `jev-ra` that uvx
+  or npx had put on PATH for that one run, a copy in their cache, by name; Claude Code then found no
+  `jev-ra` to start. An entry point in the uv or npx cache is now skipped, so the command registered
+  is `uvx jev-ra mcp` (or `npx -y jev-ra mcp`), as AGENTS.md says, and an installed entry point is
+  registered by its full path so a later PATH does not matter. The server itself is unchanged;
+  anyone who installed with 0.2.x can run the install again, or check with `claude mcp list`.
+
+### Site
+- The race opens with a laser tracing jev-ra's card instead of a lightning strike; the measured
+  times and the 4x playback are unchanged.
+
 ## 0.2.6 - 2026-09-23
 
 ### Changed
