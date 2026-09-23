@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.2.8 - 2026-09-23
+
+0.2.8 is 0.2.6 with the install fix below. The human-check handoff that 0.2.7 shipped (the
+`needs_human` reason, `resume`, per-host navigation pacing and the refusal/error wall kinds) is held
+back for a later release, so 0.2.8 behaves on a check page as 0.2.6 did.
+
+### Fixed
+- `uvx jev-ra install claude` (and `npx -y jev-ra install claude`) registered the `jev-ra` that uvx
+  or npx had put on PATH for that one run, a copy in their cache, by name; Claude Code then found no
+  `jev-ra` to start. An entry point in the uv or npx cache is now skipped, so the command registered
+  is `uvx jev-ra mcp` (or `npx -y jev-ra mcp`), as AGENTS.md says, and an installed entry point is
+  registered by its full path so a later PATH does not matter. The server itself is unchanged;
+  anyone who installed with 0.2.x can run the install again, or check with `claude mcp list`.
+
 ## 0.2.6 - 2026-09-23
 
 ### Changed
