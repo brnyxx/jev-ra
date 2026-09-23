@@ -269,6 +269,21 @@ def percentile(values, fraction=0.9):
     return round(ordered[index])
 
 
+def decision_latency(runs):
+    """Every decision's round trip across the runs, so a release can quote the distribution it measured."""
+    latencies = [step["latency_ms"] for run in runs for step in run.get("profile") or [] if step.get("latency_ms")]
+    if not latencies:
+        return None
+    return {
+        "n": len(latencies),
+        "median": median(latencies),
+        "p90": percentile(latencies),
+        "min": min(latencies),
+        "max": max(latencies),
+        "all": latencies,
+    }
+
+
 def summarise(rows):
     """Per task: medians over the runs that actually worked, plus the success rate over all of them."""
     summary = {}
@@ -290,6 +305,7 @@ def summarise(rows):
                 "median_decisions": median([run["decisions"] for run in good]),
                 "median_cost": round(statistics.median([run["cost"] for run in good]), 6) if good else None,
                 "text_calls": sum(run.get("text_calls", 0) for run in runs),
+                "decision_ms": decision_latency(runs),
                 "failures": sorted({run.get("reason") or run.get("status") for run in runs if not run.get("ok")}),
             }
         )

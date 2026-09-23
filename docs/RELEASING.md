@@ -66,6 +66,21 @@ The publish jobs also require two repository variables (Settings > Secrets and v
 | `PYPI_TRUSTED` | `true` | the `pypi` job |
 | `NPM_PUBLISH` | `true` | the `npm` job |
 
+## Measure before the bump
+
+Every number the release notes, the README or the site quote comes from a file committed with the
+release. Before bumping, run the recorded tasks on the release head and on the previous tag, back to
+back on one machine, and keep both JSON payloads:
+
+```sh
+uv run jev-ra bench --live --runs 5 --json > docs/benchmarks/<date>-v<version>/bench-live-5runs.json
+```
+
+The payload names the decision route (`route`: provider, endpoint, model) and, per task, every
+decision's round trip (`decision_ms`: n, median, p90, min, max and each value). Quote per-decision
+latency only from these, with the route and date next to it, and compare two routes only when they
+were measured in the same window.
+
 ## Bump the version
 
 `scripts/check_versions.py` compares four places, and they must all agree before the tag is

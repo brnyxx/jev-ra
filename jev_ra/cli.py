@@ -674,7 +674,12 @@ def cmd_bench(args):
     runs = args.runs
     offline_runs = run_offline(config, runs=runs)
     offline = summarise(offline_runs)
-    payload = {"runs": runs, "offline": offline, "baseline_flash_ms": flash_baseline()}
+    payload = {
+        "runs": runs,
+        "route": {"provider": config.provider, "endpoint": config.endpoint, "model": config.model},
+        "offline": offline,
+        "baseline_flash_ms": flash_baseline(),
+    }
     lines = [f"offline (scripted decisions, local fixtures, no network), {runs} run(s) each:"]
     lines += [summary_line(row) for row in offline]
     if args.profile and not args.live:

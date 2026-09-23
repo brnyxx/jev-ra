@@ -259,3 +259,44 @@ def test_the_live_bench_command_prints_the_ratio_table(monkeypatch, capsys):
     assert "where the time goes:" in out
     assert "PASS: every task clears the bar" in out
     assert cli.main(["bench", "--live", "--runs", "1"]) == 0
+
+
+def test_summarise_keeps_every_decision_latency_so_a_release_can_quote_it():
+    rows = [
+        {
+            "task": "wikipedia",
+            "ok": True,
+            "elapsed_ms": 4000,
+            "steps": 2,
+            "decisions": 3,
+            "cost": 0.0,
+            "profile": [{"latency_ms": 300}, {"latency_ms": 500}],
+        },
+        {
+            "task": "wikipedia",
+            "ok": False,
+            "status": "blocked",
+            "elapsed_ms": 9000,
+            "steps": 1,
+            "decisions": 1,
+            "cost": 0.0,
+            "profile": [{"latency_ms": 400}],
+        },
+    ]
+    [row] = bench.summarise(rows)
+    assert row["decision_ms"] == {"n": 3, "median": 400, "p90": 500, "min": 300, "max": 500, "all": [300, 500, 400]}
+
+
+def test_summarise_says_nothing_about_decision_latency_when_no_step_carried_one():
+    rows = [{"task": "search_fact", "ok": True, "elapsed_ms": 2000, "steps": 3, "decisions": 4, "cost": 0.0}]
+    [row] = bench.summarise(rows)
+    assert row["decision_ms"] is None
+
+
+def test_bench_json_names_the_decision_route(monkeypatch, capsys):
+    monkeypatch.setattr(bench, "run_offline", lambda *args, **kwargs: [])
+    endpoint = "https://api.typesafe.ai/v1/systemone"
+    monkeypatch.setattr(cli, "load", lambda: config.Config(api_key="k", endpoint=endpoint, model="jev-latest"))
+    cli.main(["bench", "--json", "--runs", "1"])
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["route"] == {"provider": "typesafe", "endpoint": endpoint, "model": "jev-latest"}
