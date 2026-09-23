@@ -47,7 +47,9 @@ def test_the_landing_page_assets_exist():
     for reference in local_references(LANDING.read_text()):
         if reference in {"./"}:
             continue
-        found = (ROOT / reference).exists() or (ROOT / "docs" / reference).exists()
+        # A ?v= query only busts the browser cache; the file is the path in front of it.
+        path = reference.split("?", 1)[0].split("#", 1)[0]
+        found = (ROOT / path).exists() or (ROOT / "docs" / path).exists()
         assert found, f"docs/index.html points at {reference}"
 
 
