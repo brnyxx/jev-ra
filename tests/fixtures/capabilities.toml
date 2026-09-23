@@ -104,7 +104,7 @@ page = "/sites/file-upload.html"
 goal = "Apply for the job as Ada Lovelace with her resume attached."
 values = { name = "Ada Lovelace" }
 plan = [["TYPE_TEXT", "Full name", "name"], ["CLICK", "Attach resume/CV"]]
-expect = "needs_file"
+expect = ["needs_file"]
 check = "document.getElementById('resume').files.length === 0"
 
 [[capability]]
@@ -309,16 +309,17 @@ name = "hover_row_actions"
 pattern = "Row actions painted only while the row is hovered"
 page = "/sites/row-hover-actions.html"
 goal = "Archive the message from Grace Hopper."
-plan = [["CLICK", "Archive"]]
-check = "document.getElementById('status').textContent === 'Archived the message from Grace Hopper.'"
-gap = "a control hidden until its row is hovered is never observed"
+plan = [["BLOCKED"]]
+expect = ["blocked"]
+check = "document.querySelectorAll('#list .row').length === 3 && !document.getElementById('status').textContent"
 
 [[capability]]
 name = "context_menu"
 pattern = "Custom right-click menu"
 page = "/sites/context-menu.html"
 goal = "Move budget.xlsx to the trash."
-expect = "blocked"
+plan = [["BLOCKED"]]
+expect = ["blocked"]
 check = "!!document.querySelector('[data-name=\"budget.xlsx\"]')"
 
 [[capability]]
@@ -326,5 +327,6 @@ name = "drag_and_drop"
 pattern = "Drag a card to another column"
 page = "/sites/sortable-board.html"
 goal = "Move 'Write tests' to the Done column."
-expect = "blocked"
+plan = [["CLICK", "Write tests"], ["CLICK", "Write tests"], ["BLOCKED"]]
+expect = ["blocked", "stuck_loop"]
 check = "!document.querySelector('[data-column=done] .card')"

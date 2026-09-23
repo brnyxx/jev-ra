@@ -51,7 +51,7 @@ def entries(only=()):
 
 
 def plan_of(entry):
-    return [tuple([*step, None, None][:3]) for step in entry.get("plan", [])]
+    return [tuple([*step, None, None][:3]) for step in entry["plan"]]
 
 
 def judged(entry, session, result):
@@ -59,15 +59,15 @@ def judged(entry, session, result):
         held = bool(session.evaluate(f"!!({entry['check']})"))
     except Exception as error:
         return False, f"check failed: {error}"
-    expected = entry.get("expect", "done")
+    expected = entry.get("expect", ["done"])
     ended = result.reason if result.status == "escalate" else result.status
     wanted = entry.get("downloaded")
     if wanted and wanted not in [item.get("file") for item in getattr(result, "downloads", []) or []]:
         return False, f"{wanted} was not downloaded"
     if not held:
         return False, "the page does not show the goal reached"
-    if ended != expected:
-        return False, f"ended {ended}, expected {expected}"
+    if ended not in expected:
+        return False, f"ended {ended}, expected {' or '.join(expected)}"
     return True, ""
 
 
@@ -130,10 +130,7 @@ def main():
         for attempt in range(args.runs):
             for entry in entries(args.only):
                 if args.mode == "scripted":
-                    if "plan" not in entry:
-                        row = {"name": entry["name"], "pattern": entry["pattern"], "ok": None, "why": "no operation"}
-                    else:
-                        row = run_one(entry, base, config, scripted(plan_of(entry)), prefetch=False)
+                    row = run_one(entry, base, config, scripted(plan_of(entry)), prefetch=False)
                 else:
                     row = run_one(entry, base, config, client.decide, prefetch=True)
                 row["run"] = attempt + 1

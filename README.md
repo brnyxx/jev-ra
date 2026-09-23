@@ -294,6 +294,8 @@ the MCP tools are never limited.
 | limit | what happens |
 |---|---|
 | Canvas drawing, games, anything painted rather than marked up | `blocked`: no observed control can advance the goal |
+| Drag and drop, right-click menus | nothing is dragged or right-clicked: `blocked`, or `stuck_loop` after pressing what can only be dragged |
+| Controls painted only while the pointer is over their row | not offered: `blocked`, unless the page has another way to them, such as opening the row |
 | File upload | `needs_file`: the control that asked is named with the kinds of file it takes; no file is ever chosen |
 | CAPTCHA and other checks a person can clear | handed to the person at the window; `needs_human` with a `resume` token when nobody clears it |
 | Bot walls that refuse outright, stealth | `blocked_by_site` with `detail.kind` `refusal`; jev-ra never disguises itself |

@@ -31,12 +31,11 @@ def test_every_entry_says_what_it_is_and_how_it_is_proven():
     names = [entry["name"] for entry in CATALOG]
     assert len(names) == len(set(names))
     for entry in CATALOG:
-        assert {"name", "pattern", "page", "goal", "check"} <= set(entry)
+        assert {"name", "pattern", "page", "goal", "plan", "check"} <= set(entry)
         assert (Path(__file__).parent / "fixtures" / entry["page"].lstrip("/")).is_file()
-        assert "plan" in entry or entry.get("expect", "done") != "done"
 
 
-@pytest.mark.parametrize("entry", [planned(entry) for entry in CATALOG if "plan" in entry])
+@pytest.mark.parametrize("entry", [planned(entry) for entry in CATALOG])
 def test_the_mechanism_carries_out_the_plan(session, fixture_server, entry):
     agent = Agent(session=session, config=config.load({}), decide=scripted(steps(entry)), prefetch=False)
     result = agent.run(
@@ -45,7 +44,7 @@ def test_the_mechanism_carries_out_the_plan(session, fixture_server, entry):
         max_steps=entry.get("max_steps", 10),
         url=fixture_server + entry["page"],
     )
-    assert ended(result) == entry.get("expect", "done")
+    assert ended(result) in entry.get("expect", ["done"])
     assert session.evaluate(f"!!({entry['check']})") is True
     if "downloaded" in entry:
         assert entry["downloaded"] in [item.get("file") for item in result.downloads]
