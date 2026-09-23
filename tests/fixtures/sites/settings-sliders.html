@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Appearance</title>
+<style>
+  body { font: 15px/1.5 system-ui; margin: 0; padding: 24px; max-width: 520px; }
+  label { display: block; margin: 16px 0 4px; }
+  input[type=range] { width: 300px; }
+  #preview { margin-top: 20px; padding: 12px; border: 1px solid #ddd; }
+</style>
+</head>
+<body>
+<!-- An appearance panel built from native controls the way editors and dashboards ship one: a
+     range slider for the text size with its value printed beside it, and a colour input for the
+     accent colour. Both save as soon as they change. -->
+<h1>Appearance</h1>
+<label for="size">Text size</label>
+<input type="range" id="size" name="size" min="12" max="24" step="1" value="14">
+<output for="size" id="size-value">14 px</output>
+<label for="accent">Accent colour</label>
+<input type="color" id="accent" name="accent" value="#1a56db">
+<p id="preview">Saved: text 14 px, accent #1a56db</p>
+<script>
+  const size = document.getElementById('size');
+  const accent = document.getElementById('accent');
+  const save = () => {
+    document.getElementById('size-value').textContent = size.value + ' px';
+    document.getElementById('preview').textContent = 'Saved: text ' + size.value + ' px, accent ' + accent.value;
+  };
+  size.addEventListener('input', save);
+  accent.addEventListener('input', save);
+  accent.addEventListener('change', save);
+</script>
+</body>
+</html>

@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Sprint board</title>
+<style>
+  body { font: 14px/1.5 system-ui; margin: 0; padding: 24px; }
+  .board { display: flex; gap: 16px; }
+  .column { width: 220px; min-height: 260px; background: #f4f5f7; border-radius: 8px; padding: 8px; }
+  .column h2 { font-size: 14px; margin: 4px 4px 8px; }
+  .card { background: #fff; border-radius: 6px; padding: 10px; margin-bottom: 8px; box-shadow: 0 1px 2px rgba(0,0,0,.2);
+          cursor: grab; user-select: none; touch-action: none; }
+  .card.dragging { opacity: .6; }
+</style>
+</head>
+<body>
+<!-- A task board the way drag-and-drop kits (dnd-kit, SortableJS) wire it: a card moves only when
+     the pointer presses it, travels across the board and is released over another column. The
+     cards have no menu and no buttons; dragging is the only way to move one. -->
+<h1>Sprint 14</h1>
+<div class="board">
+  <section class="column" data-column="todo"><h2>To do</h2>
+    <div class="card" role="button" tabindex="0" aria-roledescription="draggable">Write tests</div>
+    <div class="card" role="button" tabindex="0" aria-roledescription="draggable">Update docs</div></section>
+  <section class="column" data-column="doing"><h2>In progress</h2>
+    <div class="card" role="button" tabindex="0" aria-roledescription="draggable">Fix login bug</div></section>
+  <section class="column" data-column="done"><h2>Done</h2></section>
+</div>
+<p id="status"></p>
+<script>
+  for (const card of document.querySelectorAll('.card')) {
+    card.addEventListener('pointerdown', start => {
+      card.setPointerCapture(start.pointerId);
+      let moved = false;
+      const move = event => {
+        if (Math.hypot(event.clientX - start.clientX, event.clientY - start.clientY) > 5) moved = true;
+        card.classList.toggle('dragging', moved);
+      };
+      const up = event => {
+        card.removeEventListener('pointermove', move);
+        card.removeEventListener('pointerup', up);
+        card.classList.remove('dragging');
+        if (!moved) return;
+        card.style.visibility = 'hidden';
+        const column = document.elementFromPoint(event.clientX, event.clientY)?.closest('.column');
+        card.style.visibility = '';
+        if (!column) return;
+        column.appendChild(card);
+        document.getElementById('status').textContent = card.textContent + ' moved to ' + column.querySelector('h2').textContent;
+      };
+      card.addEventListener('pointermove', move);
+      card.addEventListener('pointerup', up);
+    });
+  }
+</script>
+</body>
+</html>

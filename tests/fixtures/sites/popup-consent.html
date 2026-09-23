@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Acme ID - Allow access</title>
+<style>
+  body { font: 15px/1.5 system-ui; margin: 0; padding: 24px; }
+  .actions { display: flex; gap: 12px; margin-top: 20px; }
+  button { padding: 8px 16px; }
+</style>
+</head>
+<body>
+<h1>Acme ID</h1>
+<p>Signed in as <strong>Ada Lovelace</strong> (ada@example.com)</p>
+<p><strong>Notes</strong> wants to see your name and email address.</p>
+<div class="actions">
+  <button type="button" id="deny">Cancel</button>
+  <button type="button" id="allow">Allow</button>
+</div>
+<script>
+  const answer = granted => {
+    opener?.postMessage({type: 'acme-id', granted, user: 'Ada Lovelace'}, location.origin);
+    setTimeout(() => window.close(), 150);
+  };
+  document.getElementById('allow').addEventListener('click', () => answer(true));
+  document.getElementById('deny').addEventListener('click', () => answer(false));
+</script>
+</body>
+</html>

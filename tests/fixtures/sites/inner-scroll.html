@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Workspace settings</title>
+<style>
+  html, body { height: 100%; margin: 0; }
+  body { font: 15px/1.5 system-ui; display: grid; grid-template-rows: 56px 1fr; grid-template-columns: 220px 1fr; overflow: hidden; }
+  header { grid-column: 1 / 3; display: flex; align-items: center; padding: 0 20px; border-bottom: 1px solid #ddd; }
+  nav { border-right: 1px solid #ddd; padding: 16px; }
+  nav a { display: block; padding: 4px 0; }
+  main { overflow-y: auto; padding: 0 32px 32px; }
+  section { border-bottom: 1px solid #eee; padding: 16px 0; min-height: 220px; }
+</style>
+</head>
+<body>
+<!-- An application shell the way dashboards lay themselves out: the document is exactly one
+     screen tall and never scrolls, and the content scrolls inside <main>. Everything below the
+     first screen of settings is reached by scrolling that box, not the window. -->
+<header><strong>Acme workspace</strong></header>
+<nav aria-label="Settings sections">
+  <a href="#general">General</a><a href="#members">Members</a><a href="#billing">Billing</a>
+</nav>
+<main>
+  <section id="general"><h2>General</h2><p>Workspace name: Acme</p><label>Time zone <select><option>UTC</option><option>Europe/Zurich</option></select></label></section>
+  <section id="members"><h2>Members</h2><p>12 members, 3 pending invitations.</p></section>
+  <section id="billing"><h2>Billing</h2><p>Team plan, billed yearly.</p></section>
+  <section id="security"><h2>Security</h2><p>Two-factor authentication is required.</p></section>
+  <section id="data"><h2>Data</h2><p>Download everything this workspace holds as a ZIP archive.</p>
+    <button type="button" id="export">Export all data</button><p id="status"></p></section>
+</main>
+<script>
+  document.getElementById('export').addEventListener('click', () => {
+    document.getElementById('status').textContent = 'Export started. We will email you a link.';
+  });
+</script>
+</body>
+</html>

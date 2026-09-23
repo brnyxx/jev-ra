@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Signup form</title>
+<style>
+  body { font: 15px/1.5 system-ui; margin: 0; padding: 16px; }
+  label { display: block; margin-bottom: 4px; }
+  input { padding: 6px 8px; width: 260px; }
+  .error { color: #b00; }
+</style>
+</head>
+<body>
+<form id="form" novalidate>
+  <label for="email">Email address</label>
+  <input id="email" name="email" type="email" autocomplete="email" placeholder="you@example.com">
+  <button type="submit">Subscribe</button>
+  <p id="message"></p>
+</form>
+<script>
+  document.getElementById('form').addEventListener('submit', event => {
+    event.preventDefault();
+    const email = document.getElementById('email').value.trim();
+    const message = document.getElementById('message');
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+      message.className = 'error';
+      message.textContent = 'Enter a valid email address.';
+      return;
+    }
+    message.className = '';
+    message.textContent = "Thanks, you're subscribed.";
+    parent.postMessage({type: 'subscribed', email}, location.origin);
+  });
+</script>
+</body>
+</html>

@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Certificate request</title>
+<style>
+  body { font: 15px/1.5 system-ui; margin: 0; padding: 24px; max-width: 640px; }
+  label { display: block; margin: 12px 0 4px; }
+  input[type=text], input[type=tel] { padding: 8px; width: 280px; }
+  .terms { margin-top: 16px; padding: 12px; border: 1px solid #ddd; }
+  .terms label { display: inline; margin: 0; }
+  a.button { display: inline-block; margin-top: 16px; padding: 10px 18px; background: #1a56db; color: #fff; text-decoration: none; }
+</style>
+</head>
+<body>
+<!-- A government service form the way many public and banking sites still validate: the submit
+     control is a link that runs a check, and every problem is reported with window.alert(), which
+     freezes the page until someone presses OK. Nothing about the problem is written into the page. -->
+<h1>Request a residence certificate</h1>
+<form id="request" onsubmit="return false">
+  <label for="name">Applicant name</label>
+  <input type="text" id="name" name="name">
+  <label for="phone">Mobile phone</label>
+  <input type="tel" id="phone" name="phone" placeholder="010-0000-0000">
+  <div class="terms">
+    <p>We collect your name and phone number to issue the certificate.</p>
+    <input type="checkbox" id="agree" name="agree"> <label for="agree">I agree to the collection and use of personal information</label>
+  </div>
+  <a href="#" class="button" onclick="submitRequest(); return false;">Submit request</a>
+</form>
+<p id="status"></p>
+<script>
+  function submitRequest() {
+    if (!document.getElementById('name').value.trim()) { alert('Please enter the applicant name.'); return; }
+    if (!document.getElementById('phone').value.trim()) { alert('Please enter your mobile phone number.'); return; }
+    if (!document.getElementById('agree').checked) {
+      alert('You must agree to the collection and use of personal information.');
+      return;
+    }
+    document.getElementById('status').textContent = 'Your request has been submitted.';
+  }
+</script>
+</body>
+</html>

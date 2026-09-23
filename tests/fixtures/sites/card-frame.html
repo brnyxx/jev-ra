@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Secure card input</title>
+<style>
+  body { font: 15px/1.5 system-ui; margin: 0; padding: 14px 0; display: flex; gap: 8px; }
+  input { border: 0; outline: none; font: inherit; padding: 4px 0; }
+  #number { flex: 1; }
+  #expiry { width: 70px; }
+  #cvc { width: 50px; }
+</style>
+</head>
+<body>
+<input id="number" aria-label="Card number" placeholder="1234 1234 1234 1234" inputmode="numeric" autocomplete="cc-number">
+<input id="expiry" aria-label="Expiration date MM / YY" placeholder="MM / YY" inputmode="numeric" autocomplete="cc-exp">
+<input id="cvc" aria-label="CVC" placeholder="CVC" inputmode="numeric" autocomplete="cc-csc">
+<script>
+  const digits = id => document.getElementById(id).value.replace(/\D/g, '');
+  const report = () => parent.postMessage({
+    type: 'card',
+    complete: digits('number').length === 16 && digits('expiry').length === 4 && digits('cvc').length >= 3,
+  }, '*');
+  for (const input of document.querySelectorAll('input')) input.addEventListener('input', report);
+</script>
+</body>
+</html>

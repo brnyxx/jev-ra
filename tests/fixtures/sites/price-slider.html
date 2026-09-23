@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Road bikes</title>
+<style>
+  body { font: 15px/1.5 system-ui; margin: 0; padding: 24px; max-width: 560px; }
+  .track { position: relative; width: 400px; height: 6px; background: #ddd; margin: 28px 0 12px; border-radius: 3px; }
+  .fill { position: absolute; height: 6px; background: #1a56db; border-radius: 3px; }
+  .handle { position: absolute; top: -8px; width: 22px; height: 22px; margin-left: -11px; border-radius: 50%;
+            background: #fff; border: 2px solid #1a56db; box-sizing: border-box; cursor: grab; touch-action: none; }
+</style>
+</head>
+<body>
+<!-- A price range filter the way shop sliders (noUiSlider, rc-slider) draw one: two handles that
+     are divs with role="slider", moved by dragging with the pointer or by the arrow keys once one
+     has focus. There is no input to type a price into. -->
+<h1>Road bikes</h1>
+<p id="label-price">Price</p>
+<div class="track" id="track">
+  <div class="fill" id="fill"></div>
+  <div class="handle" role="slider" tabindex="0" aria-label="Minimum price" aria-valuemin="0" aria-valuemax="5000" aria-valuenow="0" aria-valuetext="$0" data-key="low"></div>
+  <div class="handle" role="slider" tabindex="0" aria-label="Maximum price" aria-valuemin="0" aria-valuemax="5000" aria-valuenow="5000" aria-valuetext="$5,000" data-key="high"></div>
+</div>
+<p id="range">$0 - $5,000</p>
+<p id="count">48 bikes</p>
+<script>
+  const MAX = 5000, STEP = 100, track = document.getElementById('track');
+  const value = {low: 0, high: MAX};
+  const money = n => '$' + n.toLocaleString('en-US');
+  const draw = () => {
+    for (const handle of document.querySelectorAll('.handle')) {
+      const v = value[handle.dataset.key];
+      handle.style.left = (v / MAX * 100) + '%';
+      handle.setAttribute('aria-valuenow', String(v));
+      handle.setAttribute('aria-valuetext', money(v));
+    }
+    const fill = document.getElementById('fill');
+    fill.style.left = (value.low / MAX * 100) + '%';
+    fill.style.width = ((value.high - value.low) / MAX * 100) + '%';
+    document.getElementById('range').textContent = money(value.low) + ' - ' + money(value.high);
+    document.getElementById('count').textContent = Math.max(0, Math.round(48 * (value.high - value.low) / MAX)) + ' bikes';
+  };
+  const set = (key, v) => {
+    v = Math.round(Math.min(MAX, Math.max(0, v)) / STEP) * STEP;
+    value[key] = key === 'low' ? Math.min(v, value.high) : Math.max(v, value.low);
+    draw();
+  };
+  for (const handle of document.querySelectorAll('.handle')) {
+    const key = handle.dataset.key;
+    handle.addEventListener('keydown', event => {
+      const delta = {ArrowRight: STEP, ArrowUp: STEP, ArrowLeft: -STEP, ArrowDown: -STEP, PageUp: 1000, PageDown: -1000}[event.key];
+      if (event.key === 'Home') set(key, 0);
+      else if (event.key === 'End') set(key, MAX);
+      else if (delta) set(key, value[key] + delta);
+      else return;
+      event.preventDefault();
+    });
+    handle.addEventListener('pointerdown', event => {
+      handle.setPointerCapture(event.pointerId);
+      const move = e => {
+        const r = track.getBoundingClientRect();
+        set(key, (e.clientX - r.left) / r.width * MAX);
+      };
+      const up = () => { handle.removeEventListener('pointermove', move); handle.removeEventListener('pointerup', up); };
+      handle.addEventListener('pointermove', move);
+      handle.addEventListener('pointerup', up);
+    });
+  }
+  draw();
+</script>
+</body>
+</html>

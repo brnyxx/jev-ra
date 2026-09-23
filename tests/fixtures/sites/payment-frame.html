@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Checkout</title>
+<style>
+  body { font: 16px/1.5 system-ui; margin: 0; padding: 24px; max-width: 520px; }
+  label { display: block; margin: 12px 0 4px; }
+  input { padding: 8px; width: 100%; box-sizing: border-box; }
+  #card { display: block; width: 100%; height: 64px; border: 0; }
+  .field { border: 1px solid #ccc; border-radius: 6px; padding: 0 8px; }
+  button { margin-top: 16px; padding: 10px 18px; }
+</style>
+</head>
+<body>
+<!-- A card field the way a payment provider draws it: the page owns the name and the Pay button,
+     and the card number, expiry and CVC live in an iframe served from the provider's own origin,
+     which the page cannot read. The frame reports whether the card is complete, never the card. -->
+<h1>Checkout</h1>
+<p>Annual plan - $96.00</p>
+<form id="checkout">
+  <label for="name">Name on card</label>
+  <input id="name" name="name" autocomplete="cc-name">
+  <label>Card details</label>
+  <div class="field"><iframe id="card" title="Secure card payment input frame"></iframe></div>
+  <button type="submit">Pay $96.00</button>
+</form>
+<p id="status" role="status">Not paid.</p>
+<script>
+  const provider = 'http://localhost:' + location.port;
+  document.getElementById('card').src = provider + '/sites/card-frame.html';
+  let card = {complete: false};
+  addEventListener('message', event => {
+    if (event.origin !== provider || event.data?.type !== 'card') return;
+    card = event.data;
+  });
+  document.getElementById('checkout').addEventListener('submit', event => {
+    event.preventDefault();
+    const status = document.getElementById('status');
+    if (!document.getElementById('name').value.trim()) {
+      status.textContent = 'Enter the name on the card.';
+      return;
+    }
+    status.textContent = card.complete ? 'Payment succeeded.' : 'Your card number is incomplete.';
+  });
+</script>
+</body>
+</html>

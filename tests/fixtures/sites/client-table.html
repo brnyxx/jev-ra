@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Monitors</title>
+<style>
+  body { font: 14px/1.5 system-ui; margin: 0; padding: 24px; max-width: 760px; }
+  .controls { display: flex; gap: 12px; align-items: center; margin-bottom: 12px; }
+  .chip { border: 1px solid #aaa; border-radius: 14px; padding: 4px 12px; background: #fff; }
+  .chip[aria-pressed=true] { background: #1a56db; color: #fff; border-color: #1a56db; }
+  table { width: 100%; border-collapse: collapse; }
+  td, th { text-align: left; padding: 6px 8px; border-bottom: 1px solid #eee; }
+  nav button[aria-current=page] { font-weight: 700; text-decoration: underline; }
+</style>
+</head>
+<body>
+<!-- A product table the way client-rendered shops filter it: toggle chips that say whether they
+     are on with aria-pressed, a sort dropdown, and numbered pages, all redrawing the table in place
+     without ever changing the address. -->
+<h1>Monitors</h1>
+<div class="controls">
+  <button type="button" class="chip" aria-pressed="false" data-filter="stock">In stock</button>
+  <button type="button" class="chip" aria-pressed="false" data-filter="usbc">USB-C</button>
+  <label>Sort by <select id="sort"><option value="featured">Featured</option><option value="price-asc">Price: low to high</option><option value="price-desc">Price: high to low</option></select></label>
+</div>
+<table><thead><tr><th>Model</th><th>Price</th><th>Stock</th></tr></thead><tbody id="rows"></tbody></table>
+<nav aria-label="Pagination" id="pages"></nav>
+<p id="state"></p>
+<script>
+  const items = [];
+  const makers = ['Dell', 'LG', 'BenQ', 'Asus', 'Eizo', 'Samsung'];
+  for (let i = 1; i <= 30; i++) {
+    items.push({name: makers[i % 6] + ' ' + (20 + i) + '"', price: 120 + (i * 53) % 700, stock: i % 3 !== 0, usbc: i % 2 === 0, rank: i});
+  }
+  const state = {stock: false, usbc: false, sort: 'featured', page: 1};
+  const PER = 8;
+  const draw = () => {
+    let list = items.filter(item => (!state.stock || item.stock) && (!state.usbc || item.usbc));
+    if (state.sort === 'price-asc') list = [...list].sort((a, b) => a.price - b.price);
+    if (state.sort === 'price-desc') list = [...list].sort((a, b) => b.price - a.price);
+    const pages = Math.max(1, Math.ceil(list.length / PER));
+    state.page = Math.min(state.page, pages);
+    document.getElementById('rows').innerHTML = list.slice((state.page - 1) * PER, state.page * PER)
+      .map(item => '<tr><td>' + item.name + '</td><td>$' + item.price + '</td><td>' + (item.stock ? 'In stock' : 'Sold out') + '</td></tr>').join('');
+    const nav = document.getElementById('pages');
+    nav.innerHTML = '';
+    for (let p = 1; p <= pages; p++) {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.textContent = String(p);
+      button.setAttribute('aria-label', 'Page ' + p);
+      if (p === state.page) button.setAttribute('aria-current', 'page');
+      button.addEventListener('click', () => { state.page = p; draw(); });
+      nav.appendChild(button);
+    }
+    document.getElementById('state').textContent =
+      list.length + ' monitors, page ' + state.page + ' of ' + pages;
+  };
+  for (const chip of document.querySelectorAll('.chip')) {
+    chip.addEventListener('click', () => {
+      state[chip.dataset.filter] = !state[chip.dataset.filter];
+      chip.setAttribute('aria-pressed', String(state[chip.dataset.filter]));
+      state.page = 1;
+      draw();
+    });
+  }
+  document.getElementById('sort').addEventListener('change', event => { state.sort = event.target.value; state.page = 1; draw(); });
+  window.tableState = state;
+  draw();
+</script>
+</body>
+</html>

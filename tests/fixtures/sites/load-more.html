@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Search results - standing desk</title>
+<style>
+  body { font: 15px/1.5 system-ui; margin: 0; padding: 0 24px; max-width: 720px; }
+  li { list-style: none; border-bottom: 1px solid #eee; padding: 10px 0; }
+  ul { padding: 0; }
+  #more { display: block; margin: 16px auto 40px; padding: 10px 24px; }
+  #quick { position: fixed; top: 16px; right: 16px; width: 320px; background: #fff; border: 1px solid #ccc; padding: 16px; box-shadow: 0 4px 16px rgba(0,0,0,.2); }
+  #quick[hidden] { display: none; }
+</style>
+</head>
+<body>
+<!-- Results the way a shop pages them: a first batch, and a "Show more results" button at the end
+     of the list that appends the next batch in place without changing the address. -->
+<h1>Results for "standing desk"</h1>
+<p>96 results</p>
+<ul id="results"></ul>
+<div id="quick" role="dialog" aria-labelledby="opened" hidden>
+  <h2 id="opened"></h2><p id="price"></p>
+  <button type="button" onclick="document.getElementById('quick').hidden = true">Close</button>
+</div>
+<button type="button" id="more">Show more results</button>
+<script>
+  const woods = ['Oak', 'Walnut', 'Maple', 'Bamboo', 'Ash', 'Birch'];
+  const widths = [120, 140, 160, 180];
+  let shown = 0;
+  const title = n => 'Result ' + n + ': ' + woods[n % woods.length] + ' standing desk, ' + widths[Math.floor(n / woods.length) % widths.length] + ' cm';
+  const more = () => {
+    for (let i = 0; i < 10; i++) {
+      const n = ++shown;
+      const item = document.createElement('li');
+      item.innerHTML = '<a href="#r' + n + '"></a> <span>$' + (300 + n * 7) + '</span>';
+      item.querySelector('a').textContent = title(n);
+      item.querySelector('a').addEventListener('click', event => {
+        event.preventDefault();
+        document.getElementById('opened').textContent = 'Viewing: ' + title(n);
+        document.getElementById('price').textContent = '$' + (300 + n * 7);
+        document.getElementById('quick').hidden = false;
+      });
+      document.getElementById('results').appendChild(item);
+    }
+  };
+  more();
+  document.getElementById('more').addEventListener('click', () => {
+    const button = document.getElementById('more');
+    button.disabled = true;
+    button.textContent = 'Loading…';
+    setTimeout(() => { more(); button.disabled = false; button.textContent = 'Show more results'; }, 900);
+  });
+</script>
+</body>
+</html>

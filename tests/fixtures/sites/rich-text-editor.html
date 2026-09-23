@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Issue #214 - Flaky upload test</title>
+<style>
+  body { font: 15px/1.5 system-ui; margin: 0; padding: 24px; max-width: 760px; }
+  .toolbar button { padding: 2px 8px; }
+  .ProseMirror { min-height: 90px; border: 1px solid #ccc; border-radius: 6px; padding: 8px 12px; margin: 6px 0; outline: none; }
+  .ProseMirror p.is-empty::before { content: attr(data-placeholder); color: #999; pointer-events: none; float: left; height: 0; }
+  .comment { border-top: 1px solid #eee; padding: 8px 0; }
+</style>
+</head>
+<body>
+<!-- A comment box the way a rich-text editor library draws one: a toolbar, and a contenteditable
+     div holding a paragraph, with the placeholder painted by CSS rather than set as an attribute
+     of a field. The Comment button stays disabled until the editor holds some text. -->
+<h1>Flaky upload test</h1>
+<div id="comments">
+  <div class="comment"><strong>grace</strong><p>Fails about one run in ten on CI.</p></div>
+</div>
+<h2>Add a comment</h2>
+<div class="toolbar" role="toolbar" aria-label="Formatting">
+  <button type="button" aria-label="Bold">B</button>
+  <button type="button" aria-label="Italic"><i>I</i></button>
+</div>
+<div class="ProseMirror" contenteditable="true" role="textbox" aria-multiline="true" aria-label="Comment body"
+     translate="no"><p class="is-empty" data-placeholder="Leave a comment"><br class="ProseMirror-trailingBreak"></p></div>
+<button type="button" id="submit" disabled>Comment</button>
+<script>
+  const editor = document.querySelector('.ProseMirror');
+  const submit = document.getElementById('submit');
+  const text = () => editor.innerText.trim();
+  editor.addEventListener('input', () => {
+    const empty = !text();
+    submit.disabled = empty;
+    editor.querySelector('p')?.classList.toggle('is-empty', empty);
+  });
+  submit.addEventListener('click', () => {
+    const comment = document.createElement('div');
+    comment.className = 'comment';
+    comment.innerHTML = '<strong>you</strong><p></p>';
+    comment.querySelector('p').textContent = text();
+    document.getElementById('comments').appendChild(comment);
+    editor.innerHTML = '<p class="is-empty" data-placeholder="Leave a comment"><br></p>';
+    submit.disabled = true;
+  });
+</script>
+</body>
+</html>

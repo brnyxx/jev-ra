@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Files</title>
+<style>
+  body { font: 15px/1.5 system-ui; margin: 0; padding: 24px; max-width: 600px; }
+  li { padding: 6px 0; border-bottom: 1px solid #eee; }
+</style>
+</head>
+<body>
+<!-- A file manager in an admin console that asks for a name with window.prompt(): the page stops
+     until the dialog is answered, and the answer is what the new folder is called. -->
+<h1>Files</h1>
+<button type="button" id="new">New folder</button>
+<ul id="folders"><li>📁 Contracts</li><li>📁 Receipts</li></ul>
+<script>
+  document.getElementById('new').addEventListener('click', () => {
+    const name = prompt('Name the new folder', 'Untitled folder');
+    if (!name || !name.trim()) return;
+    const item = document.createElement('li');
+    item.textContent = '📁 ' + name.trim();
+    document.getElementById('folders').appendChild(item);
+  });
+</script>
+</body>
+</html>

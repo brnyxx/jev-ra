@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Reports</title>
+<style>
+  body { font: 15px/1.5 system-ui; margin: 0; padding: 24px; max-width: 640px; }
+  li { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #eee; }
+</style>
+</head>
+<body>
+<!-- A reports page the way dashboards hand out exports: each report is a link with the download
+     attribute. Following one saves a file and leaves the page exactly as it was. -->
+<h1>Reports</h1>
+<ul>
+  <li><span>Monthly revenue - August 2026</span><a href="/sites/report.csv" download="revenue-2026-08.csv">Download CSV</a></li>
+  <li><span>Customer list</span><a href="/sites/report.csv" download="customers.csv">Download customers</a></li>
+</ul>
+</body>
+</html>

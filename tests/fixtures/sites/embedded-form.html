@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Field notes</title>
+<style>
+  body { font: 16px/1.5 system-ui; margin: 0; padding: 24px; max-width: 720px; }
+  iframe { display: block; width: 100%; height: 190px; border: 1px solid #ddd; border-radius: 8px; }
+</style>
+</head>
+<body>
+<!-- A newsletter signup the way a blog embeds one from its mail provider: the form lives in an
+     iframe the blog serves from its own origin, and the frame tells the page when it is done. -->
+<h1>Field notes</h1>
+<p>Short essays on tools, once a month.</p>
+<h2>Get the next issue</h2>
+<iframe id="signup" src="/sites/embedded-form-frame.html" title="Newsletter signup"></iframe>
+<p id="status">Not subscribed.</p>
+<script>
+  addEventListener('message', event => {
+    if (event.origin !== location.origin || event.data?.type !== 'subscribed') return;
+    document.getElementById('status').textContent = 'Subscribed: ' + event.data.email;
+  });
+</script>
+</body>
+</html>

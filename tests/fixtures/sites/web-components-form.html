@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Join the beta</title>
+<style>body { font: 16px/1.5 system-ui; margin: 0; padding: 24px; max-width: 560px; }</style>
+</head>
+<body>
+<!-- A form built from a design system's web components, the way Shoelace or Material Web ship
+     them: each field renders its own label and input inside an open shadow root, the checkbox is
+     a role="checkbox" span in its own root, and the submit button is a <button> inside the
+     component that asks the light-DOM form to submit. -->
+<h1>Join the beta</h1>
+<form id="beta">
+  <ds-text-field name="email" label="Work email" type="email"></ds-text-field>
+  <ds-checkbox name="terms" label="I agree to the beta terms"></ds-checkbox>
+  <ds-button type="submit">Request access</ds-button>
+</form>
+<p id="status" role="status">No request yet.</p>
+<script>
+  class DsTextField extends HTMLElement {
+    connectedCallback() {
+      const root = this.attachShadow({mode: 'open'});
+      root.innerHTML =
+        '<style>label{display:block;margin:12px 0 4px}input{padding:8px;width:280px}</style>' +
+        '<label for="input" part="label"></label><input id="input" part="input">';
+      root.querySelector('label').textContent = this.getAttribute('label');
+      root.querySelector('input').type = this.getAttribute('type') || 'text';
+    }
+    get value() { return this.shadowRoot.querySelector('input').value; }
+  }
+  class DsCheckbox extends HTMLElement {
+    connectedCallback() {
+      const root = this.attachShadow({mode: 'open'});
+      root.innerHTML =
+        '<style>span[role=checkbox]{display:inline-flex;gap:8px;align-items:center;margin:12px 0;cursor:pointer}' +
+        '.box{width:16px;height:16px;border:1px solid #666;display:inline-block}' +
+        '[aria-checked=true] .box{background:#1a56db}</style>' +
+        '<span role="checkbox" tabindex="0" aria-checked="false"><span class="box"></span><span class="text"></span></span>';
+      const box = root.querySelector('[role=checkbox]');
+      root.querySelector('.text').textContent = this.getAttribute('label');
+      box.addEventListener('click', () => box.setAttribute('aria-checked', String(!this.checked)));
+    }
+    get checked() { return this.shadowRoot.querySelector('[role=checkbox]').getAttribute('aria-checked') === 'true'; }
+  }
+  class DsButton extends HTMLElement {
+    connectedCallback() {
+      const root = this.attachShadow({mode: 'open'});
+      root.innerHTML = '<style>button{display:block;margin-top:12px;padding:8px 16px}</style><button part="base"><slot></slot></button>';
+      root.querySelector('button').addEventListener('click', () => this.closest('form')?.requestSubmit());
+    }
+  }
+  customElements.define('ds-text-field', DsTextField);
+  customElements.define('ds-checkbox', DsCheckbox);
+  customElements.define('ds-button', DsButton);
+  document.getElementById('beta').addEventListener('submit', event => {
+    event.preventDefault();
+    const email = document.querySelector('ds-text-field').value.trim();
+    const agreed = document.querySelector('ds-checkbox').checked;
+    const status = document.getElementById('status');
+    if (!email) status.textContent = 'Enter your work email.';
+    else if (!agreed) status.textContent = 'Agree to the beta terms to continue.';
+    else status.textContent = 'Requested access for ' + email + '.';
+  });
+</script>
+</body>
+</html>

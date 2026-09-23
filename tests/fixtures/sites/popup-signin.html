@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Notes - Sign in</title>
+<style>
+  body { font: 15px/1.5 system-ui; margin: 0; padding: 48px; text-align: center; }
+  button { padding: 10px 18px; }
+</style>
+</head>
+<body>
+<!-- Signing in with another account the way OAuth providers do it on the desktop: the button opens
+     the provider in a pop-up window with window.open, the pop-up asks for consent, posts the result
+     back to the page that opened it and closes itself. The page only changes once that happens. -->
+<h1>Notes</h1>
+<p id="status">You are not signed in.</p>
+<button type="button" id="signin">Continue with Acme ID</button>
+<script>
+  document.getElementById('signin').addEventListener('click', () => {
+    window.open('/sites/popup-consent.html', 'acme-id', 'popup,width=480,height=600');
+    document.getElementById('status').textContent = 'Waiting for Acme ID…';
+  });
+  addEventListener('message', event => {
+    if (event.origin !== location.origin || event.data?.type !== 'acme-id') return;
+    document.getElementById('status').textContent = event.data.granted
+      ? 'Signed in as ' + event.data.user + '.'
+      : 'Sign-in was cancelled.';
+    document.getElementById('signin').hidden = event.data.granted;
+  });
+</script>
+</body>
+</html>

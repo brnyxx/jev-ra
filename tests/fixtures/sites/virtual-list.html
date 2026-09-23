@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Invoices</title>
+<style>
+  body { font: 14px/1.5 system-ui; margin: 0; padding: 24px; }
+  #viewport { height: 480px; width: 560px; overflow-y: auto; border: 1px solid #ccc; position: relative; }
+  #spacer { position: relative; }
+  .row { position: absolute; left: 0; right: 0; height: 40px; display: flex; align-items: center; padding: 0 12px;
+         box-sizing: border-box; border-bottom: 1px solid #f0f0f0; }
+</style>
+</head>
+<body>
+<!-- A long list the way a virtualized table renders one (react-window, TanStack Virtual): the list
+     scrolls inside its own box, the page itself does not scroll, and only the rows in view plus a
+     few either side exist in the document at any moment. -->
+<h1>Invoices</h1>
+<p id="opened">500 invoices. Select one to open it.</p>
+<div id="viewport" role="grid" aria-label="Invoices" aria-rowcount="500"><div id="spacer"></div></div>
+<script>
+  const ROW = 40, COUNT = 500, OVERSCAN = 4;
+  const clients = ['Acme Corp', 'Globex', 'Initech', 'Umbrella', 'Hooli', 'Stark Industries'];
+  const id = n => 'INV-' + String(n).padStart(4, '0');
+  const viewport = document.getElementById('viewport');
+  const spacer = document.getElementById('spacer');
+  spacer.style.height = ROW * COUNT + 'px';
+  const render = () => {
+    const first = Math.max(0, Math.floor(viewport.scrollTop / ROW) - OVERSCAN);
+    const last = Math.min(COUNT, Math.ceil((viewport.scrollTop + viewport.clientHeight) / ROW) + OVERSCAN);
+    spacer.replaceChildren();
+    for (let i = first; i < last; i++) {
+      const n = i + 1;
+      const row = document.createElement('div');
+      row.className = 'row';
+      row.setAttribute('role', 'row');
+      row.style.top = i * ROW + 'px';
+      row.innerHTML = '<a href="#' + id(n) + '"></a>&nbsp;- ' + clients[n % clients.length] + ' - $' + (n * 37 % 2000 + 100) + '.00';
+      row.querySelector('a').textContent = id(n);
+      row.querySelector('a').addEventListener('click', () => {
+        document.getElementById('opened').textContent = 'Opened ' + id(n);
+      });
+      spacer.appendChild(row);
+    }
+  };
+  viewport.addEventListener('scroll', render, {passive: true});
+  render();
+</script>
+</body>
+</html>
