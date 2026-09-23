@@ -118,8 +118,9 @@ UNCLEARED_STEP = (
     "Nobody cleared it within {wait:g} s. Ask the person at this machine to clear it in the Chrome window, "
     'then carry the run on with browser_run(resume="{run_id}") or `jev-ra run --resume {run_id}`.'
 )
-# The page controls a snapshot offers beside the elements, which no input of its own removes.
-CONTROL_ACTIONS = ("scroll_down", "scroll_up", "wait")
+# The page controls a snapshot offers beside the elements, which no input of its own removes:
+# typing into a field inside a dialog leaves the dialog there to be closed.
+CONTROL_ACTIONS = ("press_escape", "scroll_down", "scroll_up", "wait")
 # An answer nobody is waiting for is worth the moment it takes to price it, and no longer.
 DISCARD_WAIT_S = 1.0
 # The readings a step's settle takes before the page proves it has stopped moving are usually the

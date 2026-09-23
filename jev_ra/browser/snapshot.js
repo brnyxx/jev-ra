@@ -339,6 +339,13 @@
     document.title,text,semantics,actions,page_key[6]];
   if (submits!==null) actions.push({id:'press_enter',node:submits,kind:'press',key:'Enter',
     label:'Press Enter to submit '+(name(active)||'the focused field')});
+  // A modal is closed with Escape, and a search palette drawn over the whole page often offers
+  // nothing else: its footer says so, and pressing its backdrop is the only other way out. The key
+  // names no field; it goes to the page, which is where a dialog listens for it. Only a dialog
+  // that says what it is gives the key its name - its text is the dialog, not its title.
+  const dialog=covers.find(e=>e.matches('dialog[open],[role="dialog"],[aria-modal="true"]'));
+  if (dialog) actions.push({id:'press_escape',kind:'press',key:'Escape',label:'Press Escape to close '+
+    ((dialog.hasAttribute('aria-label') || dialog.hasAttribute('aria-labelledby')) && name(dialog) || 'the dialog')});
   // What moves when a person scrolls: the document while it has further to go, and otherwise the
   // largest box in view that has. An app shell exactly one screen tall scrolls inside <main>, a
   // mail client inside its message list, a virtualized table inside its own viewport, and a

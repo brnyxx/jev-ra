@@ -1098,6 +1098,13 @@ def test_a_typed_field_is_speculated_holding_what_was_typed():
     assert speculate(before, FORM_ACTIONS[2], None) is None
 
 
+def test_a_field_typed_into_inside_a_dialog_is_speculated_with_the_dialog_still_closable():
+    escape = {"id": "press_escape", "kind": "press", "key": "Escape", "label": "Press Escape to close Search"}
+    before = {**page(0), "actions": [*FORM_ACTIONS[:3], escape, FORM_ACTIONS[3]]}
+    guessed = speculate(before, FORM_ACTIONS[0], "London")
+    assert [action["id"] for action in guessed["actions"][-3:]] == ["press_enter", "press_escape", "wait"]
+
+
 def test_the_next_decision_is_asked_while_the_page_is_still_settling():
     decide = decider([TYPE_CITY, DONE])
     agent = agent_with(decide, session=FakeSession([page(0), filled(1)]))

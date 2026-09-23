@@ -163,7 +163,6 @@ page = "/sites/search-modal-escape.html"
 goal = "Open the Pricing page."
 plan = [["PRESS_ESCAPE"], ["CLICK", "Pricing"]]
 check = "document.getElementById('view').textContent === 'Pricing'"
-gap = "Escape is never offered, and the modal has no button that closes it"
 
 [[capability]]
 name = "infinite_scroll"

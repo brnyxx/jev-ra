@@ -1147,7 +1147,8 @@ class Session:
         if action is not None and action.get("dialog"):
             self.events()
             return self.dialog is not None and page.get("marker") == self.dialog_page()["marker"]
-        if action is not None and action.get("kind") in TARGETED:
+        # A key that names no field - Escape out of a dialog - is fresh while the whole page is.
+        if action is not None and action.get("kind") in TARGETED and "node" in action:
             node = action["node"]
             current = self.evaluate(guard_expression(node))
             return current == [page["page_key"], page["guards"].get(str(node))]
