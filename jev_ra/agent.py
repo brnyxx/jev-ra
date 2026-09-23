@@ -677,6 +677,9 @@ class Agent:
             stuck = run.stuck(space)
             if stuck:
                 return run.escalate(stuck, page, decision)
+            spent = run.spent()
+            if spent:
+                exclude = {spent}
 
     @contextmanager
     def ahead(self, run, guesses, room, step=None):
@@ -937,6 +940,23 @@ class _Run:
         if len(self.opens) < THIN_OPENS:
             return None
         return Wall(REFUSAL, f"{host} answered {THIN_OPENS} opens with under {THIN_TEXT_CHARS} characters")
+
+    def spent(self):
+        """The choice the last two steps both made without the page moving, or None.
+
+        Asked the same question about the same page, the model gives the same answer, and the third
+        press of a control that twice did nothing ends the run with the one beside it never tried.
+        One retry stays on offer, because a first press is sometimes swallowed while a page is still
+        wiring its controls up; after a second that does nothing, the choice sits out one question.
+        A wait is how loading is waited out, so waits never count.
+        """
+        recent = self.steps[-2:]
+        choices = {(step["operation"], step["target"]) for step in recent}
+        if len(recent) < 2 or len(choices) != 1:
+            return None
+        if any(step["page_changed"] or step["kind"] == "wait" for step in recent):
+            return None
+        return choices.pop()
 
     def stuck(self, space):
         """The escalation reason if the run is going nowhere, else None."""

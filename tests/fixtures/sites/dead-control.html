@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Course catalog</title>
+<style>body { font: 16px/1.5 system-ui; margin: 24px; }</style>
+</head>
+<body>
+<!-- A control whose press changes nothing the page shows, next to the one that works. Measured on
+     the public benchmark: coursera.org's search field, already holding its query, was pressed three
+     times in a row and the run ended stuck_loop with the submit one decision away; a BBC results
+     page under a sign-in overlay was scrolled three times without moving. Beside them, a control
+     that swallows its first press the way react.dev's search button does while the page is still
+     wiring itself up, and answers the second. -->
+<h1>Course catalog</h1>
+<form id="search">
+  <input id="q" aria-label="Search catalog" value="3d printing">
+  <button type="button" id="open">Open catalog</button>
+  <button type="submit">Search</button>
+  <button type="button" id="palette">Open palette</button>
+</form>
+<p id="out">Popular courses</p>
+<script>
+  document.getElementById('open').addEventListener('click', event => { event.currentTarget.dataset.pressed = String(Date.now()); });
+  let wired = false;
+  document.getElementById('palette').addEventListener('click', () => {
+    if (!wired) { wired = true; return; }
+    document.getElementById('out').textContent = 'Palette open';
+  });
+  document.getElementById('search').addEventListener('submit', event => {
+    event.preventDefault();
+    document.getElementById('out').textContent = 'Results for ' + document.getElementById('q').value;
+  });
+</script>
+</body>
+</html>
