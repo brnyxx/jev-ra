@@ -1133,3 +1133,14 @@ def test_a_decider_that_answers_by_position_is_never_asked_ahead_of_time():
     result = agent.run("search for a city", values={"city": "London"})
     assert (result.speculations, result.prefetched) == (0, 0)
     assert len(decide.seen) == 2
+
+
+def test_an_escalation_on_a_page_with_a_frame_it_cannot_read_names_the_frame():
+    frame = {"ref": "e3", "node": 3, "role": "frame", "label": "Secure card payment input frame", "rect": {}}
+    framed = {**page(0), "elements": [*FORM_ELEMENTS, {**frame, "host": "js.stripe.com"}]}
+    blocked = {"operation": answer("BLOCKED"), "goal_achieved": {"noul": 0.05}}
+    result = agent_with(decider([blocked]), session=FakeSession(pages=[framed])).run("pay for the plan")
+    assert result.status == "blocked"
+    assert result.detail["frames"] == [{"label": "Secure card payment input frame", "host": "js.stripe.com"}]
+    plain = agent_with(decider([blocked])).run("pay for the plan")
+    assert "frames" not in plain.detail

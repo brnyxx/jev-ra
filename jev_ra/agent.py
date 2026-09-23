@@ -1049,9 +1049,21 @@ class _Run:
         return self.result(status, reason, page, decision)
 
     def escalate(self, reason, page, decision=None, detail=None, status="escalate"):
-        """End the run and hand back what the host needs to decide."""
+        """End the run and hand back what the host needs to decide.
+
+        A frame from another origin is one opaque element to jev-ra, and on a page that has one the
+        controls a goal needs are often inside it - a card number, a sign-in. The escalation names
+        each such frame and where it is served from, so the host knows what the run could not see.
+        """
         detail = dict(detail or {})
         detail["page_text"] = page.get("text", "")[:ESCALATION_TEXT_CHARS]
+        frames = [
+            {"label": element.get("label", ""), "host": element.get("host", "")}
+            for element in page.get("elements", [])
+            if element.get("role") == "frame"
+        ]
+        if frames:
+            detail["frames"] = frames
         return self.result(status, reason, page, decision, detail)
 
 

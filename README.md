@@ -301,7 +301,7 @@ the MCP tools are never limited.
 | Bot walls that refuse outright, stealth | `blocked_by_site` with `detail.kind` `refusal`; jev-ra never disguises itself |
 | Auth flows | `needs_value` with the field named; jev-ra never guesses a credential |
 | Multi-tab workflows | a window the page opens (a sign-in or payment pop-up) is followed until it closes itself, and a link to a new tab opens in the same tab; the run never switches between tabs |
-| Cross-origin iframes | reported as one opaque element; open shadow roots and same-origin iframes **are** traversed |
+| Cross-origin iframes | reported as one opaque element, and an escalation on its page names it and the host it is served from in `detail.frames`; open shadow roots and same-origin iframes **are** traversed |
 | More than 250 visible controls | `omitted` is reported, and a stuck run escalates `too_many_controls` rather than guessing |
 
 Each returns an escalation with the page text and the ranked candidates.

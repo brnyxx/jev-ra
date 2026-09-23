@@ -257,6 +257,9 @@
       // relative one answers with this page's host and says nothing; mailto: and javascript:
       // have no host at all. Only a link that leaves the site says so.
       if (e.tagName==='A' && e.host && e.host!==location.host) element.host=e.host;
+      // A frame this page cannot read is served from somewhere else, and where is what says whose
+      // controls are inside it: a card form from a payment provider, a sign-in from an identity one.
+      if (e.tagName==='IFRAME') { try { element.host=new URL(e.src, location.href).host; } catch {} }
       if (['checkbox','radio'].includes(e.type)) element.checked=String(e.checked);
       const stand=standIn(e);
       if (stand && ['checkbox','radio'].includes(stand.type)) element.checked=String(stand.checked);

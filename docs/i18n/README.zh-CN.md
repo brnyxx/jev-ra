@@ -238,7 +238,7 @@ jev-ra 版本都不同，不是同等条件下的比较。一轮 3 次的测量�
 | 直接拒绝的机器人墙、隐身 | 返回 `detail.kind` 为 `refusal` 的 `blocked_by_site`；jev-ra 从不伪装自己 |
 | 认证流程 | 返回 `needs_value` 并指明字段；jev-ra 从不猜测凭据 |
 | 多标签页工作流 | 页面打开的窗口（登录或支付弹窗）会一直跟随到它自行关闭，指向新标签页的链接在同一标签页中打开；运行不会在标签页之间切换 |
-| 跨源 iframe | 报告为一个不透明元素；开放的 shadow root 与同源 iframe **会**被遍历 |
+| 跨源 iframe | 报告为一个不透明元素，该页面上的升级会在 `detail.frames` 中写明该 iframe 及其来源主机；开放的 shadow root 与同源 iframe **会**被遍历 |
 | 可见控件超过 250 个 | 报告 `omitted`，卡住的运行升级为 `too_many_controls` 而不是猜测 |
 
 以上每一种都会返回带页面文本和候选排名的上报。

@@ -23,15 +23,9 @@ pattern = "Iframe: cross-origin payment frame"
 page = "/sites/payment-frame.html"
 goal = "Pay for the annual plan with the card supplied."
 values = { name = "Ada Lovelace", card_number = "4242 4242 4242 4242", expiry = "12 / 30", cvc = "123" }
-plan = [
-  ["TYPE_TEXT", "Name on card", "name"],
-  ["TYPE_TEXT", "Card number", "card_number"],
-  ["TYPE_TEXT", "Expiration date", "expiry"],
-  ["TYPE_TEXT", "CVC", "cvc"],
-  ["CLICK", "Pay $96.00"],
-]
-check = "document.getElementById('status').textContent === 'Payment succeeded.'"
-gap = "a cross-origin frame is one opaque element: its fields are never observed"
+plan = [["TYPE_TEXT", "Name on card", "name"], ["BLOCKED"]]
+expect = ["blocked", "needs_value"]
+check = "document.getElementById('status').textContent === 'Not paid.'"
 
 [[capability]]
 name = "shadow_dom_form"
