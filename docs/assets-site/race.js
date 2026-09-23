@@ -9,6 +9,8 @@
     olive: { j: 3806, js: 2, b: 15071, bs: 3 },
   };
   const HOLD_MS = 5200;
+  // The clocks start when the opening strike lands (bolt.js draws it), so no measured time is spent on it.
+  const STRIKE_MS = 420;
   const $ = (s, r = document) => r.querySelector(s);
   const tpl = (id) => ($("#" + id) ? $("#" + id).textContent.trim() : "");
   const fmt = (ms) => (ms / 1000).toFixed(2);
@@ -30,30 +32,34 @@
       ticks(J, k.js); ticks(B, k.bs);
       root.dataset.showing = key; root.classList.remove("over");
       J.classList.remove("won"); B.classList.remove("won");
-      shown = -1; t0 = performance.now();
+      shown = -1; t0 = performance.now() + (still ? 0 : STRIKE_MS);
       $(".result", root).textContent = "";
+      if (!still) root.dispatchEvent(new CustomEvent("race:start", { detail: { key, lane: J } }));
     };
     const paint = (lane, progress, steps, time, state) => {
       $(".clock b", lane).textContent = fmt(time);
-      $(".meter i", lane).style.transform = `scaleX(${Math.min(progress, 1)})`;
+      lane.style.setProperty("--p", Math.min(Math.max(progress, 0), 1).toFixed(4));
       const on = Math.min(steps, Math.floor(progress * steps + 1e-9));
       $(".ticks", lane).querySelectorAll("i").forEach((t, i) => t.classList.toggle("on", i < on));
       $(".state", lane).textContent = state;
     };
     const frame = (now) => {
       const k = TASKS[key];
-      const t = Math.min((now - t0) * speed, k.b);
+      const t = Math.min(Math.max((now - t0) * speed, 0), k.b);
       const laps = Math.floor(t / k.j);
       const jDone = laps >= 1;
       const jt = jDone ? k.j : t;
-      paint(J, jDone ? 1 : t / k.j, k.js, jt, jDone ? tpl("t-done") : tpl("t-running"));
+      // While browser-use is still on its one run, jev-ra's beam fires again for every run it completes.
+      const beam = t >= k.b ? 1 : (t % k.j) / k.j;
+      paint(J, beam, k.js, jt, jDone ? tpl("t-done") : tpl("t-running"));
       paint(B, t / k.b, k.bs, t, t >= k.b ? tpl("t-done") : tpl("t-running"));
       J.classList.toggle("won", jDone);
       if (laps !== shown) {
         shown = laps;
         const lap = $(".laps", J);
         lap.textContent = laps >= 1 ? "×" + laps : "";
-        lap.classList.remove("pop"); void lap.offsetWidth; if (laps >= 1) lap.classList.add("pop");
+        lap.classList.remove("pop"); J.classList.remove("zap"); void lap.offsetWidth;
+        if (laps >= 1) { lap.classList.add("pop"); J.classList.add("zap"); }
       }
       if (t >= k.b) {
         if (!root.classList.contains("over")) {

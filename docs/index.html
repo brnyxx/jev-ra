@@ -75,7 +75,7 @@
   .lane .clock b{font-size:clamp(56px,8.4vw,112px);font-weight:600;letter-spacing:-.05em}
   .lane .clock em{font-style:normal;font-size:clamp(20px,2.4vw,30px);color:var(--dim)}
   .lane .meter{height:6px;border-radius:99px;background:rgba(246,244,239,.07);overflow:hidden}
-  .lane .meter i{display:block;height:100%;transform-origin:left;transform:scaleX(0);background:rgba(246,244,239,.5)}
+  .lane .meter i{display:block;height:100%;transform-origin:left;transform:scaleX(var(--p,0));background:rgba(246,244,239,.5)}
   .lane .ticks{display:flex;gap:5px;margin:12px 0 0;flex-wrap:wrap}
   .lane .ticks i{flex:1;min-width:10px;height:22px;border-radius:5px;background:rgba(246,244,239,.05);border:1px solid var(--line);transition:background .25s,border-color .25s}
   .lane .ticks i.on{background:rgba(246,244,239,.18);border-color:transparent}
@@ -84,7 +84,25 @@
   .lane .laps.pop{animation:pop .5s var(--ease)}
   @keyframes pop{0%{transform:scale(1.5);opacity:.3}100%{transform:none;opacity:1}}
   .lane.jr:not(.won) .lapsl{visibility:hidden}
-  .lane.jr .meter i{background:var(--amber)}
+  /* jev-ra's meter is a laser: a white-hot head on an amber beam, re-fired for every run it finishes */
+  .lane.jr .meter{position:relative;height:8px;overflow:visible;background:rgba(255,183,3,.07)}
+  .lane.jr .meter i{border-radius:99px;background:linear-gradient(90deg,rgba(255,183,3,0),rgba(255,183,3,.5) 35%,var(--amber) 82%,#FFF4CF);filter:drop-shadow(0 0 6px rgba(255,183,3,.85)) drop-shadow(0 0 16px rgba(255,160,0,.45))}
+  .lane.jr .meter::before,.lane.jr .meter::after{content:"";position:absolute;top:50%;left:calc(var(--p,0) * 100%);pointer-events:none;opacity:calc(var(--p,0) * 40)}
+  .lane.jr .meter::before{width:180px;height:3px;margin:-1.5px 0 0 -180px;border-radius:99px;background:linear-gradient(90deg,rgba(255,255,255,0),rgba(255,250,235,.95));filter:blur(.4px)}
+  .lane.jr .meter::after{width:26px;height:26px;margin:-13px 0 0 -13px;border-radius:50%;background:radial-gradient(circle,#fff 0 18%,rgba(255,232,160,.95) 32%,rgba(255,183,3,.45) 52%,rgba(255,183,3,0) 72%)}
+  .lane.jr.zap .meter::after{animation:flare .5s var(--ease)}
+  .lane.jr::after{content:"";position:absolute;inset:0;pointer-events:none;opacity:0;background:radial-gradient(70% 90% at 92% 72%,rgba(255,214,102,.32),rgba(255,183,3,.08) 45%,transparent 70%)}
+  .lane.jr.zap::after{animation:zap .55s ease-out}
+  .lane.jr.zap .clock b{animation:glint .5s var(--ease)}
+  .lane.jr.struck{animation:struck .6s ease-out}
+  @keyframes flare{0%{transform:scale(3.2);filter:brightness(1.8)}100%{transform:none;filter:none}}
+  @keyframes zap{0%{opacity:1}100%{opacity:0}}
+  @keyframes glint{0%{text-shadow:0 0 28px rgba(255,214,102,.9)}100%{text-shadow:none}}
+  @keyframes struck{0%{box-shadow:0 0 0 1px rgba(255,244,207,.9),0 0 80px 10px rgba(255,183,3,.55);background:#1B1608}100%{box-shadow:none}}
+  #race{position:relative}
+  #race > *{position:relative;z-index:1}
+  .bolt-sky{position:fixed;inset:0;pointer-events:none;z-index:50;opacity:0;mix-blend-mode:screen}
+  #race > .bolt{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible;z-index:0}
   .lane.jr .ticks i.on{background:var(--amber);border-color:var(--amber)}
   .lane.jr.won{border-color:rgba(255,183,3,.55);box-shadow:0 24px 60px -30px rgba(255,183,3,.45)}
   .lane.jr.won .clock b{color:var(--amber)}
@@ -556,8 +574,9 @@ uvx jev-ra doctor</pre></div>
   document.querySelectorAll(".tab").forEach((t) => t.addEventListener("click", () => selectTab(t.dataset.for)));
   document.querySelectorAll(".works a[data-tab]").forEach((a) => a.addEventListener("click", () => selectTab(a.dataset.tab)));
 </script>
-<script src="assets-site/i18n.js?v=0.2.5"></script>
-<script src="assets-site/race.js?v=0.2.5" defer></script>
-<script src="assets-site/demo.js?v=0.2.5" defer></script>
+<script src="assets-site/i18n.js?v=0.2.6"></script>
+<script src="assets-site/race.js?v=0.2.6" defer></script>
+<script src="assets-site/bolt.js?v=0.2.6" defer></script>
+<script src="assets-site/demo.js?v=0.2.6" defer></script>
 </body>
 </html>
