@@ -1040,21 +1040,30 @@ class Session:
         elif kind == "press":
             self.submit(action)
         elif kind == "scroll":
-            viewport = self.config.viewport
-            self.call(
-                "Input.dispatchMouseEvent",
-                type="mouseWheel",
-                x=viewport.width // 2,
-                y=viewport.height // 2,
-                deltaX=0,
-                deltaY=action["delta"],
-            )
+            point = self.wheel(action)
+            self.call("Input.dispatchMouseEvent", type="mouseWheel", deltaX=0, deltaY=action["delta"], **point)
         else:
             self.input(action, text)
         self.after_input = action if kind != "wait" else None
         self.moved_from = page.get("marker") if kind != "wait" else None
         self.invalidate()
         return {"executed": action["id"], "kind": kind, "text": text}
+
+    def wheel(self, action):
+        """Where the wheel goes for a scroll: a point from which it moves the box the action names.
+
+        A scroll without a box is the document's, and the middle of the viewport is where it has
+        always gone when the page gives no better point.
+        """
+        node = action.get("node")
+        box = "null" if node is None else observed(node)
+        point = self.evaluate(f"window.__jevRa?.wheel({box}, {json.dumps(action['delta'])}) ?? null")
+        if point is not None:
+            return {"x": point["x"], "y": point["y"]}
+        if node is not None:
+            raise StalePage("The box that scrolls is gone. Observe again.")
+        viewport = self.config.viewport
+        return {"x": viewport.width // 2, "y": viewport.height // 2}
 
     def hover(self, node):
         """Move the pointer onto one observed node, without pressing anything."""

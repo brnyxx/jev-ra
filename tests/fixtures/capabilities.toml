@@ -202,20 +202,21 @@ name = "virtual_list"
 pattern = "Virtualized list inside its own scroll box"
 page = "/sites/virtual-list.html"
 goal = "Open invoice INV-0062."
-plan = [["SCROLL_DOWN"], ["SCROLL_DOWN"], ["SCROLL_DOWN"], ["SCROLL_DOWN"], ["CLICK", "INV-0062"]]
+plan = [
+  ["SCROLL_DOWN"], ["SCROLL_DOWN"], ["SCROLL_DOWN"], ["SCROLL_DOWN"], ["SCROLL_DOWN"], ["SCROLL_DOWN"], ["SCROLL_DOWN"],
+  ["CLICK", "INV-0062"],
+]
 check = "document.getElementById('opened').textContent === 'Opened INV-0062'"
 max_steps = 12
-gap = "only the window is ever scrolled, and this page's window does not scroll"
 
 [[capability]]
 name = "inner_scroll_container"
 pattern = "App shell: content scrolls inside <main>, not the window"
 page = "/sites/inner-scroll.html"
 goal = "Export all of the workspace's data."
-plan = [["SCROLL_DOWN"], ["SCROLL_DOWN"], ["CLICK", "Export all data"]]
+plan = [["SCROLL_DOWN"], ["CLICK", "Export all data"]]
 check = "document.getElementById('status').textContent === 'Export started. We will email you a link.'"
 max_steps = 10
-gap = "only the window is ever scrolled, and this page's window does not scroll"
 
 [[capability]]
 name = "popup_window"

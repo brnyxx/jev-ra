@@ -85,6 +85,31 @@
   const rendered = e => !e.closest('[aria-hidden="true"],[inert]') &&
     e.checkVisibility({checkVisibilityCSS:true});
   const visible = e => rendered(e) && e.checkVisibility({checkOpacity:true,checkVisibilityCSS:true});
+  // Whether a box scrolls by itself and has further to go in the direction of `dy`. The document's
+  // own scrolling is the window's; a text field's is its text.
+  const scrolls = (e,dy) => e!==document.documentElement && !['TEXTAREA','SELECT'].includes(e.tagName) &&
+    e.scrollHeight>e.clientHeight+2 && /^(auto|scroll|overlay)$/.test(getComputedStyle(e).overflowY) &&
+    (dy>0 ? e.scrollTop+e.clientHeight<e.scrollHeight-2 : e.scrollTop>0);
+  // Where a wheel turned by `dy` moves `box`, or the document when there is no box: the first of a
+  // few points in view from which no smaller box, able to scroll that way itself, takes the wheel
+  // first. A code sample or a map under the middle of the viewport otherwise eats the scroll the
+  // page was meant to get.
+  cache.wheel = (node,dy) => {
+    const box = node===null ? null : cache.nodes.get(node);
+    if (node!==null && !(box?.isConnected && rendered(box))) return null;
+    const r = box ? box.getBoundingClientRect() : {left:0,top:0,right:innerWidth,bottom:innerHeight};
+    const left=Math.max(r.left,0), top=Math.max(r.top,0);
+    const right=Math.min(r.right,innerWidth), bottom=Math.min(r.bottom,innerHeight);
+    if (right-left<2 || bottom-top<2) return null;
+    for (const [fx,fy] of [[.5,.5],[.5,.25],[.5,.75],[.25,.5],[.75,.5]]) {
+      const x=left+(right-left)*fx, y=top+(bottom-top)*fy;
+      let taker=null;
+      for (let n=cache.deepest(document,x,y); n && n!==box; n=n.parentElement || n.getRootNode().host)
+        if (scrolls(n,dy)) { taker=n; break; }
+      if (!taker) return {x,y};
+    }
+    return box ? null : {x:innerWidth/2, y:innerHeight/2};
+  };
   const name = (e,seen=new Set()) => {
     if (!e || seen.has(e)) return '';
     seen.add(e);
@@ -291,8 +316,26 @@
     document.title,text,semantics,actions,page_key[6]];
   if (submits!==null) actions.push({id:'press_enter',node:submits,kind:'press',key:'Enter',
     label:'Press Enter to submit '+(name(active)||'the focused field')});
-  if (scrollY+innerHeight<height-2) actions.push({id:'scroll_down',kind:'scroll',label:'Scroll down',delta:560});
-  if (scrollY>0) actions.push({id:'scroll_up',kind:'scroll',label:'Scroll up',delta:-560});
+  // What moves when a person scrolls: the document while it has further to go, and otherwise the
+  // largest box in view that has. An app shell exactly one screen tall scrolls inside <main>, a
+  // mail client inside its message list, a virtualized table inside its own viewport, and a
+  // window that will not move is no reason to say the page has nothing more to show.
+  const boxes={}, wanted=[560,-560].filter(dy => !(dy>0 ? scrollY+innerHeight<height-2 : scrollY>0));
+  if (wanted.length) for (const root of cache.roots()) {
+    if (root!==document && root.nodeType===Node.DOCUMENT_NODE) continue;
+    for (const e of root.querySelectorAll('*')) {
+      if (e.scrollHeight<=e.clientHeight+2 || !rendered(e)) continue;
+      const r=e.getBoundingClientRect();
+      const w=Math.min(r.right,innerWidth)-Math.max(r.left,0), h=Math.min(r.bottom,innerHeight)-Math.max(r.top,0);
+      if (w<=0 || h<=0) continue;
+      for (const dy of wanted) if (w*h>(boxes[dy]?.area??0) && scrolls(e,dy)) boxes[dy]={e,area:w*h,h};
+    }
+  }
+  for (const [id,label,dy] of [['scroll_down','Scroll down',560],['scroll_up','Scroll up',-560]]) {
+    if (!wanted.includes(dy)) actions.push({id,kind:'scroll',label,delta:dy});
+    else if (boxes[dy]) actions.push({id,kind:'scroll',label,node:identity(boxes[dy].e),
+      delta:Math.sign(dy)*Math.round(Math.min(Math.abs(dy),boxes[dy].h*0.62))});
+  }
   actions.push({id:'wait',kind:'wait',label:'Wait for the page to update'});
   return {url:location.href,title:document.title,w:innerWidth,h:innerHeight,text,doc_text,
     scroll:{y:scrollY,height},elements,actions,marker,page_key,guards,omitted};
