@@ -216,3 +216,24 @@ def test_a_target_we_only_attached_to_is_left_alone(monkeypatch, no_chrome_neede
     with pytest.raises(ChromeError):
         session_module.Session(config=config.load({}), target_id="theirs")
     assert not [method for method, _params in cdp.calls if method == "Target.closeTarget"]
+
+
+def test_events_reach_the_session_they_belong_to_whoever_drains_them(monkeypatch):
+    queued = [
+        {"method": "Network.responseReceived", "session_id": "a", "params": {}},
+        {"method": "Page.javascriptDialogOpening", "session_id": "b", "params": {"type": "alert"}},
+        {"method": "Page.loadEventFired", "session_id": "elsewhere", "params": {}},
+    ]
+
+    def drain():
+        drained = list(queued)
+        queued.clear()
+        return drained
+
+    monkeypatch.setattr(session_module, "drain_events", drain)
+    inbox = session_module.Inbox()
+    inbox.open("a")
+    inbox.open("b")
+    assert [event["method"] for event in inbox.take("a")] == ["Network.responseReceived"]
+    assert [event["method"] for event in inbox.take("b")] == ["Page.javascriptDialogOpening"]
+    assert inbox.take("a") == []

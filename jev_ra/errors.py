@@ -65,6 +65,12 @@ class StalePage(JevRaError, ValueError):
     next_step = "Observe the page again before acting on it."
 
 
+class DialogOpen(StalePage):
+    """A JavaScript dialog holds the page, and nothing reaches the page until it is answered."""
+
+    next_step = "Observe the page: the dialog and its answers are what it offers."
+
+
 class Escalated(JevRaError):
     """The run stopped and handed control back to the host agent."""
 

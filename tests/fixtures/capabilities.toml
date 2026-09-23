@@ -128,7 +128,6 @@ plan = [
   ["CLICK", "Submit request"],
 ]
 check = "document.getElementById('status').textContent === 'Your request has been submitted.'"
-gap = "an open alert freezes the page: the click times out and the run fails as Chrome not answering"
 
 [[capability]]
 name = "confirm_dialog"
@@ -137,7 +136,6 @@ page = "/sites/confirm-delete.html"
 goal = "Delete the Work address."
 plan = [["CLICK", "Delete Work address"], ["CLICK", "OK"]]
 check = "!document.querySelector('[data-name=Work]') && !!document.querySelector('[data-name=Home]')"
-gap = "an open confirm freezes the page: the click times out and the run fails as Chrome not answering"
 
 [[capability]]
 name = "prompt_dialog"
@@ -147,7 +145,6 @@ goal = "Create a new folder with the name supplied."
 values = { folder = "Invoices" }
 plan = [["CLICK", "New folder"], ["TYPE_TEXT", "Name the new folder", "folder"], ["CLICK", "OK"]]
 check = "[...document.querySelectorAll('#folders li')].some(li => li.textContent === '📁 Invoices')"
-gap = "an open prompt freezes the page: the click times out and the run fails as Chrome not answering"
 
 [[capability]]
 name = "modal_stack"

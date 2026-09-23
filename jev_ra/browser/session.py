@@ -4,14 +4,17 @@ import base64
 import json
 import logging
 import sys
+import threading
 import time
+from collections import deque
+from concurrent.futures import Future, wait
 from urllib.parse import urlsplit
 
 from browser_harness.admin import ensure_daemon
 from browser_harness.helpers import cdp, drain_events
 
 from ..config import load
-from ..errors import BadUrl, ChromeError, StalePage
+from ..errors import BadUrl, ChromeError, DialogOpen, StalePage
 from ..profile import NullTimer
 from . import CHALLENGE_JS, MAX_ELEMENTS, QUIET_STATE_JS, guard_expression, marker_expression, snapshot_expression
 from .chrome import ensure as ensure_chrome
@@ -91,6 +94,28 @@ IDEMPOTENT = (
     "Runtime.releaseObject",
 )
 EVALUATE_TIMEOUT_S = 30.0
+# A JavaScript dialog holds the page's script until someone answers it, and every call the page
+# itself has to answer waits for as long as it stays open: a click on a button that asks
+# confirm() used to wait out the whole call budget and end the run as a browser that stopped
+# answering. A call still waiting after this long is asked whether a dialog is what holds it.
+DIALOG_CHECK_S = 0.05
+# What the page itself answers. The browser answers everything else while a dialog is up, which
+# is how the dialog gets answered at all.
+RENDERER = ("Runtime.", "Input.", "DOM.", "Page.captureScreenshot")
+# What else a dialog can hold: a navigation waits for the page it leaves to agree to be left.
+HELD = (*RENDERER, "Page.navigate", "Page.reload")
+# How many events one session keeps between two readings of them. The daemon keeps 500 for the
+# whole browser; a session reads its own at least once a call that waits.
+EVENTS_KEPT = 1000
+# What each kind of dialog is answered with, in the order Chrome draws its buttons. A before-unload
+# dialog says Chrome's own sentence; the page's words are never shown for it.
+DIALOG_ANSWERS = {
+    "alert": (("accept", "OK"),),
+    "confirm": (("accept", "OK"), ("dismiss", "Cancel")),
+    "prompt": (("accept", "OK"), ("dismiss", "Cancel")),
+    "beforeunload": (("accept", "Leave"), ("dismiss", "Cancel")),
+}
+LEAVE_TEXT = "Leave site?\nChanges you made may not be saved."
 WAIT_SLEEP_S = 0.1
 SETTLE_ATTEMPTS = 10
 # A page knows when it stopped changing, and asking it ten times a second is both slower and less
@@ -391,6 +416,48 @@ HANDED_JS = (
 )
 
 
+class Inbox:
+    """The daemon's one queue of CDP events, read on behalf of every session in this process.
+
+    Reading the queue empties it of every event there is, whoever it belongs to, so a session that
+    read it for itself threw away what the others were waiting for: a search reads its result pages
+    in parallel tabs, and each tab learns what its own page did only from events. Every session here
+    is handed what was addressed to it, and what belongs to no session here is dropped.
+    """
+
+    def __init__(self, kept=EVENTS_KEPT):
+        self.lock = threading.Lock()
+        self.kept = kept
+        self.boxes = {}
+
+    def open(self, session_id):
+        """Start keeping the events addressed to one session."""
+        with self.lock:
+            self.boxes.setdefault(session_id, deque(maxlen=self.kept))
+
+    def close(self, session_id):
+        """Stop keeping a session's events."""
+        with self.lock:
+            self.boxes.pop(session_id, None)
+
+    def take(self, session_id):
+        """Every event addressed to this session since it last asked, oldest first."""
+        with self.lock:
+            for event in drain_events():
+                box = self.boxes.get(event.get("session_id"))
+                if box is not None:
+                    box.append(event)
+            box = self.boxes.get(session_id)
+            if box is None:
+                return []
+            taken = list(box)
+            box.clear()
+            return taken
+
+
+INBOX = Inbox()
+
+
 class Session:
     """One CDP target: observe it, act on it, and never act on a stale reading of it."""
 
@@ -399,6 +466,11 @@ class Session:
     # follows is still the settled reading, taken exactly as it always was. A caller sets it for
     # the duration of one open or observation; a session nobody listens to never calls anything.
     preview = None
+    # The JavaScript dialog holding the page, as Chrome announced it, or None. While one is open it
+    # is the page: observing shows its message and its answers, and answering it is an action.
+    dialog = None
+    dialogs = 0
+    title = ""
 
     def __init__(self, config=None, target_id=None, max_elements=MAX_ELEMENTS, profile=None):
         self.config = config or load()
@@ -431,6 +503,10 @@ class Session:
         )
         try:
             self.session_id = cdp("Target.attachToTarget", targetId=self.target_id, flatten=True)["sessionId"]
+            INBOX.open(self.session_id)
+            # Chrome tells only the sessions that listen to the page domain that a dialog opened,
+            # and only they can answer it.
+            self.call("Page.enable")
             self.call(
                 "Emulation.setDeviceMetricsOverride",
                 width=viewport.width,
@@ -443,6 +519,7 @@ class Session:
             self.speak(self.config.locale)
             self.blocked = self.block_resources() if self.config.block_resources else []
         except Exception:
+            INBOX.close(getattr(self, "session_id", None))
             # Nobody else has the id of a target whose setup failed, so this is the only chance to
             # close it. A target we were only handed stays open: its owner decides when it goes.
             if created:
@@ -497,12 +574,21 @@ class Session:
         self.settled = None
         self.cache.clear()
 
-    def call(self, method, timeout=CALL_TIMEOUT_S, **params):
-        """One CDP call on this target's session, with a budget the caller can widen."""
+    def call(self, method, timeout=CALL_TIMEOUT_S, leave=False, **params):
+        """One CDP call on this target's session, with a budget the caller can widen.
+
+        A call the page has to answer is never sent while a dialog holds the page, and one that a
+        dialog starts holding while it waits is given up on: see `answered`. `leave` lets a
+        navigation the caller asked for leave a page that asks whether it may be left.
+        """
+        if self.dialog is not None and method.startswith(RENDERER):
+            raise DialogOpen(f"A {self.dialog['type']} dialog holds the page, so {method} was not sent.")
         attempts = CALL_ATTEMPTS if method in IDEMPOTENT else 1
         for attempt in range(attempts):
             try:
-                return cdp(method, session_id=self.session_id, _response_timeout=timeout, **params)
+                if not method.startswith(HELD):
+                    return cdp(method, session_id=self.session_id, _response_timeout=timeout, **params)
+                return self.answered(method, timeout, leave, params)
             except (TimeoutError, OSError) as error:
                 # A browser with thirty tabs open answers late now and then. One slow answer is
                 # not a browser that has gone away, and ending the run over it loses the work.
@@ -514,6 +600,61 @@ class Session:
                     raise StalePage(f"The page moved during {method}. Observe again.") from error
                 raise ChromeError(f"Chrome refused {method}: {error}") from error
         raise ChromeError(f"Chrome stopped answering during {method}")
+
+    def answered(self, method, timeout, leave, params):
+        """The answer to a call a dialog can hold, or what the dialog that is holding it means.
+
+        The call is sent from a thread of its own, so that while it waits this one can read what
+        the page announced. Input that a dialog is holding has landed - the dialog is what it did -
+        so it counts as sent. Anything else the dialog holds is refused as a page that moved, and a
+        before-unload dialog that holds a navigation the caller asked for is answered by leaving.
+        """
+        answer = Future()
+
+        def ask():
+            try:
+                answer.set_result(cdp(method, session_id=self.session_id, _response_timeout=timeout, **params))
+            except BaseException as error:
+                answer.set_exception(error)
+
+        threading.Thread(target=ask, name=f"jev-ra {method}", daemon=True).start()
+        while not wait([answer], timeout=DIALOG_CHECK_S).done:
+            self.events()
+            if self.dialog is None:
+                continue
+            if method.startswith("Input."):
+                return {}
+            if leave and self.dialog["type"] == "beforeunload":
+                logger.info("Leaving a page that asked to be kept, because the caller asked to go")
+                self.reply({"dialog": "accept"})
+                continue
+            raise DialogOpen(f"A {self.dialog['type']} dialog opened during {method}.")
+        return answer.result()
+
+    def events(self):
+        """Read what the browser announced about this target since the last time, and keep what matters.
+
+        The status of the main document is the last one it was served with. A dialog is open from
+        the moment Chrome says so until Chrome says it closed; the next one is a new dialog.
+        """
+        try:
+            events = INBOX.take(self.session_id)
+        except (RuntimeError, TimeoutError, OSError) as error:
+            logger.info("The browser would not report its events: %s", error)
+            return
+        for event in events:
+            method, params = event.get("method"), event.get("params") or {}
+            if method == "Page.javascriptDialogOpening":
+                self.dialogs += 1
+                self.dialog = {**params, "id": self.dialogs}
+            elif method == "Page.javascriptDialogClosed":
+                self.dialog = None
+            elif method == "Network.responseReceived" and params.get("type") == "Document":
+                if self.frame_id and params.get("frameId") != self.frame_id:
+                    continue
+                status = (params.get("response") or {}).get("status")
+                if isinstance(status, int):
+                    self.http_status = status
 
     def evaluate(self, expression, await_promise=False):
         """Evaluate an expression in the page, refusing a document that moved under it."""
@@ -542,25 +683,37 @@ class Session:
         arrived with; the network events can. Only this session's main-frame document responses
         count, and the last one wins, so a redirect chain ends on the answer the site settled on.
         """
-        try:
-            events = drain_events()
-        except (RuntimeError, TimeoutError, OSError) as error:
-            logger.info("The browser would not report its network events: %s", error)
-            return self.http_status
-        for event in events:
-            if event.get("session_id") != self.session_id or event.get("method") != "Network.responseReceived":
-                continue
-            params = event.get("params") or {}
-            if params.get("type") != "Document" or (self.frame_id and params.get("frameId") != self.frame_id):
-                continue
-            status = (params.get("response") or {}).get("status")
-            if isinstance(status, int):
-                self.http_status = status
+        self.events()
         return self.http_status
 
     def observed(self, page):
         """One snapshot payload with the status the site answered its document with."""
+        if not page.get("dialog"):
+            self.title = page.get("title", "")
         return {**page, "http_status": self.read_status()}
+
+    def dialog_page(self):
+        """The open dialog as the page in front of the page."""
+        viewport = self.config.viewport
+        return dialog_page(self.dialog, self.title, viewport.width, viewport.height)
+
+    def reply(self, action, text=None):
+        """Answer the open dialog the way an observed action says, or keep what was typed into it."""
+        dialog = self.dialog
+        if dialog is None:
+            raise StalePage("No dialog is open to answer. Observe again.")
+        if action["dialog"] == "text":
+            self.dialog = {**dialog, "text": text}
+            return
+        accept = action["dialog"] == "accept"
+        params = {"accept": accept}
+        if accept and dialog["type"] == "prompt":
+            params["promptText"] = prompt_text(dialog)
+        self.dialog = None
+        try:
+            self.call("Page.handleJavaScriptDialog", **params)
+        except ChromeError as error:
+            raise StalePage(f"The {dialog['type']} dialog was already gone. Observe again.") from error
 
     def open(self, url):
         """Navigate, wait for the load to finish, and observe."""
@@ -574,7 +727,7 @@ class Session:
         # stands before asking for it; an address without a fragment never pays for this.
         was = self.reading() if urlsplit(url).fragment else None
         self.invalidate()
-        moved = self.call("Page.navigate", timeout=NAVIGATE_TIMEOUT_S, url=url)
+        moved = self.call("Page.navigate", timeout=NAVIGATE_TIMEOUT_S, leave=True, url=url)
         self.frame_id = moved.get("frameId") or self.frame_id
         if moved.get("errorText"):
             # A navigation the browser itself refused never had a response, so no status of an
@@ -617,7 +770,7 @@ class Session:
         """Ask for the current document again, wait for it, and observe."""
         self.after_input = None
         self.invalidate()
-        self.call("Page.reload", timeout=NAVIGATE_TIMEOUT_S)
+        self.call("Page.reload", timeout=NAVIGATE_TIMEOUT_S, leave=True)
         self.load()
         self.paint()
         return self.observe(timer)
@@ -642,7 +795,7 @@ class Session:
         deadline = time.monotonic() + budget
         while True:
             remaining = deadline - time.monotonic()
-            if remaining <= 0:
+            if remaining <= 0 or self.dialog is not None:
                 return False
             expression = f"{READY_JS}({json.dumps({'budget_ms': round(remaining * 1000)})})"
             try:
@@ -668,7 +821,7 @@ class Session:
             except StalePage:
                 logger.debug("The document changed while waiting for it to paint")
             remaining = deadline - time.monotonic()
-            if remaining <= 0:
+            if remaining <= 0 or self.dialog is not None:
                 return False
             answer = self.quiet(remaining, after=seen)
             if answer is None:
@@ -720,6 +873,10 @@ class Session:
         deadline = time.monotonic() + ARRIVAL_BUDGET_S
         with timer.measure("wait"):
             while True:
+                if self.dialog is not None:
+                    # A dialog holds the page, which is not a document on its way: the reading
+                    # after this shows the dialog.
+                    return
                 options = {"budget_ms": max(0, round((deadline - time.monotonic()) * 1000)), "poll_ms": ARRIVAL_POLL_MS}
                 try:
                     answer = self.evaluate(f"{ARRIVED_JS}({json.dumps(options)})", await_promise=True)
@@ -832,11 +989,15 @@ class Session:
         self.settle(timer)
         with timer.measure("snapshot"):
             settled, self.settled = self.settled, None
+            if self.dialog is not None:
+                return self.observed(self.dialog_page())
             if settled is not None:
                 return self.observed(settled)
             for attempt in range(SETTLE_ATTEMPTS):
                 try:
                     page = self.evaluate(snapshot_expression(self.max_elements))
+                except DialogOpen:
+                    return self.observed(self.dialog_page())
                 except StalePage:
                     page = None
                 if page is not None:
@@ -847,6 +1008,9 @@ class Session:
 
     def fresh(self, page, action=None):
         """Whether the observed page still describes what is about to be acted on."""
+        if action is not None and action.get("dialog"):
+            self.events()
+            return self.dialog is not None and page.get("marker") == self.dialog_page()["marker"]
         if action is not None and action.get("kind") in TARGETED:
             node = action["node"]
             current = self.evaluate(guard_expression(node))
@@ -869,7 +1033,9 @@ class Session:
             raise StalePage("Page changed since this decision. Observe again.")
         self.before_input = (page.get("url", ""), control_set(page.get("elements")))
         kind = action["kind"]
-        if kind == "wait":
+        if action.get("dialog"):
+            self.reply(action, text)
+        elif kind == "wait":
             time.sleep(WAIT_SLEEP_S)
         elif kind == "press":
             self.submit(action)
@@ -913,6 +1079,8 @@ class Session:
                 raise StalePage("Dropdown execution was not confirmed. Observe again.")
             return
         self.click(self.resolve(action))
+        if self.dialog is not None:
+            return
         if action["kind"] == "fill" and not self.focused(action["node"]):
             time.sleep(FOCUS_SLEEP_S)
             if not self.focused(action["node"]) and not self.handed(action["node"]) and not self.focus(action["node"]):
@@ -935,6 +1103,8 @@ class Session:
         # the pointer stays where it was put, so the next observation sees what opened.
         self.call("Input.dispatchMouseEvent", type="mouseMoved", x=target["x"], y=target["y"])
         for event in ("mousePressed", "mouseReleased"):
+            if self.dialog is not None:
+                return
             self.call(
                 "Input.dispatchMouseEvent",
                 type=event,
@@ -1005,6 +1175,8 @@ class Session:
             raise ValueError(f"press supports {', '.join(KEYS)}")
         code, name, text = KEYS[key]
         for event in ("keyDown", "keyUp"):
+            if self.dialog is not None:
+                break
             self.call(
                 "Input.dispatchKeyEvent",
                 type=event,
@@ -1040,6 +1212,7 @@ class Session:
 
     def close(self):
         """Close the target this session owns."""
+        INBOX.close(self.session_id)
         if self.target_id:
             cdp("Target.closeTarget", targetId=self.target_id)
             self.target_id = None
@@ -1049,6 +1222,56 @@ class Session:
 
     def __exit__(self, *_args):
         self.close()
+
+
+def prompt_text(dialog):
+    """What a prompt answers with: what was typed into it, or what it offered to begin with."""
+    return dialog.get("text", dialog.get("defaultPrompt") or "")
+
+
+def dialog_page(dialog, title, width, height):
+    """A JavaScript dialog observed the way a person meets it: what it says, and its answers.
+
+    It is the page in front of the page, as a consent wall is, and the only thing a run can do while
+    it is up. Chrome heads it with the host that asked; a prompt adds the field it asks to fill. Its
+    controls are named nodes of the dialog's own rather than of the page, and answering one is
+    `Page.handleJavaScriptDialog`, never input sent to a page that is not listening.
+    """
+    url = dialog.get("url", "")
+    said = LEAVE_TEXT if dialog["type"] == "beforeunload" else dialog.get("message", "")
+    host = urlsplit(url).netloc
+    text = f"{host} says\n{said}" if host else said
+    offered = []
+    if dialog["type"] == "prompt":
+        offered.append(("text", "textbox", "fill", dialog.get("message") or "Answer", prompt_text(dialog)))
+    offered += [(answer, "button", "click", label, "") for answer, label in DIALOG_ANSWERS[dialog["type"]]]
+    elements, actions = [], []
+    for index, (answer, role, kind, label, value) in enumerate(offered, 1):
+        ref, node = f"e{index}", f"dialog:{answer}"
+        elements.append({"node": node, "ref": ref, "role": role, "label": label, "value": value})
+        actions.append(
+            {"id": ref, "node": node, "role": role, "kind": kind, "label": label, "value": value, "dialog": answer}
+        )
+    fields = [["dialog:text", prompt_text(dialog)]] if dialog["type"] == "prompt" else []
+    # Laid out as a page's marker is - origin, address, scroll, size, then the page itself - so a
+    # reading of the dialog compares with a reading of the page the way two page readings do.
+    marker = [f"dialog:{dialog['id']}", url, 0, 0, width, height, title, text, elements, actions, fields]
+    return {
+        "url": url,
+        "title": title,
+        "w": width,
+        "h": height,
+        "text": text,
+        "doc_text": text,
+        "scroll": {"y": 0, "height": height},
+        "elements": elements,
+        "actions": actions,
+        "marker": marker,
+        "page_key": [marker[0], url, 0, 0, width, height, fields],
+        "guards": {},
+        "omitted": 0,
+        "dialog": dialog["type"],
+    }
 
 
 def check_url(url, config):
