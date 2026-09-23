@@ -686,6 +686,7 @@ class Agent:
         reading it proves is most often the first one that showed the input's effect. The decision
         on that reading is asked while the proving goes on. It is used only when the settled page
         asks the same request, character for character; any other reading is asked about as ever.
+        A reading that is a human check is never asked about: that page is a person's to answer.
         """
         if not self.prefetch or not room:
             yield
@@ -693,7 +694,7 @@ class Agent:
         asked = []
 
         def seen(reading):
-            if len(asked) >= LOOKAHEADS:
+            if len(asked) >= LOOKAHEADS or held(reading):
                 return
             _space, state, questions = run.request(reading, step=step)
             if any(guess.asks(state, questions) for guess in guesses):

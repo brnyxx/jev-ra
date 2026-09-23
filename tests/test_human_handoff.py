@@ -205,3 +205,24 @@ def test_a_person_who_answers_at_once_is_still_a_person_who_was_asked(session, f
     result = agent_on(session, scripted(PLAN)).run(GOAL, values=VALUES, url=fixture_server + CHALLENGE)
     assert result.status == "done"
     assert result.human_wait_ms > 0
+
+
+def test_a_check_page_is_never_sent_for_a_decision_not_even_ahead_of_time(session, fixture_server):
+    session.presenter = Person(session)
+    asked = []
+
+    def decide(state, questions):
+        asked.append(state["page"]["text"])
+        answers = {"operation": certain("DONE", questions["operation"]["criteria"]), "goal_achieved": {"noul": 0.95}}
+        return Reply(answers=answers, model="scripted", latency_ms=1, usage={"cost": 0.0})
+
+    agent = Agent(
+        session=session,
+        config=config.load({"JEV_RA_HUMAN_WAIT_S": "10"}),
+        decide=decide,
+        pacer=Pacer(backoff=0, sleep=lambda _seconds: None),
+    )
+    result = agent.run("Open the checkout.", url=fixture_server + CHALLENGE)
+    assert result.status == "done"
+    assert asked
+    assert not any("Verify you are human" in text for text in asked)
