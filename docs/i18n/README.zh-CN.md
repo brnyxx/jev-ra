@@ -269,6 +269,9 @@ jev-ra 版本都不同，不是同等条件下的比较。一轮 3 次的测量�
 | `JEV_RA_PACE_S` | 一次运行对同一主机发起的两次导航之间的最短秒数；默认 `1`，`0` 为关闭，本机不受限 |
 | `JEV_RA_NOTIFY` | `0` 关闭人工验证触发的桌面通知 |
 | `JEV_RA_HUMAN_WAIT_S` | 等待人完成人工验证的时长；默认 `120`，`0` 为立即交还 |
+| `JEV_RA_HOST_DAILY_BUDGET` | `corpus run` 和 `bench --live` 在所有进程合计下每天对一个主机的实时尝试次数；默认 `40` |
+| `JEV_RA_HOST_GAP_S` | 这些尝试在同一主机上的最短间隔秒数；默认 `10`，`0` 为关闭 |
+| `JEV_RA_HOST_REST_S` | 拒绝过的主机在当天内不再被访问的时长；默认 `86400`，`0` 为关闭 |
 | `JEV_RA_ALLOW_FILE_URLS` | 设为 `1` 可让会话打开 `file:` URL |
 | `JEV_RA_SEARCH_URL` | 搜索端点模板，`{query}` 会被替换 |
 | `JEV_RA_TEXT_MODEL`, `JEV_RA_TEXT_BASE_URL`, `JEV_RA_TEXT_API_KEY` | 可选的文本助手，默认关闭 |

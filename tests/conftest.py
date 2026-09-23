@@ -76,6 +76,22 @@ def flaky_server():
         thread.join(timeout=5)
 
 
+@pytest.fixture(autouse=True)
+def open_ledger(monkeypatch, tmp_path_factory):
+    """Every test's live attempts go to a ledger of their own that never holds or turns one away.
+
+    The real ledger is the machine's, shared with every corpus and bench pass on it: a test that
+    wrote to it would spend the maintainer's budget, and one that waited on it would sleep.
+    """
+    from jev_ra import traffic
+
+    ledger = traffic.Ledger(
+        tmp_path_factory.mktemp("traffic"), budget=10**6, gap_s=0.0, rest_s=0.0, sleep=lambda _seconds: None
+    )
+    monkeypatch.setattr(traffic, "ledger", lambda _config=None, _env=None: ledger)
+    return ledger
+
+
 @pytest.fixture(scope="session")
 def fixture_server():
     handler = functools.partial(QuietHandler, directory=str(FIXTURES))

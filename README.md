@@ -330,6 +330,9 @@ supplied. You can still configure one with `JEV_RA_TEXT_MODEL`.
 | `JEV_RA_PACE_S` | least seconds between two navigations a run starts on one host; default `1`, `0` for none, this machine exempt |
 | `JEV_RA_NOTIFY` | `0` to stop the desktop notification a human check raises |
 | `JEV_RA_HUMAN_WAIT_S` | how long a run waits for a person to clear a human check; default `120`, `0` hands it back at once |
+| `JEV_RA_HOST_DAILY_BUDGET` | live attempts `corpus run` and `bench --live` make on one host a day, across every process; default `40` |
+| `JEV_RA_HOST_GAP_S` | least seconds between two of those attempts on one host; default `10`, `0` for none |
+| `JEV_RA_HOST_REST_S` | how long they leave a host that pushed back alone, within the day; default `86400`, `0` for none |
 | `JEV_RA_ALLOW_FILE_URLS` | `1` to let a session open `file:` URLs |
 | `JEV_RA_SEARCH_URL` | search endpoint template, `{query}` substituted |
 | `JEV_RA_TEXT_MODEL`, `JEV_RA_TEXT_BASE_URL`, `JEV_RA_TEXT_API_KEY` | optional text helper, off by default |

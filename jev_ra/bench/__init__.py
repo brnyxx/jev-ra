@@ -14,7 +14,7 @@ from datetime import date
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
-from .. import __version__
+from .. import __version__, traffic
 from ..agent import Agent
 from ..browser.session import Session
 from ..config import load
@@ -231,6 +231,11 @@ def needed_person(row):
     return bool(row.get("needs_human")) or (row.get("human_wait_ms") or 0) > 0
 
 
+def scored(row):
+    """Whether an attempt counts toward a rate: it reached its host, and nobody had to help it along."""
+    return not needed_person(row) and not traffic.skipped(row)
+
+
 def measure(agent, task, url, values, max_steps):
     """Run one task once and say whether the page shows it was done."""
     started = time.perf_counter()
@@ -245,6 +250,8 @@ def measure(agent, task, url, values, max_steps):
         "text_calls": len(result.text_calls),
         "cost": result.cost,
         "url": result.url,
+        "http_status": result.http_status,
+        "site_error": result.site_error,
         "human_wait_ms": result.human_wait_ms,
         "needs_human": result.reason == "needs_human",
         "text": (result.final_page.get("text") or "")[:VERIFY_TEXT_CHARS],
@@ -252,6 +259,44 @@ def measure(agent, task, url, values, max_steps):
         "profile": result.steps,
     }
     return verified(row, getattr(task, "verify", None))
+
+
+def skipped_row(key, url, claim):
+    """An attempt the ledger did not send: no time, no verdict, and the reason it was not made."""
+    return {
+        "task": key,
+        "status": traffic.SKIPPED,
+        "reason": claim.skipped,
+        "elapsed_ms": 0,
+        "steps": 0,
+        "decisions": 0,
+        "text_calls": 0,
+        "cost": 0.0,
+        "url": url,
+        "http_status": None,
+        "site_error": False,
+        "human_wait_ms": 0,
+        "needs_human": False,
+        "text": claim.said,
+        "ok": None,
+        "profile": [],
+    }
+
+
+def measure_page(task, url, config, decide, ledger=None):
+    """Run one page task once in a session of its own, unless its host may not be asked today."""
+    ledger = ledger or traffic.ledger(config)
+    claim = ledger.claim(url, task.key)
+    if claim.skipped:
+        return skipped_row(task.key, url, claim)
+    session = Session(config)
+    try:
+        agent = Agent(session=session, config=config, decide=decide)
+        row = measure(agent, task, url, task.values, task.max_steps)
+    finally:
+        session.close()
+    ledger.settle(claim, row)
+    return row
 
 
 def verified(row, verify):
@@ -298,14 +343,15 @@ def summarise(rows):
     """Per task: medians over the runs that actually worked, plus the success rate over all of them.
 
     A run that needed a person is set aside and counted on its own: its time is a person's, and
-    whether it got there says nothing about the product either way.
+    whether it got there says nothing about the product either way. So is an attempt the ledger never
+    sent to its host.
     """
     summary = {}
     for row in rows:
         summary.setdefault(row["task"], []).append(row)
     table = []
     for task, runs in summary.items():
-        counted = [run for run in runs if not needed_person(run)]
+        counted = [run for run in runs if scored(run)]
         good = [run for run in counted if run.get("ok")]
         times = [run["elapsed_ms"] for run in good]
         table.append(
@@ -313,7 +359,8 @@ def summarise(rows):
                 "task": task,
                 "runs": len(counted),
                 "successes": len(good),
-                "human": len(runs) - len(counted),
+                "human": sum(1 for run in runs if needed_person(run)),
+                "skipped": sum(1 for run in runs if traffic.skipped(run)),
                 "success_rate": round(len(good) / len(counted), 3) if counted else 0.0,
                 "median_ms": median(times),
                 "p90_ms": percentile(times),
@@ -348,10 +395,16 @@ def run_offline(config=None, tasks=OFFLINE_TASKS, session=None, runs=1):
     return measured
 
 
-def measure_search(task, config, decide):
-    """Run one search task once and score what it found."""
+def measure_search(task, config, decide, ledger=None):
+    """Run one search task once and score what it found, unless the search engine may not be asked today."""
+    from ..search import engine_url
     from ..search import search as run_search
 
+    ledger = ledger or traffic.ledger(config)
+    url = engine_url(task.query)
+    claim = ledger.claim(url, task.key)
+    if claim.skipped:
+        return skipped_row(task.key, url, claim)
     session = Session(config)
     started = time.perf_counter()
     try:
@@ -383,14 +436,17 @@ def measure_search(task, config, decide):
             for item in payload["results"]
         ],
     }
-    return verified(row, task.verify)
+    row = verified(row, task.verify)
+    ledger.settle(claim, row)
+    return row
 
 
-def run_live(config=None, tasks=LIVE_TASKS, runs=1):
-    """Run the live tasks against the real web, `runs` times each."""
+def run_live(config=None, tasks=LIVE_TASKS, runs=1, ledger=None):
+    """Run the live tasks against the real web, `runs` times each, within each host's daily budget."""
     config = config or load()
     if not config.api_key:
         raise RuntimeError("bench --live needs a Jev key. Set OPENROUTER_API_KEY, then run `jev-ra doctor`.")
+    ledger = ledger or traffic.ledger(config)
     client = DecisionClient(config)
     measured = []
     try:
@@ -399,15 +455,10 @@ def run_live(config=None, tasks=LIVE_TASKS, runs=1):
                 for task in tasks:
                     logger.info("run %s/%s: %s", attempt + 1, runs, task.key)
                     if task.kind == "search":
-                        measured.append(measure_search(task, config, client.decide))
+                        measured.append(measure_search(task, config, client.decide, ledger))
                         continue
-                    session = Session(config)
-                    try:
-                        agent = Agent(session=session, config=config, decide=client.decide)
-                        url = f"{base}/{task.page}" if task.page else task.url
-                        measured.append(measure(agent, task, url, task.values, task.max_steps))
-                    finally:
-                        session.close()
+                    url = f"{base}/{task.page}" if task.page else task.url
+                    measured.append(measure_page(task, url, config, client.decide, ledger))
     finally:
         client.close()
     return measured
