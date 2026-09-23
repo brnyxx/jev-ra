@@ -4,7 +4,8 @@ A single run says whether a task passed. The tenth run on the same Chrome says w
 still passes after the session has been used: a page that only works on a fresh profile, a decision
 that needs the run to be new, a session that leaks listeners or focus. This runs the same task N
 times on one `Session`, classifies every attempt the way the corpus does, and exits 1 if any attempt
-raised.
+raised. Every attempt goes through the machine's live-traffic ledger as a corpus attempt does, and
+the soak stops at the first one the ledger will not send.
 
 The same session can be soaked with calls instead of a task: `--calls 100` makes 100 tool calls
 and reports the process's RSS growth and whether any page target was opened along the way.
@@ -28,11 +29,13 @@ try:
 except ImportError:
     resource = None
 
+from jev_ra import traffic
 from jev_ra.agent import Agent
-from jev_ra.bench import needed_person, percentile
+from jev_ra.bench import needed_person, percentile, scored
 from jev_ra.browser.session import Session
+from jev_ra.cli import skipped_line
 from jev_ra.config import load
-from jev_ra.corpus import TEXT_CHARS, classify, load_tasks
+from jev_ra.corpus import TEXT_CHARS, classify, load_tasks, unsent_row
 from jev_ra.decide.client import DecisionClient
 
 RSS_LIMIT_MB = 50.0
@@ -46,8 +49,18 @@ def task_named(name, tasks=None):
     raise SystemExit(f"unknown corpus task {name!r}; run `uv run jev-ra corpus run --list`")
 
 
-def run_once(task, session, config, decide):
-    """One attempt at the task on an existing session, classified the way the corpus classifies."""
+def run_once(task, session, config, decide, ledger=None):
+    """One attempt at the task on an existing session, classified the way the corpus classifies.
+
+    The attempt is claimed from the machine's ledger first, and one the ledger turns away is a
+    skipped row that never reaches the site.
+    """
+    ledger = ledger or traffic.ledger(config)
+    claim = ledger.claim(task.url, task.name)
+    if claim.skipped:
+        row = unsent_row(task, traffic.SKIPPED, claim.skipped, claim.said)
+        row["passed"], row["why"] = classify(task, row)
+        return row
     started = time.perf_counter()
     row = {"task": task.name, "family": task.family}
     try:
@@ -61,6 +74,7 @@ def run_once(task, session, config, decide):
             decisions=0,
             cost=0.0,
             url=task.url,
+            http_status=None,
             site_error=False,
             human_wait_ms=0,
             needs_human=False,
@@ -74,6 +88,7 @@ def run_once(task, session, config, decide):
             decisions=result.decisions,
             cost=result.cost,
             url=result.url,
+            http_status=result.http_status,
             site_error=result.site_error,
             human_wait_ms=result.human_wait_ms,
             needs_human=result.reason == "needs_human",
@@ -82,6 +97,7 @@ def run_once(task, session, config, decide):
         )
     row["elapsed_ms"] = round((time.perf_counter() - started) * 1000)
     row["passed"], row["why"] = classify(task, row)
+    ledger.settle(claim, row)
     return row
 
 
@@ -89,13 +105,14 @@ def summarise(rows):
     """Pass count, seconds, decisions and the reasons seen, over the attempts of one task soak.
 
     An attempt that needed a person is counted apart: it passed nothing, failed nothing, and its
-    seconds are a person's, so they stay out of the soak's own.
+    seconds are a person's, so they stay out of the soak's own. So is one the ledger never sent.
     """
     people = [row for row in rows if needed_person(row)]
-    counted = [row for row in rows if not needed_person(row)]
+    sent = [row for row in rows if not traffic.skipped(row)]
+    counted = [row for row in rows if scored(row)]
     passed = [row for row in counted if row["passed"]]
     times = [row["elapsed_ms"] for row in counted]
-    decisions = [row["decisions"] for row in rows]
+    decisions = [row["decisions"] for row in sent]
     reasons = {}
     for row in counted:
         if row["passed"]:
@@ -103,7 +120,7 @@ def summarise(rows):
         key = row.get("raised") or row.get("reason") or row["status"]
         reasons[key] = reasons.get(key, 0) + 1
     return {
-        "runs": len(rows),
+        "runs": len(sent),
         "passed": len(passed),
         "median_s": round(statistics.median(times) / 1000, 2) if times else None,
         "p95_s": round(percentile(times, 0.95) / 1000, 2) if times else None,
@@ -114,6 +131,7 @@ def summarise(rows):
         "site_error": sum(1 for row in rows if row.get("site_error")),
         "human": len(people),
         "human_wait_ms": sum(row.get("human_wait_ms") or 0 for row in people),
+        "skipped": traffic.skips(rows),
     }
 
 
@@ -127,6 +145,8 @@ def report(summary, name):
     lines.append(f"  site errors: {summary['site_error']}")
     lines.append(f"  needed a person: {summary['human']} ({summary['human_wait_ms'] / 1000:.1f} s waiting)")
     lines.append(f"  raised: {summary['raised']}")
+    if summary["skipped"]:
+        lines.append("  " + skipped_line(summary["skipped"]))
     return lines
 
 
@@ -182,7 +202,7 @@ def calls_report(summary):
 
 
 def task_soak(name, runs):
-    """Soak one corpus task and return 1 when an attempt raised."""
+    """Soak one corpus task and return 1 when an attempt raised or the ledger stopped the soak short."""
     task = task_named(name)
     config = load()
     if not config.api_key:
@@ -190,13 +210,17 @@ def task_soak(name, runs):
     client = DecisionClient(config)
     session = Session(config)
     try:
-        rows = [run_once(task, session, config, client.decide) for _ in range(runs)]
+        rows = []
+        for _ in range(runs):
+            rows.append(run_once(task, session, config, client.decide))
+            if traffic.skipped(rows[-1]):
+                break
     finally:
         session.close()
         client.close()
     summary = summarise(rows)
     print("\n".join(report(summary, task.name)))
-    return 1 if summary["raised"] else 0
+    return 1 if summary["raised"] or summary["skipped"] else 0
 
 
 def calls_soak(calls):
