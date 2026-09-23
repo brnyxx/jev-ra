@@ -1,0 +1,83 @@
+run 1: ok=True done/goal_achieved 7103 ms decisions=4 steps=3
+  step 1 SCROLL_DOWN Scroll down      snapshot=70 actions=0 decide=746 act=9 wait=360 overhead=1 total=1186 prefetched=False
+  step 2 CLICK       신상품순             snapshot=525 actions=0 decide=35 act=201 wait=1613 overhead=1 total=2375 prefetched=True
+  step 3 SCROLL_DOWN Scroll down      snapshot=181 actions=0 decide=0 act=350 wait=696 overhead=1 total=1228 prefetched=True
+  timeline (ms from run start, +duration; evaluate calls under 15 ms omitted):
+       193 + 2021  evaluate ready
+       193 + 2021  load 
+      2214 +    7  paint 
+      2221 +    0  settle 
+      2221 +   82  evaluate snapshot
+      2221 +   92  observe 
+         0 + 2313  open 
+      2313 +  746  decide top=[['SCROLL_DOWN', 0.85], ['BLOCKED', 0.08], ['CLICK', 0.06]] goal_achieved=0.06 prev_ok=None elements=53 url=...Cat100000100010014_Small
+      3059 +    9  execute 
+      3068 +  154  evaluate settle+snapshot
+      3223 +  205  evaluate quiet
+      3428 +   70  evaluate snapshot
+      3222 +  276  wait_out 
+      3068 +  430  settle 
+      3068 +  431  observe 
+      3222 +  312  decide top=[['CLICK', 0.99], ['DONE', 0.01], ['BLOCKED', 0.0]] goal_achieved=0.14 prev_ok=0.26 elements=35 url=...Cat100000100010014_Small
+      3534 +  201  execute 
+      3735 +   50  evaluate settle+snapshot
+      3785 + 1563  evaluate quiet
+      5348 +  216  evaluate snapshot
+      3785 + 1779  wait_out 
+      3735 + 1829  settle 
+      5564 +  275  decide top=[['DONE', 0.69], ['WAIT', 0.19], ['SCROLL_DOWN', 0.06]] goal_achieved=0.33 prev_ok=0.56 elements=53 url=...%BC%2F%EC%95%B0%ED%94%8C
+      5564 +  305  evaluate snapshot
+      3735 + 2139  observe 
+      5874 +  166  evaluate location.href
+      5874 +  350  execute 
+      6224 +  167  evaluate settle+snapshot
+      6391 +  290  evaluate quiet
+      6681 +   73  evaluate snapshot
+      6754 +  239  evaluate quiet
+      6993 +   53  evaluate snapshot
+      6391 +  655  wait_out 
+      6224 +  822  settle 
+      6754 +  293  decide top=[['DONE', 0.86], ['CLICK', 0.06], ['WAIT', 0.04]] goal_achieved=0.72 prev_ok=0.83 elements=35 url=...%BC%2F%EC%95%B0%ED%94%8C
+      7046 +   52  evaluate snapshot
+      6224 +  878  observe 
+run 2: ok=True done/goal_achieved 4611 ms decisions=4 steps=3
+  step 1 SCROLL_DOWN Scroll down      snapshot=79 actions=0 decide=284 act=2 wait=322 overhead=1 total=688 prefetched=False
+  step 2 CLICK       신상품순             snapshot=188 actions=0 decide=6 act=94 wait=676 overhead=0 total=964 prefetched=True
+  step 3 SCROLL_DOWN Scroll down      snapshot=155 actions=0 decide=314 act=14 wait=674 overhead=1 total=1158 prefetched=True
+  timeline (ms from run start, +duration; evaluate calls under 15 ms omitted):
+       176 + 1548  evaluate ready
+       176 + 1548  load 
+      1724 +   10  paint 
+      1734 +    0  settle 
+      1734 +   49  evaluate snapshot
+      1734 +   56  observe 
+         0 + 1790  open 
+      1790 +  284  decide top=[['SCROLL_DOWN', 0.85], ['BLOCKED', 0.08], ['CLICK', 0.06]] goal_achieved=0.05 prev_ok=None elements=53 url=...Cat100000100010014_Small
+      2074 +    2  execute 
+      2076 +  109  evaluate settle+snapshot
+      2185 +  214  evaluate quiet
+      2399 +   78  evaluate snapshot
+      2185 +  292  wait_out 
+      2076 +  401  settle 
+      2076 +  402  observe 
+      2185 +  298  decide top=[['CLICK', 0.99], ['DONE', 0.01], ['BLOCKED', 0.0]] goal_achieved=0.13 prev_ok=0.24 elements=35 url=...Cat100000100010014_Small
+      2483 +   94  execute 
+      2577 +   34  evaluate settle+snapshot
+      2611 +  642  evaluate quiet
+      3253 +  142  evaluate snapshot
+      2611 +  785  wait_out 
+      2577 +  819  settle 
+      3396 +   41  evaluate snapshot
+      2577 +  864  observe 
+      3395 +  360  decide top=[['DONE', 0.68], ['WAIT', 0.18], ['SCROLL_DOWN', 0.07]] goal_achieved=0.32 prev_ok=0.57 elements=53 url=...%BC%2F%EC%95%B0%ED%94%8C
+      3756 +   13  execute 
+      3769 +  163  evaluate settle+snapshot
+      3932 +  284  decide top=[['DONE', 0.69], ['WAIT', 0.16], ['SCROLL_DOWN', 0.07]] goal_achieved=0.31 prev_ok=0.6 elements=53 url=...%BC%2F%EC%95%B0%ED%94%8C
+      3932 +  302  evaluate quiet
+      4234 +   69  evaluate snapshot
+      4304 +  210  evaluate quiet
+      4514 +   78  evaluate snapshot
+      3932 +  660  wait_out 
+      3769 +  823  settle 
+      3769 +  830  observe 
+      4303 +  307  decide top=[['DONE', 0.89], ['WAIT', 0.05], ['CLICK', 0.04]] goal_achieved=0.73 prev_ok=0.85 elements=35 url=...%BC%2F%EC%95%B0%ED%94%8C

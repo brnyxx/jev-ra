@@ -332,6 +332,12 @@ HANDED_JS = (
 class Session:
     """One CDP target: observe it, act on it, and never act on a stale reading of it."""
 
+    # Handed each reading a wait takes that could turn out to be the one observed, for a caller
+    # that can start work before the page has proven it will stay that way. The observation that
+    # follows is still the settled reading, taken exactly as it always was. A caller sets it for
+    # the duration of one observation; a session nobody listens to never calls anything.
+    preview = None
+
     def __init__(self, config=None, target_id=None, max_elements=MAX_ELEMENTS, profile=None):
         self.config = config or load()
         self.max_elements = max_elements
@@ -665,6 +671,11 @@ class Session:
                 # a second evaluation of the same document for the same answer.
                 self.settled = reading
                 return
+            # A reading that shows the input's effect and has caught up with its address is what
+            # the rest of this wait may well end on: the page only has to hold still to confirm it.
+            # A document already on its way out never is.
+            if self.preview is not None and caught_up and not reading.get("leaving") and marker not in (previous, was):
+                self.preview(reading)
             if opened and caught_up:
                 if ready is None:
                     ready = time.monotonic()

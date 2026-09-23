@@ -21,7 +21,10 @@ QUIET_STATE_JS = """(() => window.__jevRaQuiet ||= (() => {
 def snapshot_expression(max_elements=MAX_ELEMENTS):
     """The snapshot call as an evaluable expression, capped at `max_elements`."""
     options = json.dumps({"max_elements": max_elements})
-    return f"(() => {{ {QUIET_STATE_JS}(); return ({SNAPSHOT_JS})({options}); }})()"
+    return (
+        f"(() => {{ const quiet={QUIET_STATE_JS}(); const page=({SNAPSHOT_JS})({options}); "
+        "if (page) page.leaving=quiet.leaving; return page; })()"
+    )
 
 
 def marker_expression(max_elements=MAX_ELEMENTS):

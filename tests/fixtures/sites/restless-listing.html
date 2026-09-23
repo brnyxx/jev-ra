@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Restless listing</title>
+<style>
+  body { font: 14px/1.5 system-ui; margin: 0; padding: 16px; }
+  .filler { height: 1000px; background: linear-gradient(#fff, #f3f3f3); }
+  .sort a[aria-current] { font-weight: 700; }
+  .ticker { position: absolute; left: -9999px; }
+</style>
+</head>
+<body>
+<!-- A listing whose sort bar sits under a screen of products, on a page that never stops moving
+     somewhere nobody looks: a carousel, a countdown, an analytics beacon rewriting an attribute.
+     The page never goes quiet, so every settle has to prove it by two identical readings. -->
+<h1>Products</h1>
+<div class="filler">Serum, cream, mask, cleanser, toner</div>
+<nav class="sort">
+  <a href="#" data-sort="popular" aria-current="true">Most popular</a>
+  <a href="#" data-sort="new">Newest first</a>
+</nav>
+<ul class="products"><li>Serum A</li><li>Serum B</li><li>Serum C</li></ul>
+<div class="ticker" aria-hidden="true">0</div>
+<script>
+  const ticker = document.querySelector('.ticker');
+  setInterval(() => { ticker.dataset.tick = String(Number(ticker.dataset.tick || 0) + 1); }, 20);
+  for (const link of document.querySelectorAll('.sort a')) {
+    link.addEventListener('click', event => {
+      event.preventDefault();
+      for (const other of document.querySelectorAll('.sort a')) other.removeAttribute('aria-current');
+      link.setAttribute('aria-current', 'true');
+      const list = document.querySelector('.products');
+      list.replaceChildren(...[...list.children].reverse());
+    });
+  }
+</script>
+</body>
+</html>

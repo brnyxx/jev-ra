@@ -1,0 +1,98 @@
+run 8a74403630b2 escalate/blocked_by_site elapsed=6473 decisions=0 spec=0 pref=0 outside=6473
+    final candidates: []
+run b38008e71a7f done/goal_achieved elapsed=5626 decisions=4 spec=0 pref=0 outside=2497
+    1 SCROLL_DOWN Scroll down {'snapshot': 59, 'actions': 0, 'decide': 300, 'act': 3, 'wait': 307, 'overhead': 0} total 669 lat 300 p 0.84 chg True pref False
+    2 CLICK 신상품순 {'snapshot': 176, 'actions': 0, 'decide': 316, 'act': 121, 'wait': 694, 'overhead': 0} total 1307 lat 316 p 0.99 chg True pref False
+    3 SCROLL_DOWN Scroll down {'snapshot': 246, 'actions': 0, 'decide': 282, 'act': 21, 'wait': 603, 'overhead': 1} total 1153 lat 282 p 0.65 chg True pref False
+    final candidates: [('DONE', 'Every requirement is visibly s', 0.89), ('WAIT', 'Wait for the page to update', 0.05), ('CLICK', '[e16] link 신상품순', 0.0376)]
+run 3c9b9f714c56 done/goal_achieved elapsed=6030 decisions=4 spec=0 pref=0 outside=2072
+    1 SCROLL_DOWN Scroll down {'snapshot': 175, 'actions': 0, 'decide': 281, 'act': 2, 'wait': 516, 'overhead': 1} total 975 lat 281 p 0.84 chg True pref False
+    2 CLICK 신상품순 {'snapshot': 176, 'actions': 0, 'decide': 355, 'act': 159, 'wait': 1276, 'overhead': 0} total 1966 lat 355 p 0.99 chg True pref False
+    3 SCROLL_DOWN Scroll down {'snapshot': 123, 'actions': 0, 'decide': 286, 'act': 82, 'wait': 526, 'overhead': 0} total 1017 lat 286 p 0.66 chg True pref False
+    final candidates: [('DONE', 'Every requirement is visibly s', 0.89), ('WAIT', 'Wait for the page to update', 0.05), ('CLICK', '[e16] link 신상품순', 0.0372)]
+run bd4f716e6a9a done/goal_achieved elapsed=5720 decisions=4 spec=0 pref=0 outside=2504
+    1 SCROLL_DOWN Scroll down {'snapshot': 99, 'actions': 0, 'decide': 269, 'act': 2, 'wait': 518, 'overhead': 0} total 888 lat 269 p 0.82 chg True pref False
+    2 CLICK 신상품순 {'snapshot': 131, 'actions': 0, 'decide': 356, 'act': 86, 'wait': 596, 'overhead': 0} total 1169 lat 356 p 0.99 chg True pref False
+    3 SCROLL_DOWN Scroll down {'snapshot': 215, 'actions': 0, 'decide': 331, 'act': 13, 'wait': 601, 'overhead': 0} total 1159 lat 331 p 0.64 chg True pref False
+    final candidates: [('DONE', 'Every requirement is visibly s', 0.88), ('WAIT', 'Wait for the page to update', 0.05), ('CLICK', '[e16] link 신상품순', 0.047)]
+run c986864f8c2c done/goal_achieved elapsed=5786 decisions=4 spec=0 pref=0 outside=2113
+    1 SCROLL_DOWN Scroll down {'snapshot': 139, 'actions': 0, 'decide': 296, 'act': 11, 'wait': 533, 'overhead': 0} total 979 lat 296 p 0.8 chg True pref False
+    2 CLICK 신상품순 {'snapshot': 165, 'actions': 0, 'decide': 284, 'act': 101, 'wait': 1254, 'overhead': 0} total 1804 lat 284 p 1.0 chg True pref False
+    3 SCROLL_DOWN Scroll down {'snapshot': 120, 'actions': 0, 'decide': 357, 'act': 84, 'wait': 329, 'overhead': 0} total 890 lat 357 p 0.68 chg True pref False
+    final candidates: [('DONE', 'Every requirement is visibly s', 0.91), ('WAIT', 'Wait for the page to update', 0.04), ('CLICK', '[e16] link 신상품순', 0.0285)]
+run d96723a83c0d done/goal_achieved elapsed=6079 decisions=4 spec=0 pref=0 outside=2561
+    1 SCROLL_DOWN Scroll down {'snapshot': 73, 'actions': 0, 'decide': 761, 'act': 4, 'wait': 318, 'overhead': 0} total 1156 lat 761 p 0.86 chg True pref False
+    2 CLICK 신상품순 {'snapshot': 152, 'actions': 0, 'decide': 322, 'act': 114, 'wait': 680, 'overhead': 0} total 1268 lat 322 p 1.0 chg True pref False
+    3 SCROLL_DOWN Scroll down {'snapshot': 171, 'actions': 0, 'decide': 310, 'act': 60, 'wait': 553, 'overhead': 0} total 1094 lat 310 p 0.65 chg True pref False
+    final candidates: [('DONE', 'Every requirement is visibly s', 0.89), ('WAIT', 'Wait for the page to update', 0.04), ('CLICK', '[e16] link 신상품순', 0.0376)]
+run c0ca918f1433 done/goal_achieved elapsed=5494 decisions=4 spec=0 pref=0 outside=1936
+    1 SCROLL_DOWN Scroll down {'snapshot': 64, 'actions': 0, 'decide': 324, 'act': 2, 'wait': 297, 'overhead': 0} total 687 lat 324 p 0.84 chg True pref False
+    2 CLICK 신상품순 {'snapshot': 237, 'actions': 0, 'decide': 302, 'act': 116, 'wait': 1123, 'overhead': 2} total 1780 lat 302 p 0.99 chg True pref False
+    3 SCROLL_DOWN Scroll down {'snapshot': 164, 'actions': 0, 'decide': 334, 'act': 64, 'wait': 528, 'overhead': 1} total 1091 lat 334 p 0.69 chg True pref False
+    final candidates: [('DONE', 'Every requirement is visibly s', 0.87), ('WAIT', 'Wait for the page to update', 0.06), ('CLICK', '[e16] link 신상품순', 0.0465)]
+run 71ada77f18f4 done/goal_achieved elapsed=4724 decisions=4 spec=0 pref=0 outside=1828
+    1 SCROLL_DOWN Scroll down {'snapshot': 59, 'actions': 0, 'decide': 273, 'act': 3, 'wait': 283, 'overhead': 1} total 619 lat 273 p 0.84 chg True pref False
+    2 CLICK 신상품순 {'snapshot': 123, 'actions': 0, 'decide': 252, 'act': 100, 'wait': 629, 'overhead': 1} total 1105 lat 252 p 0.98 chg True pref False
+    3 SCROLL_DOWN Scroll down {'snapshot': 136, 'actions': 0, 'decide': 456, 'act': 41, 'wait': 538, 'overhead': 1} total 1172 lat 456 p 0.65 chg True pref False
+    final candidates: [('DONE', 'Every requirement is visibly s', 0.88), ('CLICK', '[e16] link 신상품순', 0.0564), ('WAIT', 'Wait for the page to update', 0.04)]
+run f0860664913c done/goal_achieved elapsed=6782 decisions=4 spec=0 pref=0 outside=3140
+    1 SCROLL_DOWN Scroll down {'snapshot': 58, 'actions': 0, 'decide': 882, 'act': 5, 'wait': 292, 'overhead': 0} total 1237 lat 882 p 0.83 chg True pref False
+    2 CLICK 신상품순 {'snapshot': 537, 'actions': 0, 'decide': 243, 'act': 137, 'wait': 611, 'overhead': 1} total 1529 lat 243 p 0.99 chg True pref False
+    3 SCROLL_DOWN Scroll down {'snapshot': 97, 'actions': 0, 'decide': 374, 'act': 63, 'wait': 342, 'overhead': 0} total 876 lat 374 p 0.67 chg True pref False
+    final candidates: [('DONE', 'Every requirement is visibly s', 0.89), ('WAIT', 'Wait for the page to update', 0.05), ('CLICK', '[e16] link 신상품순', 0.0376)]
+run 5b3d1faa69fe done/goal_achieved elapsed=5314 decisions=4 spec=0 pref=0 outside=2082
+    1 SCROLL_DOWN Scroll down {'snapshot': 60, 'actions': 0, 'decide': 308, 'act': 2, 'wait': 321, 'overhead': 1} total 692 lat 308 p 0.82 chg True pref False
+    2 CLICK 신상품순 {'snapshot': 422, 'actions': 0, 'decide': 256, 'act': 148, 'wait': 616, 'overhead': 0} total 1442 lat 256 p 0.99 chg True pref False
+    3 SCROLL_DOWN Scroll down {'snapshot': 132, 'actions': 0, 'decide': 378, 'act': 43, 'wait': 544, 'overhead': 1} total 1098 lat 378 p 0.66 chg True pref False
+    final candidates: [('DONE', 'Every requirement is visibly s', 0.9), ('WAIT', 'Wait for the page to update', 0.04), ('CLICK', '[e16] link 신상품순', 0.038)]
+run 194724ac0caf done/goal_achieved elapsed=5907 decisions=4 spec=5 pref=3 outside=2736
+    1 SCROLL_DOWN Scroll down {'snapshot': 67, 'actions': 0, 'decide': 799, 'act': 3, 'wait': 346, 'overhead': 2} total 1217 lat 799 p 0.83 chg True pref False
+    2 CLICK 신상품순 {'snapshot': 156, 'actions': 0, 'decide': 44, 'act': 98, 'wait': 674, 'overhead': 2} total 974 lat 323 p 0.99 chg True pref True
+    3 SCROLL_DOWN Scroll down {'snapshot': 129, 'actions': 0, 'decide': 280, 'act': 55, 'wait': 514, 'overhead': 2} total 980 lat 335 p 0.66 chg True pref True
+    final candidates: [('DONE', 'Every requirement is visibly s', 0.9), ('WAIT', 'Wait for the page to update', 0.04), ('CLICK', '[e16] link 신상품순', 0.0376)]
+run c2febfec64a6 done/goal_achieved elapsed=4328 decisions=4 spec=5 pref=3 outside=1634
+    1 SCROLL_DOWN Scroll down {'snapshot': 49, 'actions': 0, 'decide': 291, 'act': 10, 'wait': 296, 'overhead': 0} total 646 lat 291 p 0.84 chg True pref False
+    2 CLICK 신상품순 {'snapshot': 190, 'actions': 0, 'decide': 19, 'act': 109, 'wait': 682, 'overhead': 2} total 1002 lat 279 p 0.99 chg True pref True
+    3 SCROLL_DOWN Scroll down {'snapshot': 156, 'actions': 0, 'decide': 255, 'act': 26, 'wait': 606, 'overhead': 3} total 1046 lat 305 p 0.6 chg True pref True
+    final candidates: [('DONE', 'Every requirement is visibly s', 0.91), ('CLICK', '[e16] link 신상품순', 0.0372), ('WAIT', 'Wait for the page to update', 0.03)]
+run a478d44b2d96 done/goal_achieved elapsed=4514 decisions=4 spec=4 pref=3 outside=1673
+    1 SCROLL_DOWN Scroll down {'snapshot': 91, 'actions': 0, 'decide': 332, 'act': 2, 'wait': 295, 'overhead': 0} total 720 lat 332 p 0.85 chg True pref False
+    2 CLICK 신상품순 {'snapshot': 150, 'actions': 0, 'decide': 0, 'act': 116, 'wait': 620, 'overhead': 1} total 887 lat 284 p 1.0 chg True pref True
+    3 SCROLL_DOWN Scroll down {'snapshot': 253, 'actions': 0, 'decide': 289, 'act': 90, 'wait': 602, 'overhead': 0} total 1234 lat 351 p 0.68 chg True pref True
+    final candidates: [('DONE', 'Every requirement is visibly s', 0.91), ('CLICK', '[e16] link 신상품순', 0.0372), ('WAIT', 'Wait for the page to update', 0.03)]
+run 07a6a3626ec4 done/goal_achieved elapsed=7102 decisions=4 spec=3 pref=3 outside=2313
+    1 SCROLL_DOWN Scroll down {'snapshot': 70, 'actions': 0, 'decide': 746, 'act': 9, 'wait': 360, 'overhead': 1} total 1186 lat 746 p 0.85 chg True pref False
+    2 CLICK 신상품순 {'snapshot': 525, 'actions': 0, 'decide': 35, 'act': 201, 'wait': 1613, 'overhead': 1} total 2375 lat 312 p 0.99 chg True pref True
+    3 SCROLL_DOWN Scroll down {'snapshot': 181, 'actions': 0, 'decide': 0, 'act': 350, 'wait': 696, 'overhead': 1} total 1228 lat 275 p 0.69 chg True pref True
+    final candidates: [('DONE', 'Every requirement is visibly s', 0.86), ('CLICK', '[e16] link 신상품순', 0.0564), ('WAIT', 'Wait for the page to update', 0.04)]
+run a9670064f526 done/goal_achieved elapsed=4610 decisions=4 spec=4 pref=3 outside=1800
+    1 SCROLL_DOWN Scroll down {'snapshot': 79, 'actions': 0, 'decide': 284, 'act': 2, 'wait': 322, 'overhead': 1} total 688 lat 284 p 0.85 chg True pref False
+    2 CLICK 신상품순 {'snapshot': 188, 'actions': 0, 'decide': 6, 'act': 94, 'wait': 676, 'overhead': 0} total 964 lat 299 p 0.99 chg True pref True
+    3 SCROLL_DOWN Scroll down {'snapshot': 155, 'actions': 0, 'decide': 314, 'act': 14, 'wait': 674, 'overhead': 1} total 1158 lat 360 p 0.68 chg True pref True
+    final candidates: [('DONE', 'Every requirement is visibly s', 0.89), ('WAIT', 'Wait for the page to update', 0.05), ('CLICK', '[e16] link 신상품순', 0.0376)]
+run 0643119297d2 done/goal_achieved elapsed=6796 decisions=4 spec=4 pref=3 outside=3529
+    1 SCROLL_DOWN Scroll down {'snapshot': 127, 'actions': 0, 'decide': 403, 'act': 3, 'wait': 502, 'overhead': 2} total 1037 lat 403 p 0.85 chg True pref False
+    2 CLICK 신상품순 {'snapshot': 177, 'actions': 0, 'decide': 44, 'act': 136, 'wait': 682, 'overhead': 1} total 1040 lat 319 p 1.0 chg True pref True
+    3 SCROLL_DOWN Scroll down {'snapshot': 308, 'actions': 0, 'decide': 242, 'act': 32, 'wait': 607, 'overhead': 1} total 1190 lat 318 p 0.65 chg True pref True
+    final candidates: [('DONE', 'Every requirement is visibly s', 0.9), ('WAIT', 'Wait for the page to update', 0.05), ('CLICK', '[e16] link 신상품순', 0.0285)]
+run 9b6d8065eeae done/goal_achieved elapsed=4992 decisions=4 spec=5 pref=3 outside=1887
+    1 SCROLL_DOWN Scroll down {'snapshot': 121, 'actions': 0, 'decide': 336, 'act': 4, 'wait': 514, 'overhead': 1} total 976 lat 336 p 0.83 chg True pref False
+    2 CLICK 신상품순 {'snapshot': 206, 'actions': 0, 'decide': 29, 'act': 162, 'wait': 632, 'overhead': 1} total 1030 lat 295 p 1.0 chg True pref True
+    3 SCROLL_DOWN Scroll down {'snapshot': 121, 'actions': 0, 'decide': 294, 'act': 119, 'wait': 564, 'overhead': 1} total 1099 lat 357 p 0.63 chg True pref True
+    final candidates: [('DONE', 'Every requirement is visibly s', 0.91), ('WAIT', 'Wait for the page to update', 0.04), ('CLICK', '[e16] link 신상품순', 0.0279)]
+run 0b55e4317c89 done/goal_achieved elapsed=5555 decisions=4 spec=3 pref=3 outside=2530
+    1 SCROLL_DOWN Scroll down {'snapshot': 98, 'actions': 0, 'decide': 370, 'act': 5, 'wait': 402, 'overhead': 2} total 877 lat 370 p 0.82 chg True pref False
+    2 CLICK 신상품순 {'snapshot': 149, 'actions': 1, 'decide': 52, 'act': 145, 'wait': 761, 'overhead': 0} total 1108 lat 358 p 1.0 chg True pref True
+    3 SCROLL_DOWN Scroll down {'snapshot': 144, 'actions': 0, 'decide': 239, 'act': 32, 'wait': 623, 'overhead': 2} total 1040 lat 296 p 0.66 chg True pref True
+    final candidates: [('DONE', 'Every requirement is visibly s', 0.89), ('CLICK', '[e16] link 신상품순', 0.0475), ('WAIT', 'Wait for the page to update', 0.04)]
+run 474bb2768fe7 done/goal_achieved elapsed=4537 decisions=4 spec=5 pref=3 outside=1591
+    1 SCROLL_DOWN Scroll down {'snapshot': 133, 'actions': 0, 'decide': 269, 'act': 2, 'wait': 494, 'overhead': 2} total 900 lat 269 p 0.86 chg True pref False
+    2 CLICK 신상품순 {'snapshot': 172, 'actions': 0, 'decide': 18, 'act': 136, 'wait': 628, 'overhead': 1} total 955 lat 294 p 1.0 chg True pref True
+    3 SCROLL_DOWN Scroll down {'snapshot': 120, 'actions': 0, 'decide': 303, 'act': 82, 'wait': 584, 'overhead': 2} total 1091 lat 370 p 0.67 chg True pref True
+    final candidates: [('DONE', 'Every requirement is visibly s', 0.89), ('CLICK', '[e16] link 신상품순', 0.048), ('WAIT', 'Wait for the page to update', 0.04)]
+run 3fe6bce17bc5 done/goal_achieved elapsed=4731 decisions=4 spec=4 pref=3 outside=1875
+    1 SCROLL_DOWN Scroll down {'snapshot': 73, 'actions': 0, 'decide': 336, 'act': 4, 'wait': 292, 'overhead': 1} total 706 lat 336 p 0.84 chg True pref False
+    2 CLICK 신상품순 {'snapshot': 211, 'actions': 0, 'decide': 32, 'act': 149, 'wait': 707, 'overhead': 1} total 1100 lat 311 p 1.0 chg True pref True
+    3 SCROLL_DOWN Scroll down {'snapshot': 174, 'actions': 0, 'decide': 253, 'act': 34, 'wait': 586, 'overhead': 3} total 1050 lat 365 p 0.64 chg True pref True
+    final candidates: [('DONE', 'Every requirement is visibly s', 0.89), ('CLICK', '[e16] link 신상품순', 0.0455), ('WAIT', 'Wait for the page to update', 0.04)]
+mean per run: {'snapshot': 454, 'actions': 0, 'decide': 820, 'act': 191, 'wait': 1649, 'overhead': 2} outside 2439

@@ -4,6 +4,7 @@ import logging
 import threading
 import time
 import uuid
+from contextlib import contextmanager
 from dataclasses import asdict, dataclass, field, replace
 from urllib.parse import urlsplit
 
@@ -12,7 +13,7 @@ from .browser.actions import LIST_ROLES, calendar_control
 from .browser.session import Session
 from .config import load, redact
 from .decide.client import DecisionClient
-from .decide.policy import InvalidDecision, build_questions, build_state, read_answers
+from .decide.policy import Decision, InvalidDecision, build_questions, build_state, read_answers
 from .decide.questions import CANDIDATES, GOAL_ACHIEVED_THRESHOLD
 from .errors import Escalated, JevBadResponse, JevError, StalePage, render
 from .profile import CATEGORIES, StepTimer
@@ -82,6 +83,10 @@ QUESTION_STARTS = ("what", "which", "how many", "when", "who", "find the")
 CONTROL_ACTIONS = ("scroll_down", "scroll_up", "wait")
 # An answer nobody is waiting for is worth the moment it takes to price it, and no longer.
 DISCARD_WAIT_S = 1.0
+# The readings a step's settle takes before the page proves it has stopped moving are usually the
+# one it stops on, so each distinct one may ask its question ahead. A page still changing after
+# this many is asked about once it has settled, the ordinary way.
+LOOKAHEADS = 2
 
 
 class Speculation:
@@ -105,6 +110,10 @@ class Speculation:
         except Exception as error:
             logger.info("A speculative decision went unanswered: %s", error)
 
+    def asks(self, state, questions):
+        """Whether this is the request the speculation sent."""
+        return (state, questions) == (self.state, self.questions)
+
     def take(self, state, questions):
         """The prefetched reply, when the settled page asks exactly this, else None.
 
@@ -112,7 +121,7 @@ class Speculation:
         different question to ask. What is accepted is the request the settled page would have
         sent, character for character, which is an answer to it and not to a guess.
         """
-        if (state, questions) != (self.state, self.questions):
+        if not self.asks(state, questions):
             return None
         self.thread.join()
         return self.reply
@@ -156,6 +165,24 @@ def speculate(page, action, text):
 
 # The two operations that can put something new on the page without leaving it.
 OPENING = ("CLICK", "TYPE_TEXT")
+
+
+@dataclass(frozen=True)
+class Taken:
+    """One executed step: its decision, the page it was taken on, what it typed and what was open."""
+
+    decision: Decision
+    before: dict
+    text: str | None = None
+    opened: dict | None = None
+
+    def entry(self, after):
+        """The history line this step leaves once the page reads `after`."""
+        return entry(self.decision, self.text, after.get("marker") != self.before.get("marker"))
+
+    def leaves_open(self, after):
+        """The list or calendar still open once the page reads `after`, or None."""
+        return revealed(self.decision, self.before, after) or suggesting(self.opened, after)
 
 
 @dataclass
@@ -279,7 +306,7 @@ class Agent:
         exclude, stale_retries, looks, reasked = set(), 0, 0, False
         best, waited, reasked_value = 0.0, False, False
         opened = None
-        guess, guessed = None, None
+        guesses, guessed = [], None
         while True:
             over = run.over_budget(limit, budgets, len(run.steps))
             if over:
@@ -289,12 +316,10 @@ class Agent:
                 page, wall = self.site(page, run, timer)
                 if wall:
                     return run.escalate("blocked_by_site", page, detail={"wall": wall})
-                space = self.space(page, goal)
-                questions = build_questions(space, goal, run.history, binder.available(), exclude, opened)
-                state = build_state(page, space, goal, run.history, binder.available(), opened)
+                space, state, questions = run.request(page, opened, exclude)
             try:
                 with timer.measure("decide"):
-                    guessed = guess.take(state, questions) if guess is not None else None
+                    used, guessed = taken(guesses, state, questions)
                     reply = guessed if guessed is not None else self.decide(state, questions)
             except JevBadResponse as error:
                 run.decisions += 1
@@ -311,9 +336,9 @@ class Agent:
                 run.decisions += 1
                 return run.escalate("provider_error", page, detail={"error": self.said(error)})
             finally:
-                if guess is not None:
-                    run.speculated(guess, guessed)
-                    guess = None
+                for guess in guesses:
+                    run.speculated(guess, guessed if guess is used else None)
+                guesses.clear()
             run.decisions += 1
             run.cost += reply.cost
             try:
@@ -362,24 +387,23 @@ class Agent:
                     logger.info("[%s] The page moved before it could be looked at; reading it again", run.run_id)
                     page = self.read(self.session.observe, timer) or page
                     continue
-                after = self.read(self.session.observe, timer)
-                if after is None:
-                    return run.escalate(
-                        "stale", page, decision, detail={"error": "The page never settled while it was looked at."}
-                    )
-                before, page = page, after
-                run.record(
+                looked = Taken(
                     replace(
                         decision,
                         operation="SCROLL_DOWN" if look is not None else "WAIT",
                         target=chosen["id"],
                         action=chosen,
                     ),
-                    before,
                     page,
-                    None,
-                    timer,
                 )
+                with self.ahead(run, guesses, run.room(limit, budgets), looked):
+                    after = self.read(self.session.observe, timer)
+                if after is None:
+                    return run.escalate(
+                        "stale", page, decision, detail={"error": "The page never settled while it was looked at."}
+                    )
+                page = after
+                run.record(looked, page, timer, guessed is not None)
                 opened = None
                 continue
             looks, best, waited = 0, 0.0, False
@@ -418,32 +442,66 @@ class Agent:
             # that input. Ask the next question now, against the page as it should read once the
             # input has landed and nothing else has happened. If the settled reading would have
             # asked anything else at all, the answer is thrown away and the question asked again.
+            room = run.room(limit, budgets)
             pending = speculate(page, decision.action, text) if self.prefetch else None
-            if pending is not None and run.room(limit, budgets):
+            if pending is not None and room:
                 moves = self.space(pending)
                 story = [*run.history, entry(decision, text, True)]
-                guess = run.speculating(
-                    Speculation(
-                        self.decide,
-                        build_state(pending, moves, goal, story, binder.available()),
-                        build_questions(moves, goal, story, binder.available()),
+                guesses.append(
+                    run.speculating(
+                        Speculation(
+                            self.decide,
+                            build_state(pending, moves, goal, story, binder.available()),
+                            build_questions(moves, goal, story, binder.available()),
+                        )
                     )
                 )
 
-            after = self.read(self.session.observe, timer)
+            step = Taken(decision, page, text, opened)
+            with self.ahead(run, guesses, room, step):
+                after = self.read(self.session.observe, timer)
             if after is None:
                 return run.escalate(
                     "stale", page, decision, detail={"error": "The page never settled after that action."}
                 )
             before, page = page, after
-            run.record(decision, before, page, text, timer, guessed is not None)
-            opened = revealed(decision, before, page) or suggesting(opened, page)
+            run.record(step, page, timer, guessed is not None)
+            opened = step.leaves_open(page)
             wall = run.walled(page, before)
             if wall:
                 return run.escalate("blocked_by_site", page, decision, detail={"wall": wall})
             stuck = run.stuck(space)
             if stuck:
                 return run.escalate(stuck, page, decision)
+
+    @contextmanager
+    def ahead(self, run, guesses, room, step=None):
+        """Ask the next question from each reading the page gives before it has settled.
+
+        A step's settle reads the page, then waits for it to prove it has stopped moving, and the
+        reading it proves is most often the first one that showed the input's effect. The decision
+        on that reading is asked while the proving goes on. It is used only when the settled page
+        asks the same request, character for character; any other reading is asked about as ever.
+        """
+        if not self.prefetch or not room:
+            yield
+            return
+        asked = []
+
+        def seen(reading):
+            if len(asked) >= LOOKAHEADS:
+                return
+            _space, state, questions = run.request(reading, step=step)
+            if any(guess.asks(state, questions) for guess in guesses):
+                return
+            asked.append(reading)
+            guesses.append(run.speculating(Speculation(self.decide, state, questions)))
+
+        self.session.preview = seen
+        try:
+            yield
+        finally:
+            self.session.preview = None
 
     def act(self, instruction, values=None, max_steps=1):
         """One decided step towards an instruction."""
@@ -539,7 +597,7 @@ class _Run:
         self.decisions = 0
         self.speculations = 0
         self.prefetched = 0
-        self.pending = None
+        self.pending = []
         self.cost = 0.0
         self.opens = ()
         self.site_error = False
@@ -554,12 +612,13 @@ class _Run:
 
     def speculating(self, guess):
         """Hold the speculation in flight, so a run that ends before it lands still pays for it."""
-        self.pending = guess
+        self.pending.append(guess)
         return guess
 
     def speculated(self, guess, used):
         """Count one speculation, and charge a discarded one to the run that paid for it."""
-        self.pending = None
+        if guess in self.pending:
+            self.pending.remove(guess)
         self.speculations += 1
         if used is not None:
             self.prefetched += 1
@@ -576,9 +635,25 @@ class _Run:
             return f"timeout_s ({budgets.timeout_s}) reached"
         return None
 
-    def record(self, decision, before, after, text, timer=None, prefetched=False):
+    def request(self, page, opened=None, exclude=(), step=None):
+        """The action space, state and questions the next decision sends about this page.
+
+        The loop asks it of the page a step settled on, once the step is recorded. A lookahead asks
+        it of an earlier reading, before the step is recorded, and passes the step: its history line
+        and what it left open are taken from that reading exactly as the loop will take them.
+        """
+        story = self.history
+        if step is not None:
+            story, opened = [*story, step.entry(page)], step.leaves_open(page)
+        space = self.agent.space(page, self.goal)
+        values = self.binder.available()
+        state = build_state(page, space, self.goal, story, values, opened)
+        return space, state, build_questions(space, self.goal, story, values, exclude, opened)
+
+    def record(self, step, after, timer=None, prefetched=False):
         """Record one executed step and what the page did about it."""
-        changed = after.get("marker") != before.get("marker")
+        decision, before, line = step.decision, step.before, step.entry(after)
+        changed = line["page_changed"]
         profile = timer.result() if timer is not None else dict.fromkeys((*CATEGORIES, "total_ms"), 0)
         self.steps.append(
             {
@@ -589,7 +664,7 @@ class _Run:
                 "target": decision.target,
                 "target_label": decision.action.get("label", ""),
                 "kind": decision.action.get("kind", ""),
-                "text": text,
+                "text": step.text,
                 "probability": decision.probability,
                 "confidence": decision.confidence,
                 "latency_ms": decision.latency_ms,
@@ -599,7 +674,7 @@ class _Run:
                 "verified": verification(before, after),
             }
         )
-        self.history.append(entry(decision, text, changed))
+        self.history.append(line)
 
     def walled(self, page, before=None):
         """How this site is refusing to serve the machine, or an empty string.
@@ -674,8 +749,8 @@ class _Run:
         final_answer, unanswered = self.answer(page)
         if unanswered:
             detail["final_answer"] = unanswered
-        if self.pending is not None:
-            self.speculated(self.pending, None)
+        for guess in list(self.pending):
+            self.speculated(guess, None)
         result = Result(
             status=status,
             reason=reason,
@@ -708,6 +783,15 @@ class _Run:
         detail = dict(detail or {})
         detail["page_text"] = page.get("text", "")[:ESCALATION_TEXT_CHARS]
         return self.result(status, reason, page, decision, detail)
+
+
+def taken(guesses, state, questions):
+    """The speculation that sent exactly this request and has its answer, and that answer."""
+    for guess in guesses:
+        reply = guess.take(state, questions)
+        if reply is not None:
+            return guess, reply
+    return None, None
 
 
 def question_shaped(goal):
