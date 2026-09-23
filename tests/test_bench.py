@@ -300,3 +300,12 @@ def test_bench_json_names_the_decision_route(monkeypatch, capsys):
     cli.main(["bench", "--json", "--runs", "1"])
     payload = json.loads(capsys.readouterr().out)
     assert payload["route"] == {"provider": "typesafe", "endpoint": endpoint, "model": "jev-latest"}
+
+
+def test_a_scripted_plan_that_names_an_operation_the_page_does_not_offer_says_so():
+    from jev_ra.bench.scripted import scripted
+
+    questions = {"operation": {"criteria": {"CLICK": "Click", "DONE": "Done", "BLOCKED": "Blocked"}}}
+    decide = scripted([("PRESS_ENTER", None, None)])
+    with pytest.raises(LookupError, match="PRESS_ENTER is not offered"):
+        decide({}, questions)

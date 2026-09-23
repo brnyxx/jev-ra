@@ -35,7 +35,10 @@ class scripted:
             answers = {"operation": certain("DONE", questions["operation"]["criteria"])}
         else:
             operation, label, value_name = step
-            answers = {"operation": certain(operation, questions["operation"]["criteria"])}
+            offered = questions["operation"]["criteria"]
+            if operation not in offered:
+                raise LookupError(f"{operation} is not offered; operations were {sorted(offered)}")
+            answers = {"operation": certain(operation, offered)}
             if operation in {"CLICK", "TYPE_TEXT", "SELECT"}:
                 name = operation.lower() + "_target"
                 criteria = questions[name]["criteria"]
