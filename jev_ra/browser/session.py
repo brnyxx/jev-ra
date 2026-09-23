@@ -17,6 +17,7 @@ from . import MAX_ELEMENTS, QUIET_STATE_JS, guard_expression, marker_expression,
 from .chrome import ensure as ensure_chrome
 from .chrome import ready as chrome_ready
 from .chrome import verify_attached
+from .present import Presenter
 
 logger = logging.getLogger(__name__)
 
@@ -366,6 +367,7 @@ class Session:
         )
         ensure_daemon()
         verify_attached(self.cdp_url)
+        self.presenter = Presenter(self, notify=self.config.notify)
         if self.chrome_source == "launched":
             # We started this Chrome a moment ago. A published debugging port is not a browser
             # that will answer yet, so wait until a target evaluates something before using it.
@@ -928,6 +930,20 @@ class Session:
         self.invalidate()
         time.sleep(WAIT_SLEEP_S)
         return {"executed": f"press:{key}", "kind": "press"}
+
+    def front(self):
+        """Bring this target's tab to the front, and its window back when it was minimized.
+
+        Whoever is at the machine is about to be asked to look at this page. Neither call is worth
+        a run: a browser that will not raise its window is still a browser showing the page.
+        """
+        try:
+            self.call("Page.bringToFront")
+            window = cdp("Browser.getWindowForTarget", targetId=self.target_id)
+            if (window.get("bounds") or {}).get("windowState") == "minimized":
+                cdp("Browser.setWindowBounds", windowId=window["windowId"], bounds={"windowState": "normal"})
+        except (ChromeError, StalePage, RuntimeError, TimeoutError, OSError, KeyError) as error:
+            logger.info("The browser would not bring the page to the front: %s", error)
 
     def screenshot(self):
         """The current viewport as JPEG bytes."""

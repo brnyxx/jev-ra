@@ -41,6 +41,7 @@ ENV_VARIABLES = (
     "JEV_RA_BLOCK_RESOURCES",
     "JEV_RA_PROXY",
     "JEV_RA_PACE_S",
+    "JEV_RA_NOTIFY",
     "JEV_RA_ALLOW_FILE_URLS",
     "JEV_RA_SEARCH_URL",
     "JEV_RA_TEXT_MODEL",
@@ -114,6 +115,7 @@ class Config:
     allow_file_urls: bool = False
     proxy: str | None = None
     pace_s: float = PACE_S
+    notify: bool = True
 
     @property
     def provider(self):
@@ -335,4 +337,5 @@ def load(env=None, path=None):
         allow_file_urls=read_flag(env.get("JEV_RA_ALLOW_FILE_URLS", stored.get("allow_file_urls")), False),
         proxy=read_proxy(env.get("JEV_RA_PROXY") or stored.get("proxy")),
         pace_s=non_negative_float(env.get("JEV_RA_PACE_S", stored.get("pace_s", PACE_S)), PACE_S, "pace_s"),
+        notify=read_flag(env.get("JEV_RA_NOTIFY", stored.get("notify")), True),
     )

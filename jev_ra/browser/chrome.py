@@ -187,6 +187,35 @@ def loopback(host):
         return False
 
 
+def about(url, timeout=PROBE_TIMEOUT_S):
+    """What the Chrome at this url says about itself on `/json/version`, or {} when it will not say."""
+    try:
+        with urllib.request.urlopen(url.rstrip("/") + "/json/version", timeout=timeout) as answer:
+            said = json.loads(answer.read())
+    except (urllib.error.URLError, OSError, ValueError):
+        return {}
+    return said if isinstance(said, dict) else {}
+
+
+def launches_headless(platform=None, env=None):
+    """Whether a Chrome jev-ra launches here runs headless: Linux with no display to draw on."""
+    env = os.environ if env is None else env
+    platform = platform or sys.platform
+    return platform == "linux" and not env.get("DISPLAY") and not env.get("WAYLAND_DISPLAY")
+
+
+def headless(url, source, env=None, platform=None, read=None):
+    """Whether the Chrome at this url draws nothing a person could look at.
+
+    Chrome names itself HeadlessChrome unless it was told another name, and the only Chrome
+    jev-ra tells is one it launched headless itself, which the launch rules say again.
+    """
+    said = (read or about)(url)
+    if "headless" in f"{said.get('Browser', '')} {said.get('User-Agent', '')}".lower():
+        return True
+    return source in ("launched", "reused") and launches_headless(platform, env)
+
+
 def alive(url, timeout=PROBE_TIMEOUT_S):
     """Whether a Chrome answers `/json/version` at this url."""
     try:
@@ -241,7 +270,7 @@ def platform_flags(platform=None, env=None, uid=None, read=None, version=None):
         return ()
     # /dev/shm is 64 MB in a container and Chrome will fill it and crash.
     flags = ["--disable-dev-shm-usage"]
-    if not env.get("DISPLAY") and not env.get("WAYLAND_DISPLAY"):
+    if launches_headless(platform, env):
         flags += ["--headless=new", "--disable-gpu"]
         agent = desktop_user_agent(platform, version)
         if agent:

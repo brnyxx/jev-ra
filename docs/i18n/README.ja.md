@@ -260,6 +260,7 @@ v0.1 の基準に対する PASS/FAIL を表示する。0.2.5 で TypeSafe 直接
 | `JEV_RA_BLOCK_RESOURCES` | `0` でフォント/メディアの遮断を切る |
 | `JEV_RA_PROXY` | jev-ra が起動する Chrome の egress。例: `http://host:8080` |
 | `JEV_RA_PACE_S` | 1 回の実行が同じホストへ始める 2 つの遷移の最小間隔 (秒)。既定 `1`、`0` で無効、このマシン自身は対象外 |
+| `JEV_RA_NOTIFY` | `0` で人間確認のデスクトップ通知を止める |
 | `JEV_RA_ALLOW_FILE_URLS` | `1` でセッションが `file:` URL を開けるようになる |
 | `JEV_RA_SEARCH_URL` | 検索エンドポイントのテンプレート。`{query}` が置換される |
 | `JEV_RA_TEXT_MODEL`, `JEV_RA_TEXT_BASE_URL`, `JEV_RA_TEXT_API_KEY` | 任意のテキストヘルパー。既定はオフ |
