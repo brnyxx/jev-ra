@@ -1,4 +1,4 @@
-# The real-site corpus. Eighty tasks, ten families, all against the live web.
+# The real-site corpus. Eighty-three tasks, ten families, all against the live web.
 #
 # Each task says what it wants to happen (`expect`) and how the page proves it (`verify`).
 # `expect = "done"` means the run must finish and the verify spec must hold.

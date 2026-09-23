@@ -97,13 +97,14 @@ def pipeline():
             f'<text class="s" x="{cx}" y="{top + 169}">{html.escape(line2)}</text></g>'
         )
     bars = re.search(r'<div class="bars".*?</div>\s*</div>\s*</div>', PAGE, re.S).group(0)
-    values = re.findall(r'class="val">(.*?)<', bars)
+    values = [re.sub(r"<[^>]+>", "", v) for v in re.findall(r'class="val">(.*?)</div>', bars)]
+    seconds = [float(v.split()[0]) for v in values]
     legend = html.unescape(re.sub(r"<[^>]+>", "", re.search(r'<p class="legend">(.*?)</p>', PAGE[PAGE.index('<div class="bars"') :], re.S).group(1)))
     y = 250
     track_x, track_w = 250, 690
     rows = (
         ("browser-use", "flash_mode, gemini-3-flash", "bu", 1.0, values[0]),
-        ("jev-ra", "Jev, one decision per step", "jr", 0.12, values[1]),
+        ("jev-ra", "Jev, one decision per step", "jr", seconds[1] / seconds[0], values[1]),
     )
     for row, (name, sub, cls, share, value) in enumerate(rows):
         ry = y + row * 58

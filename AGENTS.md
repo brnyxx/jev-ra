@@ -2,7 +2,7 @@
 
 You are a coding agent (Claude Code, Codex, Cursor, Cline, Devin, or any MCP client). This file tells you how to install jev-ra for the user, how to drive a browser with it, and when to take over. Read it fully once; then follow the section for your host.
 
-jev-ra gives you a real Chrome through an MCP server. You send a goal; TypeSafe Jev picks the operation and the element for each step in ~300 ms; you get back a result or an escalation with candidates. You do the planning, you supply any text that must be typed, and you read the page through `browser_extract`. There is no second LLM inside jev-ra.
+jev-ra gives you a real Chrome through an MCP server. You send a goal; TypeSafe Jev picks the operation and the element for each step (253-380 ms per decision in the Flights run recorded through OpenRouter on 2026-09-18); you get back a result or an escalation with candidates. You do the planning, you supply any text that must be typed, and you read the page through `browser_extract`. There is no second LLM inside jev-ra.
 
 ## Install for the user
 
@@ -102,11 +102,11 @@ browser_search(query="python 3.12 release date", goal="the exact release date wi
 
 browser_open("https://www.oliveyoung.co.kr/store/display/getMCategoryList.do?dispCatNo=100000100010014")
 browser_run(goal="Sort the product list by 신상품순 (newest first). Stop when the sort is applied.")
-→ 2 steps in 3.8 s; escalates unverified_done, and browser_extract confirms the sort is applied
+→ 2 steps in 3.8 s; done, and browser_extract confirms the sort is applied
 browser_extract(mode="text")
 → product names, brands, prices; structure them for the user
 ```
 
 ## Cost
 
-One Jev decision is about $0.00025 through OpenRouter, measured 2026-09-18: the whole Google Flights flow is 14 decisions for $0.0032, and a search with a citation is 4 decisions for $0.00035. Every tool response carries `decisions` and `cost`, and `--json` on any CLI command shows the same per-step latencies.
+One Jev decision is about $0.00023 through OpenRouter (mean of 30 decisions, 2026-09-18): the whole Google Flights flow is 14 decisions for $0.0032, and a search with a citation is 4 decisions for $0.00035. Every tool response carries `decisions` and `cost`, and `--json` on any CLI command shows the same per-step latencies.

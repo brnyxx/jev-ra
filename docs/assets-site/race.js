@@ -1,7 +1,7 @@
 // The first viewport: two agents get the same job at the same moment and the page plays the measured times back at 4x.
-// Every duration below is a measured median (docs/BENCHMARKS.md, 2026-09-18, same machine, same
-// Chrome, same OpenRouter key). browser-use's steps are spread evenly over its measured total; only
-// the total is a measurement. Words come from hidden template nodes so i18n.js can translate them.
+// jev-ra's durations are medians of 5 verified runs and browser-use's are its recorded run
+// (docs/BENCHMARKS.md, 2026-09-18, same machine, same Chrome, same OpenRouter key). browser-use's
+// steps are spread evenly over its measured total; only the total is a measurement. Words come from hidden template nodes so i18n.js can translate them.
 (function () {
   const TASKS = {
     wiki: { j: 2714, js: 2, b: 23058, bs: 4 },
