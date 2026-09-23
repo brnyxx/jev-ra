@@ -246,6 +246,7 @@
     nav .links .sep{display:none}
     nav .links a[href^="#"]{display:none}
   }
+.anat .gl{display:block;color:var(--dim);margin-top:2px}
 </style>
 </head>
 <body>
@@ -336,8 +337,8 @@
     </div>
 
     <div class="bars" aria-label="wall time per step">
-      <div class="bar bu"><div class="lbl">browser-use<small>flash_mode, gemini-3-flash</small></div><div class="track"><div class="fill"></div></div><div class="val">5.8 s/step</div></div>
-      <div class="bar jr"><div class="lbl">jev-ra<small>Jev via OpenRouter</small></div><div class="track"><div class="fill"></div></div><div class="val">0.7 s/step</div></div>
+      <div class="bar bu"><div class="lbl">browser-use<small>flash_mode, gemini-3-flash</small></div><div class="track"><div class="fill"></div></div><div class="val">5.8 s<span class="u">/step</span></div></div>
+      <div class="bar jr"><div class="lbl">jev-ra<small>Jev via OpenRouter</small></div><div class="track"><div class="fill"></div></div><div class="val">0.7 s<span class="u">/step</span></div></div>
     </div>
     <p class="legend">Wall time divided by steps on the Wikipedia task (23.1 s / 4 vs 4.3 s / 6, 2026-09-18). A jev-ra step is one decision of about 300 ms plus the page's own load and settle time.</p>
   </section>
@@ -468,9 +469,9 @@
     <div class="tablewrap"><table>
       <thead><tr><th>Task</th><th>browser-use flash_mode</th><th>browser-use default</th><th>jev-ra</th><th>ratio</th></tr></thead>
       <tbody>
-        <tr><td>Wikipedia: open the Gödel incompleteness article</td><td>23.1 s · 4 steps</td><td>46.5 s · 5 steps</td><td class="win">2.7 s · 2 steps</td><td class="win">8.5x</td></tr>
-        <tr><td>Google Flights ZRH→LON one-way, 7 checks verified</td><td>66.4 s · 11 steps</td><td>63.6 s · 11 steps</td><td class="win">8.9 s · 11 steps</td><td class="win">7.5x</td></tr>
-        <tr><td>Olive Young category: sort by newest</td><td>15.1 s · 3 steps</td><td>17.5 s · 3 steps</td><td class="win">3.8 s · 2 steps</td><td class="win">4.0x</td></tr>
+        <tr><td>Wikipedia: open the Gödel incompleteness article</td><td>23.1 s · 4 <span class="u">steps</span></td><td>46.5 s · 5 <span class="u">steps</span></td><td class="win">2.7 s · 2 <span class="u">steps</span></td><td class="win">8.5x</td></tr>
+        <tr><td>Google Flights ZRH→LON one-way, 7 checks verified</td><td>66.4 s · 11 <span class="u">steps</span></td><td>63.6 s · 11 <span class="u">steps</span></td><td class="win">8.9 s · 11 <span class="u">steps</span></td><td class="win">7.5x</td></tr>
+        <tr><td>Olive Young category: sort by newest</td><td>15.1 s · 3 <span class="u">steps</span></td><td>17.5 s · 3 <span class="u">steps</span></td><td class="win">3.8 s · 2 <span class="u">steps</span></td><td class="win">4.0x</td></tr>
       </tbody>
     </table></div>
     <p class="note" style="margin-top:14px">jev-ra columns are medians of 5 runs (5/5 success each); browser-use columns are the single baseline runs, and its own 5-run medians are slower (24.6 s / 73.8 s / 27.6 s). BENCHMARKS.md carries p90, cost per task and the per-step time breakdown.</p>
@@ -544,7 +545,7 @@ uvx jev-ra doctor</pre></div>
 </div>
 <script>
   const copyText = (text, el) => navigator.clipboard.writeText(text).then(() => {
-    const prev = el.textContent; el.textContent = "copied"; setTimeout(() => { el.textContent = prev; }, 1200);
+    const prev = el.textContent; el.textContent = document.documentElement.dataset.copied || "copied"; setTimeout(() => { el.textContent = prev; }, 1200);
   }).catch(() => {});
   const selectTab = (name) => {
     document.querySelectorAll(".tab").forEach((x) => x.setAttribute("aria-selected", x.dataset.for === name));

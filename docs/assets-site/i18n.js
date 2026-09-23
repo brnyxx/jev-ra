@@ -25,10 +25,16 @@
     ["inst.h", "#install h2"], ["inst.lead", "#install .lead"], ["inst.mcp", ".tab[data-for='mcp']"], ["inst.legend", "#install .legend"],
     ["lim.h", "#limits h2"], ["lim.lead", "#limits .lead"], ["lim.h1", ".limits > div:nth-child(1) h3"], ["lim.l1", ".limits > div:nth-child(1) ul"], ["lim.h2", ".limits > div:nth-child(2) h3"], ["lim.l2", ".limits > div:nth-child(2) ul"],
     ["acc.h", "#acc h3"], ["acc.th1", "#acc th:nth-child(1)"], ["acc.th2", "#acc th:nth-child(2)"], ["acc.th3", "#acc th:nth-child(3)"], ["acc.th4", "#acc th:nth-child(4)"], ["acc.th5", "#acc th:nth-child(5)"], ["acc.t1", "#acc tbody tr:nth-child(1) td:first-child"], ["acc.t2", "#acc tbody tr:nth-child(2) td:first-child"], ["acc.t3", "#acc tbody tr:nth-child(3) td:first-child"], ["acc.note", "#acc .note"],
+    ["dec.q4", ".anat .panel:nth-child(1) div.q:nth-of-type(4)"], ["dec.q5", ".anat .panel:nth-child(1) div.q:nth-of-type(5)"],
+    ["meta.title", "title"], ["meta.desc", "meta[name='description']", "@content"],
+    ["a11y.lang", ".langsel", "@aria-label"], ["a11y.bars", "#how .bars", "@aria-label"], ["a11y.arch", "#arch .arch svg", "@aria-label"],
+    ["inst.copy", ".copy", "*"], ["bench.th3", "#bench th:nth-child(3)"], ["bench.steps", "#bench td .u", "*"], ["how.per", ".bar .val .u", "*"], ["arch.node", "#arch .stack a[href*='npmjs']"],
     ["foot.1", "footer .row > div:first-child"], ["foot.0", "footer p:nth-of-type(1)"], ["foot.2", "footer p:nth-of-type(2)"],
   ];
   const D = {
     ko: {
+      "dec.q4": "<span class=\"k\">prev_ok</span> <span class=\"c\">noul</span>  Did the previous action have its intended effect on this page?<span class=\"gl\">직전 동작이 이 페이지에서 의도한 효과를 냈는가?</span>", "dec.q5": "<span class=\"k\">goal_achieved</span> <span class=\"c\">noul</span>  Is every requirement of the goal visibly satisfied on this page?<span class=\"gl\">목표의 모든 조건이 이 페이지에서 눈에 보이게 충족됐는가?</span>",
+      "meta.title": "jev-ra - 코딩 에이전트를 위한 브라우저 자동화", "meta.desc": "jev-ra 는 Claude Code, Codex 등 모든 MCP 클라이언트가 실제 브라우저를 조작하게 하는 MCP 서버이자 CLI 입니다. 같은 과제에서 browser-use 보다 8.5배 빠르고, 실제 사이트 과제의 85 % 를 통과합니다. Jev 가 스텝마다 약 300 ms 에 결정하고, 에이전트는 계획하고 읽습니다.", "a11y.lang": "언어", "a11y.bars": "스텝당 소요 시간", "a11y.arch": "구조: 에이전트는 MCP 로 jev-ra 에, jev-ra 는 CDP 로 Chrome 에, HTTPS 로 Jev 에 연결됩니다", "inst.copy": "복사", "inst.copied": "복사됨", "bench.th3": "browser-use 기본값", "bench.steps": "스텝", "how.per": "/스텝", "arch.node": "Node 런처 <small>· npx jev-ra</small>",
       "nav.how": "동작 원리", "nav.arch": "아키텍처", "nav.bench": "벤치마크", "nav.install": "설치",
       "race.t1": "위키백과 문서 열기", "race.t2": "항공권 검색", "race.t3": "쇼핑몰 목록 정렬", "race.jurl": "jev-ra · Jev 가 스텝마다 결정", "race.burl": "browser-use · flash_mode", "race.jl": "완료", "race.bl": "스텝마다 LLM 호출 한 번", "race.run": "작업 중…", "race.done": "완료", "race.res": "browser-use 가 한 번 하는 동안 jev-ra 는 {n}번 끝냈습니다.", "race.note": "4배속 재생이며 초시계는 측정된 초를 보여줍니다. 각 합계는 같은 머신, 같은 Chrome, 같은 키로 검증한 5회 실행의 중앙값입니다(2026-09-18). browser-use 의 스텝은 측정된 합계 시간에 고르게 나눠 그렸습니다. 원본 행은 <a href=\"https://github.com/brnyxx/jev-ra/blob/main/docs/BENCHMARKS.md\">BENCHMARKS.md</a>.", "hero.hud": "<i></i>v0.2 · MCP 서버 + CLI · MIT", "hero.h1": "같은 일, 같은 브라우저. <span class=\"accent\">한쪽은 이미 끝났습니다.</span>", "hero.sub": "두 AI 에이전트에게 같은 일을 같은 순간에 시킵니다. 4배속으로 재생합니다. jev-ra 는 코딩 에이전트가 부르는 쪽입니다. 다른 쪽이 아직 일하는 동안 끝내고, 또 끝냅니다.", "hero.copy": "복사", "hero.star": "GitHub 에서 Star",
       "works.label": "지원 환경", "works.mcp": "모든 MCP 클라이언트", "works.cli": "Python CLI",
@@ -53,6 +59,8 @@
       "foot.1": "MIT · <a href=\"https://github.com/browser-use/browser-harness\">browser-harness</a> 와 <a href=\"https://github.com/browser-use/jev-ultrafast\">jev-ultrafast</a> 의 스냅샷 방식을 사용 · 결정은 <a href=\"https://typesafe.ai\">TypeSafe Jev</a>", "foot.2": "브랜드 아이콘은 <a href=\"https://simpleicons.org/\">Simple Icons</a> (CC0). 제품명과 로고는 각 소유자의 것이며 호환을 뜻할 뿐 보증을 뜻하지 않습니다.",
     },
     ja: {
+      "dec.q4": "<span class=\"k\">prev_ok</span> <span class=\"c\">noul</span>  Did the previous action have its intended effect on this page?<span class=\"gl\">直前の操作はこのページで意図した効果を出したか?</span>", "dec.q5": "<span class=\"k\">goal_achieved</span> <span class=\"c\">noul</span>  Is every requirement of the goal visibly satisfied on this page?<span class=\"gl\">目標のすべての条件がこのページで目に見えて満たされているか?</span>",
+      "meta.title": "jev-ra - コーディングエージェントのためのブラウザ操作", "meta.desc": "jev-ra は Claude Code、Codex などあらゆる MCP クライアントに実際のブラウザを操作させる MCP サーバー兼 CLI です。同じタスクで browser-use より 8.5 倍速く、実サイトのタスクの 85 % を通過します。Jev が各ステップを約 300 ms で判断し、エージェントは計画と読解を担います。", "a11y.lang": "言語", "a11y.bars": "ステップあたりの所要時間", "a11y.arch": "構成: エージェントは MCP で jev-ra に、jev-ra は CDP で Chrome に、HTTPS で Jev につながります", "inst.copy": "コピー", "inst.copied": "コピーしました", "bench.th3": "browser-use 既定", "bench.steps": "ステップ", "how.per": "/ステップ", "arch.node": "Node ランチャー <small>· npx jev-ra</small>",
       "nav.how": "仕組み", "nav.arch": "アーキテクチャ", "nav.bench": "ベンチマーク", "nav.install": "インストール",
       "race.t1": "Wikipedia の記事を開く", "race.t2": "航空券を検索", "race.t3": "ショップの一覧を並べ替え", "race.jurl": "jev-ra · Jev が各ステップを判断", "race.burl": "browser-use · flash_mode", "race.jl": "完了", "race.bl": "ステップごとに LLM を 1 回", "race.run": "作業中…", "race.done": "完了", "race.res": "browser-use が 1 回終える間に、jev-ra は {n} 回終えました。", "race.note": "4 倍速で再生し、時計は計測した秒数を表示します。各合計は同じマシン、同じ Chrome、同じキーで検証した 5 回の実行の中央値(2026-09-18)。browser-use のステップは計測した合計時間に均等に割り当てて描いています。生データは <a href=\"https://github.com/brnyxx/jev-ra/blob/main/docs/BENCHMARKS.md\">BENCHMARKS.md</a>。", "hero.hud": "<i></i>v0.2 · MCP サーバー + CLI · MIT", "hero.h1": "<span class=\"nw\">同じ仕事、</span><span class=\"nw\">同じブラウザ。</span><span class=\"accent\"><span class=\"nw\">片方はもう</span><span class=\"nw\">終わっている。</span></span>", "hero.sub": "2 つの AI エージェントに同じ仕事を同じ瞬間に渡します。4 倍速で再生しています。jev-ra はコーディングエージェントが呼ぶ側。もう片方がまだ働いている間に終え、また終えます。", "hero.copy": "コピー", "hero.star": "GitHub で Star",
       "works.label": "対応環境", "works.mcp": "任意の MCP クライアント", "works.cli": "Python CLI",
@@ -77,6 +85,8 @@
       "foot.1": "MIT · <a href=\"https://github.com/browser-use/browser-harness\">browser-harness</a> と <a href=\"https://github.com/browser-use/jev-ultrafast\">jev-ultrafast</a> のスナップショット方式を使用 · 判断は <a href=\"https://typesafe.ai\">TypeSafe Jev</a>", "foot.2": "ブランドアイコンは <a href=\"https://simpleicons.org/\">Simple Icons</a>(CC0)。製品名とロゴは各所有者のものであり、互換性を示すもので推奨を意味しません。",
     },
     "zh-CN": {
+      "dec.q4": "<span class=\"k\">prev_ok</span> <span class=\"c\">noul</span>  Did the previous action have its intended effect on this page?<span class=\"gl\">上一步操作是否在此页面上产生了预期效果?</span>", "dec.q5": "<span class=\"k\">goal_achieved</span> <span class=\"c\">noul</span>  Is every requirement of the goal visibly satisfied on this page?<span class=\"gl\">目标的每项要求是否都在此页面上明显满足?</span>",
+      "meta.title": "jev-ra - 面向编程代理的浏览器操作", "meta.desc": "jev-ra 是一个 MCP 服务器和 CLI,让 Claude Code、Codex 及任何 MCP 客户端操作真实浏览器:同一任务比 browser-use 快 8.5 倍,真实站点任务通过率 85 %。Jev 约 300 ms 决定每一步;你的代理负责规划和阅读。", "a11y.lang": "语言", "a11y.bars": "每步耗时", "a11y.arch": "架构:代理通过 MCP 连接 jev-ra,jev-ra 通过 CDP 连接 Chrome,通过 HTTPS 连接 Jev", "inst.copy": "复制", "inst.copied": "已复制", "bench.th3": "browser-use 默认", "bench.steps": "步", "how.per": "/步", "arch.node": "Node 启动器 <small>· npx jev-ra</small>",
       "nav.how": "工作原理", "nav.arch": "架构", "nav.bench": "基准测试", "nav.install": "安装",
       "race.t1": "打开维基百科条目", "race.t2": "搜索机票", "race.t3": "给商店列表排序", "race.jurl": "jev-ra · Jev 决定每一步", "race.burl": "browser-use · flash_mode", "race.jl": "完成", "race.bl": "每步调用一次 LLM", "race.run": "进行中…", "race.done": "完成", "race.res": "browser-use 完成一次的时间里,jev-ra 完成了 {n} 次。", "race.note": "以 4 倍速回放,计时器显示实测秒数。每个总时长都是同一台机器、同一 Chrome、同一密钥下 5 次验证运行的中位数(2026-09-18);browser-use 的步骤按其实测总时长均匀绘制。原始数据见 <a href=\"https://github.com/brnyxx/jev-ra/blob/main/docs/BENCHMARKS.md\">BENCHMARKS.md</a>。", "hero.hud": "<i></i>v0.2 · MCP 服务器 + CLI · MIT", "hero.h1": "<span class=\"nw\">同样的任务，</span><span class=\"nw\">同样的浏览器。</span><span class=\"accent\"><span class=\"nw\">其中一个</span><span class=\"nw\">已经完成。</span></span>", "hero.sub": "两个 AI 代理在同一时刻接到同一个任务，以 4 倍速回放。jev-ra 是你的编码代理调用的那一个：对方还在忙时，它已完成，并再次完成。", "hero.copy": "复制", "hero.star": "在 GitHub 上加星",
       "works.label": "适用于", "works.mcp": "任何 MCP 客户端", "works.cli": "Python CLI",
@@ -108,11 +118,17 @@
     if (icon) { node.innerHTML = html; node.insertBefore(icon, node.firstChild); } else node.innerHTML = html;
   };
   const ready = () => {
-    for (const [key, sel] of MAP) { const n = document.querySelector(sel); if (!n) { console.warn("i18n: no node for", key, sel); continue; } EN[key] = n.firstElementChild && n.firstElementChild.matches("svg.ic") ? n.innerHTML.replace(/^\s*<svg[\s\S]*?<\/svg>/, "") : n.innerHTML; }
+    for (const [key, sel, mode] of MAP) { const n = document.querySelector(sel); if (!n) { console.warn("i18n: no node for", key, sel); continue; } EN[key] = mode && mode[0] === "@" ? n.getAttribute(mode.slice(1)) : n.firstElementChild && n.firstElementChild.matches("svg.ic") ? n.innerHTML.replace(/^\s*<svg[\s\S]*?<\/svg>/, "") : n.innerHTML; }
   };
   const apply = (locale) => {
     const dict = locale === "en" ? EN : Object.assign({}, EN, D[locale]);
-    for (const [key, sel] of MAP) { const n = document.querySelector(sel); if (n && dict[key] !== undefined) setHTML(n, dict[key]); }
+    // A third field "@attr" translates that attribute, "*" translates every node the selector matches.
+    for (const [key, sel, mode] of MAP) {
+      if (dict[key] === undefined) continue;
+      const nodes = mode ? document.querySelectorAll(sel) : [document.querySelector(sel)];
+      nodes.forEach((n) => { if (!n) return; if (mode && mode[0] === "@") n.setAttribute(mode.slice(1), dict[key]); else setHTML(n, dict[key]); });
+    }
+    document.documentElement.dataset.copied = (D[locale] && D[locale]["inst.copied"]) || "copied";
     document.documentElement.lang = locale;
     const sel = document.querySelector(".langsel"); if (sel) sel.value = locale;
     try { localStorage.setItem("jevra-lang", locale); } catch (e) {}

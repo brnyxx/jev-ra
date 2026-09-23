@@ -7,10 +7,10 @@
   const BROWSER_USE = { ms: 66414, steps: 11 };
   const SPEED = 8;
   const L = {
-    en: { request: "find one-way flights from Zurich to London on Sep 20 and show me the list", running: "jev-ra is driving Chrome. Every step is one Jev decision.", step: "step", done: "done · goal_achieved · {steps} steps · {decisions} decisions · {s} s · ${cost}", summary: "One-way ZRH → LON on Sep 20, 21 results. Cheapest: easyJet 16:45 → 17:35, direct, ₩231,298. British Airways 07:40 → 08:35 direct, ₩246,696.", compareTitle: "same task · same Chrome · same key", compareNote: "browser-use 0.13 flash_mode with gemini-3-flash: 66.4 s, 11 steps. This jev-ra run: {s} s, {steps} steps. Both from the recorded logs in docs/benchmarks/.", speed: "playback " + SPEED + "x", realTime: "real time", steps: "steps", recorded: "Vector re-enactment of a recorded run (2026-09-18). Timings, clicks and typed values are taken from the run log; nothing is staged.", replay: "Replay" },
-    ko: { request: "9월 20일 취리히에서 런던 가는 편도 항공편 찾아서 목록 보여줘", running: "jev-ra 가 Chrome 을 조작합니다. 스텝마다 Jev 결정 한 번입니다.", step: "스텝", done: "완료 · goal_achieved · {steps} 스텝 · {decisions} 결정 · {s} s · ${cost}", summary: "9월 20일 ZRH → LON 편도, 결과 21개. 최저가: 이지젯 16:45 → 17:35 직항 ₩231,298. 영국항공 07:40 → 08:35 직항 ₩246,696.", compareTitle: "같은 과제 · 같은 Chrome · 같은 키", compareNote: "browser-use 0.13 flash_mode + gemini-3-flash: 66.4 s, 11 스텝. 이 jev-ra 실행: {s} s, {steps} 스텝. 둘 다 docs/benchmarks/ 의 기록된 로그입니다.", speed: SPEED + "배속 재생", realTime: "실시간", steps: "스텝", recorded: "기록된 실행(2026-09-18)을 벡터로 재현한 것입니다. 시간·클릭·입력값은 실행 로그 그대로이며 연출은 없습니다.", replay: "다시 보기" },
-    ja: { request: "9月20日のチューリッヒ発ロンドン行き片道便を探して一覧を見せて", running: "jev-ra が Chrome を操作します。各ステップは Jev の判断一回です。", step: "ステップ", done: "完了 · goal_achieved · {steps} ステップ · {decisions} 判断 · {s} s · ${cost}", summary: "9月20日 ZRH → LON 片道、21件。最安: easyJet 16:45 → 17:35 直行 ₩231,298。British Airways 07:40 → 08:35 直行 ₩246,696。", compareTitle: "同じタスク · 同じ Chrome · 同じキー", compareNote: "browser-use 0.13 flash_mode + gemini-3-flash: 66.4 s、11 ステップ。この jev-ra 実行: {s} s、{steps} ステップ。どちらも docs/benchmarks/ の記録ログです。", speed: SPEED + "倍速再生", realTime: "リアルタイム", steps: "ステップ", recorded: "記録された実行(2026-09-18)をベクターで再現したものです。時間・クリック・入力値は実行ログのままで、演出はありません。", replay: "もう一度" },
-    "zh-CN": { request: "帮我找 9 月 20 日苏黎世飞伦敦的单程航班并显示列表", running: "jev-ra 正在操作 Chrome。每一步只有一次 Jev 决策。", step: "步骤", done: "完成 · goal_achieved · {steps} 步 · {decisions} 次决策 · {s} s · ${cost}", summary: "9 月 20 日 ZRH → LON 单程,共 21 条结果。最低价:easyJet 16:45 → 17:35 直飞 ₩231,298。英国航空 07:40 → 08:35 直飞 ₩246,696。", compareTitle: "同一任务 · 同一 Chrome · 同一密钥", compareNote: "browser-use 0.13 flash_mode + gemini-3-flash:66.4 s,11 步。本次 jev-ra 运行:{s} s,{steps} 步。均来自 docs/benchmarks/ 中记录的日志。", speed: SPEED + " 倍速播放", realTime: "实时", steps: "步", recorded: "以矢量方式重现一次已记录的运行(2026-09-18)。时间、点击和输入值均取自运行日志,没有任何摆拍。", replay: "重播" },
+    en: { request: "find one-way flights from Zurich to London on Sep 20 and show me the list", running: "jev-ra is driving Chrome. Every step is one Jev decision.", step: "step", done: "done · goal_achieved · {steps} steps · {decisions} decisions · {s} s · ${cost}", summary: "One-way ZRH → LON on Sep 20, 21 results. Cheapest: easyJet 16:45 → 17:35, direct, ₩231,298. British Airways 07:40 → 08:35 direct, ₩246,696.", compareTitle: "same task · same Chrome · same key", compareNote: "browser-use 0.13 flash_mode with gemini-3-flash: 66.4 s, 11 steps. This jev-ra run: {s} s, {steps} steps. Both from the recorded logs in docs/benchmarks/.", speed: "playback " + SPEED + "x", realTime: "real time", steps: "steps", recorded: "Vector re-enactment of a recorded run (2026-09-18). Timings, clicks and typed values are taken from the run log; nothing is staged.", replay: "Replay", tag: "DEMO", aria: "jev-ra demo: a recorded Google Flights run replayed" },
+    ko: { request: "9월 20일 취리히에서 런던 가는 편도 항공편 찾아서 목록 보여줘", running: "jev-ra 가 Chrome 을 조작합니다. 스텝마다 Jev 결정 한 번입니다.", step: "스텝", done: "완료 · goal_achieved · {steps} 스텝 · {decisions} 결정 · {s} s · ${cost}", summary: "9월 20일 ZRH → LON 편도, 결과 21개. 최저가: 이지젯 16:45 → 17:35 직항 ₩231,298. 영국항공 07:40 → 08:35 직항 ₩246,696.", compareTitle: "같은 과제 · 같은 Chrome · 같은 키", compareNote: "browser-use 0.13 flash_mode + gemini-3-flash: 66.4 s, 11 스텝. 이 jev-ra 실행: {s} s, {steps} 스텝. 둘 다 docs/benchmarks/ 의 기록된 로그입니다.", speed: SPEED + "배속 재생", realTime: "실시간", steps: "스텝", recorded: "기록된 실행(2026-09-18)을 벡터로 재현한 것입니다. 시간·클릭·입력값은 실행 로그 그대로이며 연출은 없습니다.", replay: "다시 보기", tag: "데모", aria: "jev-ra 데모: 기록된 Google Flights 실행 재생" },
+    ja: { request: "9月20日のチューリッヒ発ロンドン行き片道便を探して一覧を見せて", running: "jev-ra が Chrome を操作します。各ステップは Jev の判断一回です。", step: "ステップ", done: "完了 · goal_achieved · {steps} ステップ · {decisions} 判断 · {s} s · ${cost}", summary: "9月20日 ZRH → LON 片道、21件。最安: easyJet 16:45 → 17:35 直行 ₩231,298。British Airways 07:40 → 08:35 直行 ₩246,696。", compareTitle: "同じタスク · 同じ Chrome · 同じキー", compareNote: "browser-use 0.13 flash_mode + gemini-3-flash: 66.4 s、11 ステップ。この jev-ra 実行: {s} s、{steps} ステップ。どちらも docs/benchmarks/ の記録ログです。", speed: SPEED + "倍速再生", realTime: "リアルタイム", steps: "ステップ", recorded: "記録された実行(2026-09-18)をベクターで再現したものです。時間・クリック・入力値は実行ログのままで、演出はありません。", replay: "もう一度", tag: "デモ", aria: "jev-ra デモ: 記録された Google Flights 実行の再生" },
+    "zh-CN": { request: "帮我找 9 月 20 日苏黎世飞伦敦的单程航班并显示列表", running: "jev-ra 正在操作 Chrome。每一步只有一次 Jev 决策。", step: "步骤", done: "完成 · goal_achieved · {steps} 步 · {decisions} 次决策 · {s} s · ${cost}", summary: "9 月 20 日 ZRH → LON 单程,共 21 条结果。最低价:easyJet 16:45 → 17:35 直飞 ₩231,298。英国航空 07:40 → 08:35 直飞 ₩246,696。", compareTitle: "同一任务 · 同一 Chrome · 同一密钥", compareNote: "browser-use 0.13 flash_mode + gemini-3-flash:66.4 s,11 步。本次 jev-ra 运行:{s} s,{steps} 步。均来自 docs/benchmarks/ 中记录的日志。", speed: SPEED + " 倍速播放", realTime: "实时", steps: "步", recorded: "以矢量方式重现一次已记录的运行(2026-09-18)。时间、点击和输入值均取自运行日志,没有任何摆拍。", replay: "重播", tag: "演示", aria: "jev-ra 演示:重放一次已记录的 Google Flights 运行" },
   };
   const TOOL = 'browser_run(goal="Search one-way flights from Zurich to London departing 2026-09-20 and show the list of results.", values={origin, destination, departure_date})';
   // Control geometry inside the 1040x640 page area, one entry per real step target.
@@ -75,7 +75,7 @@
 
   function build() {
     host.innerHTML = "";
-    const svg = el("svg", { viewBox: "0 0 1920 1080", class: "jd", role: "img", "aria-label": "jev-ra demo: a recorded Google Flights run replayed" }, host);
+    const svg = S.svg = el("svg", { viewBox: "0 0 1920 1080", class: "jd", role: "img", "aria-label": "jev-ra demo: a recorded Google Flights run replayed" }, host);
     const style = el("style", {}, svg);
     style.textContent = `
       .jd{font-family:ui-sans-serif,-apple-system,"Geist","Inter","Apple SD Gothic Neo","Noto Sans CJK KR","Hiragino Sans","PingFang SC",Arial,sans-serif;display:block;width:100%;height:auto;background:#070A0F}
@@ -106,7 +106,7 @@
     el("image", { href: "assets/mark-dark-512.png", x: 140, y: 40, width: 44, height: 44 }, sess);
     const brand = txt(sess, 200, 74, "", "paper", { "font-size": 30, "font-weight": 800, "letter-spacing": -1 });
     brand.innerHTML = 'jev<tspan class="amber">-</tspan>ra';
-    txt(sess, 340, 72, "DEMO · GOOGLE FLIGHTS · 2026-09-18", "m cyan", { "font-size": 18, "letter-spacing": 3 });
+    S.tag = txt(sess, 340, 72, "", "m cyan", { "font-size": 18, "letter-spacing": 3 });
     S.recorded = lines(sess, 140, 1010, "", "dim", 150, 24); S.recorded.setAttribute("font-size", 19);
 
     // terminal
@@ -195,6 +195,7 @@
 
   function applyLocale() {
     const s = L[locale] || L.en; const v = { steps: run.steps.length, decisions: run.decisions, s: (elapsed / 1000).toFixed(1), cost: run.cost.toFixed(4) };
+    S.tag.textContent = s.tag + " · GOOGLE FLIGHTS · 2026-09-18"; S.svg.setAttribute("aria-label", s.aria);
     const g = gp();
     let tx = 16; S.gTabs.forEach((t, i) => { t.textContent = g.tabs[i]; t.setAttribute("x", tx); tx += t.getComputedTextLength() + 34; });
     S.gTrips.forEach((t, i) => { t.textContent = g.trips[i]; }); S.gWeek.forEach((t, i) => { t.textContent = g.week[i]; });
