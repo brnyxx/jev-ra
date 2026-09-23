@@ -94,15 +94,14 @@
   .lane.jr::after{content:"";position:absolute;inset:0;pointer-events:none;opacity:0;background:radial-gradient(70% 90% at 92% 72%,rgba(255,214,102,.32),rgba(255,183,3,.08) 45%,transparent 70%)}
   .lane.jr.zap::after{animation:zap .55s ease-out}
   .lane.jr.zap .clock b{animation:glint .5s var(--ease)}
-  .lane.jr.struck{animation:struck .6s ease-out}
+  .lane.jr.lit{animation:lit .9s var(--ease)}
   @keyframes flare{0%{transform:scale(3.2);filter:brightness(1.8)}100%{transform:none;filter:none}}
   @keyframes zap{0%{opacity:1}100%{opacity:0}}
   @keyframes glint{0%{text-shadow:0 0 28px rgba(255,214,102,.9)}100%{text-shadow:none}}
-  @keyframes struck{0%{box-shadow:0 0 0 1px rgba(255,244,207,.9),0 0 80px 10px rgba(255,183,3,.55);background:#1B1608}100%{box-shadow:none}}
+  @keyframes lit{0%{box-shadow:inset 0 0 0 1px rgba(255,214,102,.8),0 0 0 0 rgba(255,183,3,.4),0 30px 70px -30px rgba(255,183,3,.7)}100%{box-shadow:inset 0 0 0 1px transparent,0 0 0 0 transparent,0 24px 60px -30px rgba(255,183,3,0)}}
   #race{position:relative}
-  #race > *{position:relative;z-index:1}
-  .bolt-sky{position:fixed;inset:0;pointer-events:none;z-index:50;opacity:0;mix-blend-mode:screen}
-  #race > .bolt{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible;z-index:0}
+  .track2{position:relative}
+  .track2 > .trace{position:absolute;pointer-events:none;overflow:visible;z-index:2}
   .lane.jr .ticks i.on{background:var(--amber);border-color:var(--amber)}
   .lane.jr.won{border-color:rgba(255,183,3,.55);box-shadow:0 24px 60px -30px rgba(255,183,3,.45)}
   .lane.jr.won .clock b{color:var(--amber)}
@@ -575,8 +574,8 @@ uvx jev-ra doctor</pre></div>
   document.querySelectorAll(".works a[data-tab]").forEach((a) => a.addEventListener("click", () => selectTab(a.dataset.tab)));
 </script>
 <script src="assets-site/i18n.js?v=0.2.6"></script>
-<script src="assets-site/race.js?v=0.2.6" defer></script>
-<script src="assets-site/bolt.js?v=0.2.6" defer></script>
+<script src="assets-site/race.js?v=0.2.7" defer></script>
+<script src="assets-site/trace.js?v=0.2.7" defer></script>
 <script src="assets-site/demo.js?v=0.2.6" defer></script>
 </body>
 </html>

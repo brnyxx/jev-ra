@@ -9,8 +9,8 @@
     olive: { j: 3806, js: 2, b: 15071, bs: 3 },
   };
   const HOLD_MS = 5200;
-  // The clocks start when the opening strike lands (bolt.js draws it), so no measured time is spent on it.
-  const STRIKE_MS = 420;
+  // The clocks start when the opening trace closes its loop (trace.js draws it), so no measured time is spent on it.
+  const OPENING_MS = 520;
   const $ = (s, r = document) => r.querySelector(s);
   const tpl = (id) => ($("#" + id) ? $("#" + id).textContent.trim() : "");
   const fmt = (ms) => (ms / 1000).toFixed(2);
@@ -32,7 +32,7 @@
       ticks(J, k.js); ticks(B, k.bs);
       root.dataset.showing = key; root.classList.remove("over");
       J.classList.remove("won"); B.classList.remove("won");
-      shown = -1; t0 = performance.now() + (still ? 0 : STRIKE_MS);
+      shown = -1; t0 = performance.now() + (still ? 0 : OPENING_MS);
       $(".result", root).textContent = "";
       if (!still) root.dispatchEvent(new CustomEvent("race:start", { detail: { key, lane: J } }));
     };
