@@ -355,9 +355,12 @@ RESOLVE_JS = (
   if (!local) return null;
   const [dx,dy]=cache.offset(e), x=local.x+dx, y=local.y+dy;
   if (action.kind==='select') {
-    if (e.tagName!=='SELECT' || ![...e.options].some(o=>o.value===action.value &&
-        !o.disabled && !o.closest('optgroup[disabled]'))) return null;
-    e.value=action.value;
+    const option=e.tagName==='SELECT' ? [...e.options].find(o=>o.value===action.value &&
+      !o.disabled && !o.closest('optgroup[disabled]')) : null;
+    if (!option) return null;
+    // A list that keeps every option chosen gains or loses this one and keeps the rest.
+    if (e.multiple) option.selected=action.selected!==false;
+    else e.value=action.value;
     e.dispatchEvent(new Event('input',{bubbles:true}));
     e.dispatchEvent(new Event('change',{bubbles:true}));
   }

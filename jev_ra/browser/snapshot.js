@@ -162,7 +162,8 @@
     if (e.tagName==='BUTTON' || e.tagName==='SUMMARY') return 'button';
     if (e.tagName==='A') return 'link';
     if (e.tagName==='IFRAME') return 'frame';
-    if (e.tagName==='SELECT') return 'combobox';
+    // A select that shows its options as a list, rather than dropping them down, is a listbox.
+    if (e.tagName==='SELECT') return e.multiple || e.size>1 ? 'listbox' : 'combobox';
     if (e.tagName==='TEXTAREA' || e.isContentEditable) return 'textbox';
     if (e.tagName==='INPUT') {
       if (['checkbox','radio'].includes(e.type)) return e.type;
@@ -275,9 +276,13 @@
       shared.href=e.href;
     if (e.tagName==='SELECT') {
       view.value=[...e.selectedOptions].map(o=>o.label).join(', ');
-      for (const o of e.options) if (!o.selected && !o.disabled && !o.closest('optgroup[disabled]'))
-        actions.push({...shared,kind:'select',value:o.value,current_value:view.value,
-          label:view.label+' → '+o.label});
+      // A list that keeps every option chosen is changed one option at a time, and choosing one
+      // either adds it to the others or takes it away: the action says which, so a goal that
+      // keeps what was already chosen is not read as one a choice would undo.
+      for (const o of e.options) if ((e.multiple || !o.selected) && !o.disabled && !o.closest('optgroup[disabled]'))
+        actions.push({...shared,kind:'select',value:o.value,option:o.label,current_value:view.value,
+          ...(e.multiple ? {selected:!o.selected} : {}),
+          label:view.label+' → '+(e.multiple ? (o.selected ? 'remove ' : 'add ') : '')+o.label});
     } else {
       const editable=!e.readOnly && e.getAttribute('aria-readonly')!=='true' &&
         (['textbox','searchbox','spinbutton'].includes(view.role) || drawn(e) ||

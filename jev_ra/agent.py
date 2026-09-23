@@ -773,7 +773,7 @@ class Agent:
             raise StalePage(STALE_OBSERVATION)
         candidates = [a for a in page["actions"] if a["id"] == ref and a["kind"] == kind]
         if kind == "select":
-            candidates = [a for a in candidates if option in (a.get("value"), a.get("label", "").split(" → ")[-1])]
+            candidates = [a for a in candidates if option in (a.get("value"), a.get("option"))]
         if not candidates:
             raise LookupError(f"No {kind} action for {ref} on this page")
         self.session.act(candidates[0], page, text=text)

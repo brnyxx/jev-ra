@@ -515,6 +515,7 @@ def test_select_picks_the_option_by_its_label():
         "kind": "select",
         "label": "Shipping → Express",
         "value": "express",
+        "option": "Express",
     }
     session = FakeSession(pages=[{**page(0), "actions": [option]}])
     agent = agent_with(decider([DONE]), session=session)

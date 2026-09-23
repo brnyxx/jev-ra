@@ -86,9 +86,8 @@ name = "select_multiple"
 pattern = "Native <select multiple>"
 page = "/sites/select-multiple.html"
 goal = "Add mushrooms and olives to the toppings, keeping the extra cheese."
-plan = [["SELECT", "Toppings → Mushrooms"], ["SELECT", "Toppings → Olives"]]
+plan = [["SELECT", "Toppings → add Mushrooms"], ["SELECT", "Toppings → add Olives"]]
 check = "[...document.getElementById('toppings').selectedOptions].map(o => o.value).join() === 'cheese,mushrooms,olives'"
-gap = "choosing an option sets the select's value, which drops every option chosen before it"
 
 [[capability]]
 name = "choice_cards"
