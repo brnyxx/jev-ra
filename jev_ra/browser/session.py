@@ -13,7 +13,7 @@ from browser_harness.helpers import cdp, drain_events
 from ..config import load
 from ..errors import BadUrl, ChromeError, StalePage
 from ..profile import NullTimer
-from . import MAX_ELEMENTS, QUIET_STATE_JS, guard_expression, marker_expression, snapshot_expression
+from . import CHALLENGE_JS, MAX_ELEMENTS, QUIET_STATE_JS, guard_expression, marker_expression, snapshot_expression
 from .chrome import ensure as ensure_chrome
 from .chrome import ready as chrome_ready
 from .chrome import verify_attached
@@ -32,9 +32,15 @@ NAVIGATE_TIMEOUT_S = 45.0
 # nothing to act on reads as BLOCKED. Wait until a control in the viewport is reachable, or -
 # only when nothing at all is in view - until one waits below it: a listing legitimately opens a
 # screenful above its own sort bar, and waiting for that buys nothing. A portal's loading veil
-# leaves its header controls in view and unreachable, so it is still waited out.
+# leaves its header controls in view and unreachable, so it is still waited out. A check on screen
+# is everything the page will show until a person answers it, and its controls live in frames the
+# page cannot reach, so there is nothing more to wait for.
 PAINT_BUDGET_S = 2.0
-PAINTED_JS = """(() => {
+PAINTED_JS = (
+    """(() => {
+  if (("""
+    + CHALLENGE_JS
+    + """)()) return true;
   const selector='a[href],button,input,select,textarea,summary,[contenteditable=""],'+
     '[contenteditable="true"],[role="button"],[role="link"],[role="tab"],[role="checkbox"],'+
     '[role="radio"],[role="option"],[role="combobox"],[role="textbox"],[role="searchbox"]';
@@ -62,6 +68,7 @@ PAINTED_JS = """(() => {
   // below it still has nothing to act on, and gov.kr serves exactly that while it loads.
   return below && shown===0;
 })()"""
+)
 # The daemon's own default budget is 5 s, which a plain call never needs and the snapshot of a
 # large page routinely exceeds: oliveyoung.co.kr evaluates for longer than that, and the timeout
 # arrived as a transport exception from inside browser_harness rather than as anything a caller

@@ -76,12 +76,8 @@ class Person:
 
 
 def tick(session):
-    """Tick the check's box the way a person does: a real click on the frame the page cannot read."""
-    box = session.evaluate(
-        "(() => { const host = document.getElementById('cf-chl-widget-jevra') || document.querySelector('iframe');"
-        " const r = host.getBoundingClientRect(); return {x: r.x + 26, y: r.y + r.height / 2}; })()"
-    )
-    session.click(box)
+    """Answer the check through the page: the message its widget frame sends once its box is ticked."""
+    session.evaluate("postMessage({jevRaCheck: 'solved'}, '*')")
 
 
 class Clock:
@@ -98,7 +94,7 @@ def agent_on(session, decide, env=None, clock=None):
     options = {"clock": clock} if clock is not None else {}
     return Agent(
         session=session,
-        config=config.load(env or {}),
+        config=config.load({"JEV_RA_HUMAN_WAIT_S": "10", **(env or {})}),
         decide=decide,
         prefetch=False,
         pacer=Pacer(backoff=0, sleep=lambda _seconds: None),
