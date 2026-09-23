@@ -1,5 +1,35 @@
 # Changelog
 
+## 0.2.6 - 2026-09-23
+
+### Changed
+- The next decision is asked from the first reading that shows a step's effect, while the page is
+  still proving it has stopped moving, and the first decision of a run is asked while the opened
+  page finishes loading. An early answer is used only when the settled page asks the same request,
+  character for character, so no decision changes; the proof and the load are still waited for.
+  Runs send a few more decision requests than before (the ones whose page moved on are discarded
+  and counted as speculations).
+  Measured against 0.2.5 on one machine, alternating: Wikipedia 4.1-4.2 s against 4.3-5.3 s,
+  Google Flights 9.4-10.2 s against 11.7-12.8 s, form fill 1.4-1.5 s against 1.7-1.8 s
+  (docs/BENCHMARKS.md, 0.2.6).
+- A settle that ends without proof hands over the reading it ended on instead of reading the page
+  again.
+- `jev-ra bench --json` names the decision route (`route`: provider, endpoint, model) and keeps
+  every decision's round trip per task (`decision_ms`: n, median, p90, min, max and each value).
+  RELEASING.md says to commit that payload for the release head and the previous tag. The first
+  saved set: 275 decisions on the TypeSafe direct route, median 269 ms, p90 320 ms.
+
+### Docs
+- Every figure the README, the site and the notes quote was traced to a committed row: the hero
+  showed another project's ratios and now shows jev-ra's own (8.5x / 7.5x / 4.0x against
+  browser-use's recorded runs, 2026-09-18); the per-step bar reads 1.4 s from the measured values;
+  the 0.2.4 corpus file is the real three-run pass; comparisons across days or routes say so.
+- Every race on the landing page opens with a lightning strike on jev-ra's lane, and jev-ra's meter
+  is a laser that fires again for each run it finishes. The measured times and 4x playback are
+  unchanged.
+- `docs/plans/benchmark-vs-field.md`: how jev-ra will be measured against browser-use and the
+  commercial browser agents.
+
 ## 0.2.5 - 2026-09-23
 
 ### Fixed

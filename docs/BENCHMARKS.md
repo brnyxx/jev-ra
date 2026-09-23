@@ -357,3 +357,27 @@ both, so that pass is counted as the site's minute, not the release.
 `ja_nhk_society_section`, five runs: 4/5, median 2,022 ms. The one miss ended on a URL without
 `genre/society`. In the 0.2.3 corpus passes it was 0/3 on both trees, and 0/5 in the reruns.
 
+## 0.2.6: decisions asked ahead, and the first saved decision latencies
+
+Measured 2026-09-23 on one machine through the TypeSafe direct route, 0.2.5 and this release
+alternating: one pass each, then 0.2.5, 0.2.6, 0.2.6, 0.2.5. Raw payloads (with the route and every
+decision's round trip): [`2026-09-23-v0.2.6/`](benchmarks/2026-09-23-v0.2.6/).
+
+| task | 0.2.5 (3 passes) | 0.2.6 (3 passes) |
+|---|---|---|
+| Wikipedia | 15/15, 5,308 / 4,277 / 4,347 ms | 15/15, 4,188 / 4,069 / 4,092 ms |
+| Google Flights | 15/15, 12,827 / 11,727 / 11,745 ms | 14/15, 10,248 / 9,428 / 10,005 ms |
+| Olive Young sort | 5/5, 5,979 ms | 5/5, 5,552 ms |
+| Search with a citation | 15/15, 2,834 / 2,899 / 2,913 ms | 15/15, 2,707 / 2,759 / 3,077 ms |
+| Form fill | 15/15, 1,795 / 1,721 / 1,718 ms | 15/15, 1,547 / 1,467 / 1,427 ms |
+
+Every task is faster on 0.2.6 in every pass except one: search with a citation in the fourth pass
+(3,077 ms against 0.2.5's 2,899 and 2,913). The one Flights miss on 0.2.6 was
+`unverified_done` in the first pass; the next two 0.2.6 passes were 10/10. Olive Young answered
+`blocked_by_site` on both trees in the last four passes, so only the first pass compares it; at
+5,552 ms it is 2.71x faster than browser-use's recorded 15,071 ms, still under the 3x bar.
+
+Decision round trips on 0.2.6, every executed step of the three passes: n = 275, median 269 ms,
+p90 320 ms, min 201 ms, max 577 ms, TypeSafe direct. These are the first per-decision latencies
+saved with their raw values; a run's final DONE decision is not a step and is not among them.
+

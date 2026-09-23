@@ -56,7 +56,7 @@ the corpus, head-to-head and recorded-task rows name their own release, date and
 | CI | green | `371d417` |
 | real-site corpus | red | 213/231 possible tasks = 92.2 % on 0.2.4 (`2cf1e4d`), 3 runs via TypeSafe direct, 2026-09-23, the six walled tasks excluded; file_upload_picker and reddit_login_wall escalated 2/3 for their reason; run-to-run noise about ±5 of 240 (docs/BENCHMARKS.md) |
 | head-to-head | amber | docs/BENCHMARKS.md, browser-use 29/40 = 72 % at 19.4 s (one run, 2026-09-22) vs jev-ra 102/120 = 85 % at 3.1 s (0.1 `f581761`, three runs, 2026-09-18): published side by side, but not on the same commit, day or run count |
-| recorded tasks | amber | 0.2.5, 5 runs each: all five verified 5/5 back to back with 0.2.4; oliveyoung 2.66x under the 3x bar, jev-ra on the TypeSafe direct route on 2026-09-23 against browser-use's OpenRouter runs of 2026-09-18, which were not repeated (docs/BENCHMARKS.md, 0.2.5) |
+| recorded tasks | amber | 0.2.6, three 5-run passes alternating with 0.2.5: faster on every task in all but one pass, Flights 14/15 (one `unverified_done`); oliveyoung 2.71x under the 3x bar in its one unwalled pass, jev-ra on the TypeSafe direct route on 2026-09-23 against browser-use's OpenRouter runs of 2026-09-18, which were not repeated (docs/BENCHMARKS.md, 0.2.6) |
 | recovery, live | green | docs/PRODUCTION_REVIEW_2026-09-22.md sequence; the relaunch time is not recorded there |
 | public benchmarks | red | 10 + 10 judged only; Online-Mind2Web 3/10 |
 | quality bar | green | every row names its check; Debt is empty |

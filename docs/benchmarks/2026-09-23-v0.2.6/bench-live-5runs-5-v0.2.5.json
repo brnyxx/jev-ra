@@ -1,0 +1,164 @@
+{
+  "runs": 5,
+  "offline": [
+    {
+      "task": "form_fill",
+      "runs": 5,
+      "successes": 5,
+      "success_rate": 1.0,
+      "median_ms": 337,
+      "p90_ms": 384,
+      "median_steps": 4,
+      "median_decisions": 5,
+      "median_cost": 0.0,
+      "text_calls": 0,
+      "failures": []
+    },
+    {
+      "task": "catalog_sort",
+      "runs": 5,
+      "successes": 5,
+      "success_rate": 1.0,
+      "median_ms": 503,
+      "p90_ms": 590,
+      "median_steps": 2,
+      "median_decisions": 3,
+      "median_cost": 0.0,
+      "text_calls": 0,
+      "failures": []
+    }
+  ],
+  "baseline_flash_ms": {
+    "wikipedia": 23058,
+    "flights": 66414,
+    "oliveyoung_sort": 15071
+  },
+  "live": [
+    {
+      "task": "wikipedia",
+      "runs": 5,
+      "successes": 5,
+      "success_rate": 1.0,
+      "median_ms": 4347,
+      "p90_ms": 5082,
+      "median_steps": 2,
+      "median_decisions": 4,
+      "median_cost": 0.0,
+      "text_calls": 0,
+      "failures": []
+    },
+    {
+      "task": "flights",
+      "runs": 5,
+      "successes": 5,
+      "success_rate": 1.0,
+      "median_ms": 11745,
+      "p90_ms": 12780,
+      "median_steps": 11,
+      "median_decisions": 15,
+      "median_cost": 0.0,
+      "text_calls": 0,
+      "failures": []
+    },
+    {
+      "task": "oliveyoung_sort",
+      "runs": 5,
+      "successes": 0,
+      "success_rate": 0.0,
+      "median_ms": null,
+      "p90_ms": null,
+      "median_steps": null,
+      "median_decisions": null,
+      "median_cost": null,
+      "text_calls": 0,
+      "failures": [
+        "blocked_by_site"
+      ]
+    },
+    {
+      "task": "search_fact",
+      "runs": 5,
+      "successes": 5,
+      "success_rate": 1.0,
+      "median_ms": 2913,
+      "p90_ms": 3190,
+      "median_steps": 3,
+      "median_decisions": 4,
+      "median_cost": 0.0,
+      "text_calls": 0,
+      "failures": []
+    },
+    {
+      "task": "form_fill",
+      "runs": 5,
+      "successes": 5,
+      "success_rate": 1.0,
+      "median_ms": 1718,
+      "p90_ms": 1786,
+      "median_steps": 4,
+      "median_decisions": 5,
+      "median_cost": 0.0,
+      "text_calls": 0,
+      "failures": []
+    }
+  ],
+  "ratios": [
+    {
+      "task": "wikipedia",
+      "jev_ra_ms": 4347,
+      "flash_mode_ms": 23058,
+      "ratio": 5.3,
+      "success_rate": 1.0,
+      "runs": 5,
+      "decisions": 4,
+      "cost": 0.0,
+      "passed": true
+    },
+    {
+      "task": "flights",
+      "jev_ra_ms": 11745,
+      "flash_mode_ms": 66414,
+      "ratio": 5.65,
+      "success_rate": 1.0,
+      "runs": 5,
+      "decisions": 15,
+      "cost": 0.0,
+      "passed": true
+    },
+    {
+      "task": "oliveyoung_sort",
+      "jev_ra_ms": null,
+      "flash_mode_ms": 15071,
+      "ratio": null,
+      "success_rate": 0.0,
+      "runs": 5,
+      "decisions": null,
+      "cost": null,
+      "passed": false
+    },
+    {
+      "task": "search_fact",
+      "jev_ra_ms": 2913,
+      "flash_mode_ms": null,
+      "ratio": null,
+      "success_rate": 1.0,
+      "runs": 5,
+      "decisions": 4,
+      "cost": 0.0,
+      "passed": true
+    },
+    {
+      "task": "form_fill",
+      "jev_ra_ms": 1718,
+      "flash_mode_ms": null,
+      "ratio": null,
+      "success_rate": 1.0,
+      "runs": 5,
+      "decisions": 5,
+      "cost": 0.0,
+      "passed": true
+    }
+  ],
+  "passed": false,
+  "markdown": "| task | jev_ra_ms | flash_mode_ms | ratio | success_rate | passed |\n|---|---|---|---|---|---|\n| wikipedia | 4347 | 23058 | 5.3 | 1.0 | True |\n| flights | 11745 | 66414 | 5.65 | 1.0 | True |\n| oliveyoung_sort |  | 15071 |  | 0.0 | False |\n| search_fact | 2913 |  |  | 1.0 | True |\n| form_fill | 1718 |  |  | 1.0 | True |"
+}
