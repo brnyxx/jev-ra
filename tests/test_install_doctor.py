@@ -120,7 +120,9 @@ def test_install_redacts_a_key_a_chatty_agent_echoes_back(clean_env, monkeypatch
     assert SECRET not in json.dumps(payload)
 
 
-def test_doctor_without_a_key_explains_and_exits_one(clean_env, capsys):
+def test_doctor_without_a_key_explains_and_exits_one(clean_env, monkeypatch, capsys):
+    # The Chrome check is not what this test is about, and a real one would outlive the test.
+    monkeypatch.setattr(cli, "Session", lambda *_a, **_k: FakeSession())
     assert cli.main(["doctor"]) == 1
     out = capsys.readouterr().out
     assert "key: missing" in out
