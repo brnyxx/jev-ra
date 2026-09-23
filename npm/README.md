@@ -19,9 +19,11 @@
 # jev-ra
 
 **A fast browser-use layer for CLI coding agents.** Claude Code, Codex, or any MCP client hands jev-ra a
-goal; TypeSafe Jev picks the operation and the target element for every step in one round trip, in
-about 300 ms. Measured 3-5x faster than browser-use on the same tasks, same Chrome, same key. The site
-replays a real recorded run: [brnyxx.github.io/jev-ra](https://brnyxx.github.io/jev-ra/).
+goal; TypeSafe Jev picks the operation and the target element for every step in one round trip
+(253-380 ms per decision in the Flights run recorded through OpenRouter on 2026-09-18). On three
+recorded tasks it measured 3.96-8.50x faster than browser-use 0.13.10 `flash_mode` (2026-09-18, same
+machine and Chrome, both through OpenRouter). The site replays a real recorded run:
+[brnyxx.github.io/jev-ra](https://brnyxx.github.io/jev-ra/).
 
 ## This package is the npm launcher
 
@@ -40,7 +42,7 @@ npx -y jev-ra doctor
 from your environment without printing it. `doctor` ends with one live decision and its latency:
 
 ```
-decision: DONE in 314 ms via typesafe/jev-1.13
+decision: DONE in <n> ms via <model>
 ```
 
 From the shell, every subcommand of [the CLI](https://github.com/brnyxx/jev-ra/blob/main/docs/USAGE.md)

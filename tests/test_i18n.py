@@ -35,7 +35,7 @@ def test_the_checker_actually_catches_drift(checker):
     assert checker.compare(english, english.replace("2,714", "1,000"))
     assert checker.compare(english, english.replace("## Quick start", "### Quick start"))
     assert checker.compare(english, english.replace("uvx jev-ra doctor", "uvx jev-ra check"))
-    assert checker.compare(english, english.replace("140 ms", "150 ms"))
+    assert checker.compare(english, english.replace("296 ms", "150 ms"))
 
 
 @pytest.mark.parametrize("name", ("README.md", *VARIANTS))

@@ -25,7 +25,7 @@ jev-ra a goal. TypeSafe Jev, a System One decision model, picks the operation *a
 element for every step in one round trip. Your agent plans, supplies the text values, reads what the
 page says, and takes over when jev-ra escalates. No second LLM runs inside the loop.
 
-![jev-ra opening the Gödel incompleteness article in under three seconds](https://raw.githubusercontent.com/brnyxx/jev-ra/main/assets/demo/wikipedia.gif)
+![jev-ra opening the Gödel incompleteness article; the recording's clock stops at 3.79 s](https://raw.githubusercontent.com/brnyxx/jev-ra/main/assets/demo/wikipedia.gif)
 
 | task | browser-use 0.13.10 + gemini-3-flash `flash_mode` | jev-ra | |
 |---|---|---|---|
@@ -33,8 +33,10 @@ page says, and takes over when jev-ra escalates. No second LLM runs inside the l
 | Google Flights ZRH→LON one-way, results on screen | 66,414 ms | **8,888 ms** | **7.47×** |
 | Olive Young category: sort by 신상품순 | 15,071 ms | **3,806 ms** | **3.96×** |
 
-Medians over 5 runs each, 2026-09-18, same machine, same dedicated Chrome, both through OpenRouter.
-Each run was verified against the final page; 25 of 25 passed with no text-model calls. [Method, p90, cost and raw rows](https://github.com/brnyxx/jev-ra/blob/main/docs/BENCHMARKS.md).
+Measured 2026-09-18 on one machine and one dedicated Chrome, both tools through OpenRouter. jev-ra is
+the median of 5 runs; browser-use is its single recorded run, which was faster than its own 5-run
+median on every task. Each jev-ra run was verified against the final page; 25 of 25 passed with no
+text-model calls. [Method, p90, cost and raw rows](https://github.com/brnyxx/jev-ra/blob/main/docs/BENCHMARKS.md).
 
 ## Quick start
 
@@ -208,7 +210,8 @@ site's bad minute is never mistaken for a page to act on.
 
 ## Benchmarks
 
-Five tasks, five runs each, every run verified against the page it left behind:
+Five tasks, five runs each, every run verified against the page it left behind. Measured 2026-09-18
+through OpenRouter, on the same machine and Chrome as the browser-use rows:
 
 | task | median | p90 | success | decisions | cost | ratio |
 |---|---|---|---|---|---|---|
@@ -218,13 +221,16 @@ Five tasks, five runs each, every run verified against the page it left behind:
 | Search with a citation | 2,416 ms | 2,571 ms | 5/5 | 4 | $0.00035 | no baseline |
 | Local checkout form | 2,191 ms | 2,338 ms | 5/5 | 5 | $0.00049 | no baseline |
 
-Ratios are against browser-use 0.13.10 + gemini-3-flash `flash_mode` on the same machine and the
-same Chrome: 23,058 ms, 66,414 ms and 15,071 ms respectively. Text-model calls across all 25 runs: 0.
-A same-harness re-run of browser-use, five runs per task, was slower still: 9.07×, 8.31× and 7.26×.
-Our median against browser-use's fastest single run of each task (15,759 ms, 49,914 ms,
-17,647 ms) is 5.8×, 5.6× and 4.6×; the headline claim of 3-5× is below that.
+Ratios are against browser-use 0.13.10 + gemini-3-flash `flash_mode`, its single recorded run of each
+task on the same day, machine and Chrome, also through OpenRouter: 23,058 ms, 66,414 ms and
+15,071 ms respectively. Text-model calls across all 25 runs: 0. A same-harness re-run of
+browser-use, five runs per task that day, was slower still: 9.07×, 8.31× and 7.26×. Against the
+fastest of browser-use's six runs of each task (15,759 ms, 49,914 ms and 15,071 ms), our median is
+5.8×, 5.6× and 3.96×; no ratio measured that day is below 3.96×.
 `jev-ra bench --live --runs 5` reproduces this table and prints PASS/FAIL against the v0.1 bar of
-≥ 3× on every task with a baseline. [Method, the browser-use rows, and how to reproduce
+≥ 3× on every task with a baseline. On 0.2.5 through the TypeSafe direct route (2026-09-23) the
+first three tasks took 4,681 ms, 11,603 ms and 5,675 ms; browser-use was not re-run that day, so
+those times are not a like-for-like ratio. [Method, the browser-use rows, and how to reproduce
 them](https://github.com/brnyxx/jev-ra/blob/main/docs/BENCHMARKS.md).
 
 jev-ra on the left, browser-use `flash_mode` on the right, same task, same Chrome, real time:
@@ -237,10 +243,13 @@ A run that finishes without doing the task counts as a failure, not as a time.
 
 The corpus is 83 tasks on real sites in ten families (search, e-commerce, booking, forms, docs,
 news, portals, auth walls, Japanese and Chinese sites), each with a spec that checks the page the
-run left behind. On 0.2.4, three runs each: **213 / 249 = 85.5 %**. On the forty tasks both tools
-were given, browser-use 0.13.10 `flash_mode` passed **29 / 40 = 72 %** with a median of **19.4 s**;
-jev-ra passed **102 / 120 = 85 %** with a median of **3.1 s**. A single three-run pass moves by
-about five tasks on site weather alone, so a change counts only when a per-task rerun agrees.
+run left behind. On 0.2.4, three runs each through the TypeSafe direct route on 2026-09-23:
+**213 / 249 = 85.5 %**. On the forty tasks both tools were given, browser-use 0.13.10 `flash_mode`
+passed **29 / 40 = 72 %** in one run on 2026-09-22, with a median of **19.4 s** on the runs that
+passed; jev-ra 0.1 passed **102 / 120 = 85 %** in three runs on 2026-09-18, median **3.1 s**. Those
+two rows differ in day, run count and jev-ra version, so they are not a like-for-like comparison.
+A single three-run pass moves by about five tasks on site weather alone, so a change counts only
+when a per-task rerun agrees.
 [Per-task rows and the noise measurement](https://github.com/brnyxx/jev-ra/blob/main/docs/BENCHMARKS.md).
 
 ## What it will not do
@@ -262,12 +271,16 @@ Each returns an escalation with the page text and the ranked candidates.
 **OpenRouter or a TypeSafe key?** Either. jev-ra resolves `JEV_RA_API_KEY`, then `TYPESAFE_API_KEY`,
 then `OPENROUTER_API_KEY`. A key starting `sk-or-` selects the OpenRouter route
 (`typesafe/jev-1.13`); anything else goes direct (`jev-latest`). `JEV_RA_ENDPOINT` and
-`JEV_RA_MODEL` override both. OpenRouter is easier to get; direct TypeSafe is roughly 140 ms faster
-per decision according to the upstream measurements.
+`JEV_RA_MODEL` override both. OpenRouter is easier to get. Which route decides faster has not been
+measured under the same conditions: the [upstream jev-ultrafast
+recording](https://github.com/browser-use/jev-ultrafast/blob/main/docs/performance.md) has a 178 ms
+median decision on the direct route, and jev-ra's recorded Flights run a 296 ms median through
+OpenRouter (2026-09-18), on different machines and days.
 
-**What does a task cost?** Between **$0.00035** (a search, 4 decisions) and **$0.00317** (the whole
-Google Flights flow, 14 decisions). Cost scales with decisions, not with page size, because the state
-sent is the element table and the visible text, never the HTML.
+**What does a task cost?** Through OpenRouter on 2026-09-18, between **$0.00035** (a search, 4
+decisions) and **$0.00317** (the whole Google Flights flow, 14 decisions). Cost scales with
+decisions, not with page size, because the state sent is the element table and the visible text,
+never the HTML.
 
 **Does it need its own Chrome?** It will find or launch one on its own profile
 (`$XDG_STATE_HOME/jev-ra/chrome-profile`) and reuse it; when the Chrome it launched dies, the next
@@ -275,8 +288,10 @@ command starts another. Point `BU_CDP_URL` at a different Chrome to override - i
 there, jev-ra says so rather than launching one behind your back. Do not point it at a browser
 signed into anything you would not let an agent operate.
 
-**Why no text model?** The host agent already has the context. A second model adds 675-938 ms per
-field and invents values. You can still configure one with `JEV_RA_TEXT_MODEL`.
+**Why no text model?** The host agent already has the context. A second model costs one call per
+field (675-938 ms per mercury-2.5 call through OpenRouter, five calls measured on 2026-09-18 for
+[the design](https://github.com/brnyxx/jev-ra/blob/main/docs/DESIGN.md)) and writes values nobody
+supplied. You can still configure one with `JEV_RA_TEXT_MODEL`.
 
 ## Configuration
 
