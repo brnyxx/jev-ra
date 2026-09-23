@@ -228,6 +228,15 @@ browser-use 0.13.10 `flash_mode`는 2026-09-22 에 한 번씩 돌려 **29 / 40 =
 세 번 돌리는 한 판은 사이트 사정만으로 다섯 과제쯤 흔들리므로, 변경은 과제별 재실행이 같은 결과를 낼 때만
 득실로 센다. [과제별 행과 흔들림 측정](https://github.com/brnyxx/jev-ra/blob/main/docs/BENCHMARKS.md).
 
+`jev-ra corpus run`과 `jev-ra bench --live`는 라이브 시도를 빠짐없이 이 머신의 모든 프로세스가 함께 쓰는
+장부(`$XDG_STATE_HOME/jev-ra/traffic/`, 하루에 파일 하나)에 적는다. 호스트마다 하루 최대 40번
+(`JEV_RA_HOST_DAILY_BUDGET`), 최소 10 s 간격(`JEV_RA_HOST_GAP_S`)으로만 시도하고, 거절한 호스트(HTTP 429나
+403, 오류 페이지, 벽, 확인)는 그날 남은 시간 동안 건드리지 않는다(`JEV_RA_HOST_REST_S`, 기본 86,400 s).
+하지 않은 시도는 `skipped`다. 사람이 필요했던 실행처럼 따로 세고 이유와 함께 한 줄로 알리며, 건너뛴 시도가
+하나라도 있는 판은 `INCOMPLETE`로 끝나고, 요청한 횟수를 채우지 못한 과제에는 속도를 매기지 않는다.
+`jev-ra traffic`은 오늘의 시도 수, 쉬는 호스트, 남은 예산을 출력한다. 이 머신 안의 페이지는 세지 않고,
+`jev-ra run`과 MCP 도구는 제한하지 않는다.
+
 ## 하지 않는 것
 
 | 한계 | 결과 |

@@ -230,6 +230,15 @@ v0.1 の基準に対する PASS/FAIL を表示する。0.2.5 で TypeSafe 直接
 3 回 1 セットの計測はサイト側の事情だけで 5 タスクほど揺れるため、変更はタスクごとの再実行が一致したときだけ
 得失として数える。[タスクごとの行と揺れの計測](https://github.com/brnyxx/jev-ra/blob/main/docs/BENCHMARKS.md)。
 
+`jev-ra corpus run` と `jev-ra bench --live` は、ライブの試行をすべて、このマシン上の全プロセスが共有する
+台帳(`$XDG_STATE_HOME/jev-ra/traffic/`、1 日 1 ファイル)に書き込む。各ホストへの試行は 1 日最大 40 回
+(`JEV_RA_HOST_DAILY_BUDGET`)、間隔は最低 10 s(`JEV_RA_HOST_GAP_S`)で、拒んだホスト(HTTP 429 や 403、
+エラーページ、ウォール、確認)にはその日の残りのあいだ触れない(`JEV_RA_HOST_REST_S`、既定 86,400 s)。
+行わなかった試行は `skipped` になる。人が必要だった実行と同じく別に数えて理由とともに 1 行で知らせ、1 件でも
+スキップのあった回は `INCOMPLETE` で終わり、求めた回数に届かないタスクには速度を付けない。`jev-ra traffic`
+は今日の試行数、休ませているホスト、残りの予算を表示する。このマシン上のページは数えず、`jev-ra run` と
+MCP ツールは制限しない。
+
 ## やらないこと
 
 | 制限 | 何が起きるか |

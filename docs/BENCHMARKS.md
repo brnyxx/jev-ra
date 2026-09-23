@@ -130,6 +130,18 @@ booking, forms, news, documentation SPAs, government portals, login walls), each
 and a `verify` spec. It has held 80 tasks in ten families since 0.2.0 and 83 since 0.2.4.
 `uv run jev-ra corpus run --runs 3` runs all of them against the live web.
 
+Every corpus and `bench --live` attempt goes through a traffic ledger that every process on the
+machine shares under a file lock: `$XDG_STATE_HOME/jev-ra/traffic/<date>.jsonl`, one line per
+attempt with its host, start time, task and outcome. A host gets 40 attempts a day
+(`JEV_RA_HOST_DAILY_BUDGET`), 10 s apart (`JEV_RA_HOST_GAP_S`), and none for the rest of the day once
+it answers 429 or 403, keeps serving an error page, walls the run or puts up a check
+(`JEV_RA_HOST_REST_S`, 86,400 s by default). An attempt either rule stops is recorded as `skipped`
+with the reason `host_budget` or `host_resting`, is left out of the pass rate like a run a person
+helped, and turns the verdict into `INCOMPLETE`; `jev-ra traffic` shows where the day stands. The
+busiest host in `sites.toml`, developer.mozilla.org, carries four tasks, so a three-run pass spends
+12 of its 40. The ledger exists because one machine made about 5,400 corpus and bench runs on
+2026-09-23 and asked its busiest hosts 100-273 times each, until Olive Young started refusing it.
+
 Measured twice on 2026-09-18. First on main `03973c6` (raw rows:
 `docs/benchmarks/2026-09-18-v0.1/corpus-3runs.jsonl`): 97 / 120 = 81 %. Then on main `f581761`,
 after the fixes below (raw rows: `docs/benchmarks/2026-09-18-v0.1/corpus-3runs-f581761.jsonl`):

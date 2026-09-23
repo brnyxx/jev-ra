@@ -1,5 +1,27 @@
 # Changelog
 
+## Unreleased
+
+### Added
+- `jev-ra corpus run` and `jev-ra bench --live` are a polite client by construction. Every live
+  attempt is written to a ledger that every process on the machine shares under a file lock
+  (`$XDG_STATE_HOME/jev-ra/traffic/<date>.jsonl`), and each host gets at most 40 attempts a day
+  (`JEV_RA_HOST_DAILY_BUDGET`), at least 10 s apart (`JEV_RA_HOST_GAP_S`). A host that answers 429 or
+  403, keeps serving an error page, walls the run or puts up a check is left alone for the rest of
+  the day (`JEV_RA_HOST_REST_S`). The check sits in `corpus.run_task` and the bench's live measures,
+  so a script that calls them directly is covered too; pages on this machine are never counted, and
+  `jev-ra run` and the MCP tools are never limited. One machine had asked its busiest hosts 100-273
+  times in a day, until Olive Young started refusing it.
+- An attempt the ledger does not send is `skipped` (`host_budget` or `host_resting`): counted apart
+  like a run that needed a person, named with its reason and hosts in one line, and the corpus and
+  bench verdict is `INCOMPLETE` instead of PASS or FAIL.
+- `jev-ra traffic` prints today's attempts per host, the hosts resting and why, and the budget left.
+
+### Changed
+- `jev-ra bench` makes no speed claim for a task measured on fewer runs than `--runs` asked for,
+  whether the rest were skipped or set aside for a person: its medians and ratio are left out and it
+  does not clear the bar. Bench rows now carry `http_status` and `site_error`.
+
 ## 0.2.7 - 2026-09-23
 
 ### Added

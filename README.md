@@ -273,6 +273,16 @@ A single three-run pass moves by about five tasks on site weather alone, so a ch
 when a per-task rerun agrees.
 [Per-task rows and the noise measurement](https://github.com/brnyxx/jev-ra/blob/main/docs/BENCHMARKS.md).
 
+`jev-ra corpus run` and `jev-ra bench --live` write every live attempt to a ledger all processes on
+the machine share (`$XDG_STATE_HOME/jev-ra/traffic/`, one file a day). Each host gets at most 40
+attempts a day (`JEV_RA_HOST_DAILY_BUDGET`), at least 10 s apart (`JEV_RA_HOST_GAP_S`), and a host
+that pushed back - HTTP 429 or 403, an error page, a wall, a check - is left alone for the rest of
+the day (`JEV_RA_HOST_REST_S`, 86,400 s by default). An attempt that is not made is `skipped`:
+counted apart, like a run that needed a person, and named with its reason in one line; a pass that
+skipped any ends `INCOMPLETE`, and no task short of its runs gets a speed. `jev-ra traffic` prints
+today's counts, rests and budget left. Pages on this machine are never counted, and `jev-ra run` and
+the MCP tools are never limited.
+
 ## What it will not do
 
 | limit | what happens |

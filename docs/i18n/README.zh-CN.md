@@ -218,6 +218,13 @@ PASS/FAIL。0.2.5 经 TypeSafe 直连路径(2026-09-23)时，前三个任务分�
 jev-ra 版本都不同，不是同等条件下的比较。一轮 3 次的测量仅因站点状况就会浮动约 5 个任务，
 因此只有逐任务重跑结果一致时，变更才算得失。[逐任务数据与波动测量](https://github.com/brnyxx/jev-ra/blob/main/docs/BENCHMARKS.md)。
 
+`jev-ra corpus run` 和 `jev-ra bench --live` 会把每一次实时尝试写进本机所有进程共享的台账
+(`$XDG_STATE_HOME/jev-ra/traffic/`，每天一个文件)。每个主机每天最多 40 次尝试(`JEV_RA_HOST_DAILY_BUDGET`)，
+间隔至少 10 s(`JEV_RA_HOST_GAP_S`)；拒绝过的主机(HTTP 429 或 403、错误页、拦截墙、验证)在当天剩余时间内
+不再访问(`JEV_RA_HOST_REST_S`，默认 86,400 s)。没有进行的尝试记为 `skipped`：像需要人工的运行一样单独计数，
+并用一行写明原因；只要有跳过，这一轮就以 `INCOMPLETE` 结束，运行次数不足的任务不给出速度。`jev-ra traffic`
+打印今天的次数、正在休息的主机和剩余预算。本机上的页面从不计数，`jev-ra run` 和 MCP 工具从不受限。
+
 ## 不做的事
 
 | 限制 | 会发生什么 |
