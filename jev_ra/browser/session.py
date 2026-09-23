@@ -522,6 +522,9 @@ class Session:
     windows_before = None
     # Whether Chrome said the target under this session went away: a window that closed itself.
     detached = False
+    # The file chooser the last input opened, as Chrome announced it, or None. The chooser itself
+    # was cancelled; what it asked for is the page's question to whoever holds the file.
+    chooser = None
 
     def __init__(self, config=None, target_id=None, max_elements=MAX_ELEMENTS, profile=None):
         self.config = config or load()
@@ -576,6 +579,10 @@ class Session:
             # Chrome tells only the sessions that listen to the page domain that a dialog opened,
             # and only they can answer it.
             self.call("Page.enable")
+            # A file chooser is a window of the operating system, which nothing here drives and a
+            # headless browser cannot even show. It is cancelled the way a person dismissing it
+            # would, and the page's question comes back as an event instead.
+            self.call("Page.setInterceptFileChooserDialog", enabled=True, cancel=True)
             viewport = self.config.viewport
             self.call(
                 "Emulation.setDeviceMetricsOverride",
@@ -763,6 +770,8 @@ class Session:
                 self.dialog = None
             elif method in {"Inspector.detached", "Target.detachedFromTarget"}:
                 self.detached = True
+            elif method == "Page.fileChooserOpened":
+                self.chooser = params
             elif method == "Network.responseReceived" and params.get("type") == "Document":
                 if self.frame_id and params.get("frameId") != self.frame_id:
                     continue
@@ -801,10 +810,29 @@ class Session:
         return self.http_status
 
     def observed(self, page):
-        """One snapshot payload with the status the site answered its document with."""
+        """One snapshot payload with the status the site answered its document with.
+
+        A file chooser the last input opened stays part of every reading until the next input.
+        """
         if not page.get("dialog"):
             self.title = page.get("title", "")
-        return {**page, "http_status": self.read_status()}
+        page = {**page, "http_status": self.read_status()}
+        chooser = self.chooser
+        return {**page, "file_chooser": self.asked_file(chooser)} if chooser is not None else page
+
+    def asked_file(self, chooser):
+        """What a file chooser the page opened asked for: one file or several, and of which kinds."""
+        asked = {"multiple": chooser.get("mode") == "selectMultiple"}
+        node = chooser.get("backendNodeId")
+        if node is None:
+            return asked
+        try:
+            described = self.call("DOM.describeNode", backendNodeId=node, depth=0)
+        except (ChromeError, StalePage):
+            return asked
+        attributes = (described.get("node") or {}).get("attributes") or []
+        accept = dict(zip(attributes[::2], attributes[1::2], strict=True)).get("accept", "").strip()
+        return {**asked, "accept": accept} if accept else asked
 
     def dialog_page(self):
         """The open dialog as the page in front of the page."""
@@ -1169,6 +1197,7 @@ class Session:
         if not self.fresh(page, action):
             raise StalePage("Page changed since this decision. Observe again.")
         self.before_input = (page.get("url", ""), control_set(page.get("elements")))
+        self.chooser = None
         kind = action["kind"]
         # Any input can open a window - a button, a key, even the answer to a confirm - and the
         # windows already open before it are not what it opened.

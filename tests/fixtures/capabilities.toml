@@ -107,7 +107,6 @@ values = { name = "Ada Lovelace" }
 plan = [["TYPE_TEXT", "Full name", "name"], ["CLICK", "Attach resume/CV"]]
 expect = "needs_file"
 check = "document.getElementById('resume').files.length === 0"
-gap = "a file input is never observed, so the control that asks for the file cannot be pressed"
 
 [[capability]]
 name = "alert_dialog"

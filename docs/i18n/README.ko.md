@@ -154,10 +154,12 @@ Jev가 *당신이 준* 값 중 어느 것이 그 필드에 들어갈지 고른�
 ## 제어를 되돌려줄 때
 
 `Result.status`는 `done`, `blocked`, `escalate`, `budget` 중 하나다. 실행이 중간에 멈추면 `reason`은
-`needs_value`, `stuck_loop`, `unverified_done`, `stale`, `invalid_decision`, `too_many_controls`,
+`needs_value`, `needs_file`, `stuck_loop`, `unverified_done`, `stale`, `invalid_decision`, `too_many_controls`,
 `provider_error`, `blocked`, `blocked_by_site`, `needs_human` 중 하나다. `budget`으로 끝난 실행은 소진된 예산(스텝, 결정, 시간)을
 `reason`에 담는다. `provider_error`는 공급자가 답하기를 거부한 것이므로, 목표를 다시 시도하지
-말고 키와 경로를 확인한다. escalate에는 확률이
+말고 키와 경로를 확인한다. `needs_file`은 페이지가 파일을 요구한 것이다. `detail`에는 요구한 컨트롤
+(`field`), 여러 개를 받는지(`multiple`), 받는 파일 종류(`accept`)가 담긴다. 파일 선택 창은 취소되고,
+jev-ra는 자기가 실행되는 디스크에서 파일을 고르지 않는다. escalate에는 확률이
 붙은 상위 8개 연산/대상 후보와 최대 3,000자의 페이지 텍스트가 담긴다. 다시 관측하지 않고도 판단할
 수 있을 만큼이다.
 
@@ -242,7 +244,7 @@ browser-use 0.13.10 `flash_mode`는 2026-09-22 에 한 번씩 돌려 **29 / 40 =
 | 한계 | 결과 |
 |---|---|
 | 캔버스 드로잉, 게임 등 마크업이 아니라 그려진 것 | `blocked`: 목표를 진행시킬 수 있는 관측된 컨트롤이 없음 |
-| 파일 업로드 | `blocked`: 파일 입력은 제시되지도, 입력되지도 않음 |
+| 파일 업로드 | `needs_file`: 요구한 컨트롤과 받는 파일 종류를 알려줌. 파일은 절대 고르지 않음 |
 | CAPTCHA 등 사람이 풀 수 있는 확인 | 창 앞의 사람에게 넘김. 아무도 풀지 않으면 `resume` 토큰을 담은 `needs_human` |
 | 아예 거절하는 봇 차단, 스텔스 | `detail.kind`가 `refusal`인 `blocked_by_site`. jev-ra는 자신을 위장하지 않음 |
 | 인증 흐름 | 필드 이름을 담은 `needs_value`. 자격 증명을 추측하지 않음 |

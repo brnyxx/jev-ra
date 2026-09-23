@@ -152,6 +152,7 @@ def page_summary(page, session):
         "text": page.get("text", "")[:SUMMARY_TEXT_CHARS],
         "elements": len(space.elements),
         "omitted": space.omitted,
+        **({"file_chooser": page["file_chooser"]} if "file_chooser" in page else {}),
     }
 
 
@@ -168,10 +169,17 @@ def emit(args, data, lines=None):
 
 def summary_lines(data):
     """The human rendering of a page summary."""
-    return [
+    lines = [
         f"{data['title']} — {data['url']}",
         f"{data['elements']} elements" + (f", {data['omitted']} omitted" if data.get("omitted") else ""),
     ]
+    asked = data.get("file_chooser")
+    if asked is not None:
+        kinds = f" ({asked['accept']})" if asked.get("accept") else ""
+        lines.append(
+            f"The page asked for {'files' if asked['multiple'] else 'a file'}{kinds}, which jev-ra never chooses."
+        )
+    return lines
 
 
 def result_lines(result):

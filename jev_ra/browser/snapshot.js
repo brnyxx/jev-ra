@@ -46,6 +46,9 @@
     return node;
   };
   const safe = e => !['password','file','hidden'].includes(e.type);
+  // A file input is pressed, never typed into or read: pressing it is how a page asks for a file,
+  // and the session hears the question instead of a dialog opening.
+  const chooses = e => e.tagName==='INPUT' && e.type==='file';
   // Whether a pointer landing on `top` reaches `e`: itself, its own subtree, an ancestor that
   // took the pointer for it, or the label that forwards a click to it - which is how a shop paints
   // its filter checkboxes. A cover is none of those: a consent wall is a sibling of what it hides,
@@ -147,7 +150,7 @@
   const standIn = e => {
     if (e.tagName!=='LABEL') return null;
     const control=e.control;
-    if (!control || !safe(control)) return null;
+    if (!control || !(safe(control) || chooses(control))) return null;
     const r=control.getBoundingClientRect();
     return (!rendered(control) || !r.width || !r.height || !cache.point(control)) ? control : null;
   };
@@ -163,7 +166,7 @@
     if (e.tagName==='TEXTAREA' || e.isContentEditable) return 'textbox';
     if (e.tagName==='INPUT') {
       if (['checkbox','radio'].includes(e.type)) return e.type;
-      if (['button','submit','reset','image'].includes(e.type)) return 'button';
+      if (['button','submit','reset','image'].includes(e.type) || chooses(e)) return 'button';
       if (e.type==='search') return 'searchbox';
       if (e.type==='number') return 'spinbutton';
       if (e.type==='range') return 'slider';
@@ -224,7 +227,7 @@
           !e.hasAttribute('tabindex') && typeof e.onclick!=='function' &&
           getComputedStyle(e).cursor!=='pointer') continue;
       if (e.tagName==='LABEL' && !standIn(e)) continue;
-      if (!safe(e) || !rendered(e) || e.matches(':disabled') || e.closest('[aria-disabled="true"]')) continue;
+      if (!(safe(e) || chooses(e)) || !rendered(e) || e.matches(':disabled') || e.closest('[aria-disabled="true"]')) continue;
       const r=e.getBoundingClientRect(), [dx,dy]=cache.offset(e), rname=role(e);
       if (!rname) continue;
       // Whatever is offered here has to be reachable by the resolver: a consent wall leaves the
@@ -234,7 +237,8 @@
       const spot=cache.point(e);
       if (!spot || (spot.top!==e && !visible(e))) continue;
       if (rname==='gridcell' && e.querySelector('button,[role="button"]')) continue;
-      const element={node:identity(e),role:rname,label:name(e)||rname,
+      // A file input nothing names is the button the browser draws for it.
+      const element={node:identity(e),role:rname,label:name(e)||(chooses(standIn(e)??e) ? 'Choose file' : rname),
         rect:{x:r.x+dx,y:r.y+dy,w:r.width,h:r.height}};
       if (root!==document) element.nested=true;
       for (const key of ['checked','selected','expanded']) {

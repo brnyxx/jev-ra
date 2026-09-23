@@ -180,6 +180,7 @@ def summary(page, started, session):
         "text": page.get("text", "")[:SUMMARY_TEXT_CHARS],
         "elements": len(space.elements),
         "omitted": space.omitted,
+        **({"file_chooser": page["file_chooser"]} if "file_chooser" in page else {}),
         "elapsed_ms": round((time.perf_counter() - started) * 1000),
     }
 

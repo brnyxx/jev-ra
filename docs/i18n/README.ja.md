@@ -156,10 +156,13 @@ Jev が*あなたが渡した*値のどれがそのフィールドに入るか�
 ## 制御を返すとき
 
 `Result.status` は `done`、`blocked`、`escalate`、`budget` のいずれか。実行が途中で止まったときの
-`reason` は `needs_value`、`stuck_loop`、`unverified_done`、`stale`、`invalid_decision`、
+`reason` は `needs_value`、`needs_file`、`stuck_loop`、`unverified_done`、`stale`、`invalid_decision`、
 `too_many_controls`、`provider_error`、`blocked`、`blocked_by_site`、`needs_human` のいずれか。`budget` で終わった実行は使い切った
 予算(ステップ、判断、時間)を `reason` に入れる。`provider_error` はプロバイダが答えること自体を
-拒んだということなので、ゴールを再試行せず鍵と経路を確認する。
+拒んだということなので、ゴールを再試行せず鍵と経路を確認する。`needs_file` はページがファイルを求めたと
+いうこと。`detail` には求めたコントロール(`field`)、複数を受け付けるか(`multiple`)、受け付ける
+ファイルの種類(`accept`)が入る。ファイル選択ダイアログは取り消され、jev-ra は自分が動くディスクから
+ファイルを選ばない。
 escalate には確率つきの上位 8 件の操作/対象候補と、最大 3,000 文字のページテキストが含まれる。
 もう一度観測しなくても判断できるだけの材料だ。
 
@@ -244,7 +247,7 @@ MCP ツールは制限しない。
 | 制限 | 何が起きるか |
 |---|---|
 | キャンバス描画、ゲームなどマークアップではなく描かれたもの | `blocked`: 目標を進められる観測済みコントロールがない |
-| ファイルアップロード | `blocked`: ファイル入力は提示も入力もされない |
+| ファイルアップロード | `needs_file`: 求めたコントロールと受け付けるファイルの種類を返す。ファイルは決して選ばない |
 | CAPTCHA など人が解ける確認 | ウィンドウの前の人に引き渡す。誰も解かなければ `resume` トークン付きの `needs_human` |
 | はっきり拒むボット対策、ステルス | `detail.kind` が `refusal` の `blocked_by_site`。jev-ra は自分を偽装しない |
 | 認証フロー | フィールド名を添えた `needs_value`。資格情報を推測しない |

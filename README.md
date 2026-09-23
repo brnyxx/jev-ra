@@ -184,10 +184,13 @@ current value. You supply the value and call again. The default install has no t
 ## When it hands control back
 
 `Result.status` is `done`, `blocked`, `escalate` or `budget`. When a run stops short, `reason` is one
-of `needs_value`, `stuck_loop`, `unverified_done`, `stale`, `invalid_decision`, `too_many_controls`,
+of `needs_value`, `needs_file`, `stuck_loop`, `unverified_done`, `stale`, `invalid_decision`, `too_many_controls`,
 `provider_error`, `blocked`, `blocked_by_site` or `needs_human`. A run that ends on `budget` names the budget it hit (steps, decisions
 or time) in `reason` instead; `provider_error` is the provider refusing to answer at all, so check
-the key and the route rather than retrying the goal. An escalation
+the key and the route rather than retrying the goal. `needs_file` is the page asking for a file:
+`detail` names the control that asked (`field`), whether it takes several (`multiple`) and which
+kinds (`accept`). The file chooser is cancelled, and jev-ra never picks a file from the disk it runs
+on. An escalation
 also carries the top eight operation/target candidates with their probabilities, and up to 3,000
 characters of page text — enough to decide what to do without observing again.
 
@@ -288,7 +291,7 @@ the MCP tools are never limited.
 | limit | what happens |
 |---|---|
 | Canvas drawing, games, anything painted rather than marked up | `blocked`: no observed control can advance the goal |
-| File upload | `blocked`: a file input is never offered, and never typed into |
+| File upload | `needs_file`: the control that asked is named with the kinds of file it takes; no file is ever chosen |
 | CAPTCHA and other checks a person can clear | handed to the person at the window; `needs_human` with a `resume` token when nobody clears it |
 | Bot walls that refuse outright, stealth | `blocked_by_site` with `detail.kind` `refusal`; jev-ra never disguises itself |
 | Auth flows | `needs_value` with the field named; jev-ra never guesses a credential |

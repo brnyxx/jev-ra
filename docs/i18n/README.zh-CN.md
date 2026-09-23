@@ -151,7 +151,7 @@ TYPE_TEXT 需要一个字符串，而 jev-ra 不会凭空造一个。在选定�
 ## 交还控制权时
 
 `Result.status` 为 `done`、`blocked`、`escalate` 或 `budget` 之一。运行中途停下时，`reason` 是
-`needs_value`、`stuck_loop`、`unverified_done`、`stale`、`invalid_decision`、`too_many_controls`、
+`needs_value`、`needs_file`、`stuck_loop`、`unverified_done`、`stale`、`invalid_decision`、`too_many_controls`、
 `provider_error`、`blocked`、`blocked_by_site` 或 `needs_human` 之一。以 `budget` 结束的运行会把被耗尽的预算（步数、决策数、时间）
 放进 `reason`；`provider_error` 是提供方根本拒绝作答，应检查密钥与路径，而不是重试目标。
 escalate 还会带上按概率排序的前八个
@@ -230,7 +230,7 @@ jev-ra 版本都不同，不是同等条件下的比较。一轮 3 次的测量�
 | 限制 | 会发生什么 |
 |---|---|
 | 画布绘图、游戏等绘制而非标记的内容 | `blocked`：没有任何观测到的控件能推进目标 |
-| 文件上传 | `blocked`：文件输入既不提供，也不输入 |
+| 文件上传 | `needs_file`：指明提出要求的控件及其接受的文件类型；从不选择任何文件 |
 | CAPTCHA 等人可以完成的验证 | 交给窗口前的人；无人完成时返回带 `resume` 令牌的 `needs_human` |
 | 直接拒绝的机器人墙、隐身 | 返回 `detail.kind` 为 `refusal` 的 `blocked_by_site`；jev-ra 从不伪装自己 |
 | 认证流程 | 返回 `needs_value` 并指明字段；jev-ra 从不猜测凭据 |

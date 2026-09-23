@@ -7,7 +7,7 @@ import pytest
 from jev_ra import cli
 from jev_ra.browser import chrome
 from jev_ra.decide import Reply
-from tests.test_agent import FakeSession, answer
+from tests.test_agent import FakeSession, answer, page
 
 
 @pytest.fixture
@@ -438,3 +438,10 @@ def test_a_process_that_is_already_gone_is_not_an_error():
         raise ProcessLookupError(3, "No such process")
 
     assert cli.stop_process(4242, kill=gone) is False
+
+
+def test_a_step_that_opened_a_file_chooser_says_what_it_asked_for():
+    data = cli.page_summary({**page(1), "file_chooser": {"multiple": True, "accept": ".pdf"}}, FakeSession())
+    assert data["file_chooser"] == {"multiple": True, "accept": ".pdf"}
+    assert cli.summary_lines(data)[-1] == "The page asked for files (.pdf), which jev-ra never chooses."
+    assert "file_chooser" not in cli.page_summary(page(1), FakeSession())

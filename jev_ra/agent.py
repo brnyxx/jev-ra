@@ -673,6 +673,12 @@ class Agent:
                 )
             before, page = page, after
             run.record(step, page, timer, guessed is not None)
+            asked = page.get("file_chooser")
+            if asked is not None:
+                # The page asked for a file, and only the host has one to give: jev-ra never picks
+                # one from the disk it runs on.
+                detail = {"field": decision.action.get("label", ""), **asked}
+                return run.escalate("needs_file", page, decision, detail=detail)
             opened = step.leaves_open(page)
             found, unseen = run.walled(page, before), ""
             if found is not None and found.human:

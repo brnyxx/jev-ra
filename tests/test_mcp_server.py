@@ -461,3 +461,10 @@ def test_a_search_runs_on_its_own_target_and_leaves_the_shared_session_as_it_was
     assert shared.observe()["url"] == was
     assert shared.closed is False
     assert tabs[1:] and all(tab.closed for tab in tabs[1:])
+
+
+def test_a_step_that_opened_a_file_chooser_says_what_it_asked_for():
+    asked = {"multiple": False, "accept": ".pdf"}
+    result = mcp_server.summary({**page(1), "file_chooser": asked}, 0.0, FakeSession())
+    assert result["file_chooser"] == asked
+    assert "file_chooser" not in mcp_server.summary(page(1), 0.0, FakeSession())
