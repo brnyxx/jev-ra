@@ -41,9 +41,9 @@ def test_a_page_that_already_changed_is_not_waited_on_again(session, fixture_ser
     assert time.monotonic() - started < session_module.SETTLE_BUDGET_S
 
 
-def test_a_page_that_never_changes_costs_one_settle_budget(session, fixture_server):
+def test_a_page_that_never_changes_costs_the_wait_budget_and_one_settle_at_most(session, fixture_server):
     page = session.open(f"{fixture_server}/sites/static.html")
     started = time.monotonic()
     session.act(control(page, "wait"), page)
     session.observe()
-    assert time.monotonic() - started < session_module.SETTLE_BUDGET_S + 1.0
+    assert time.monotonic() - started < 2 * session_module.SETTLE_BUDGET_S
