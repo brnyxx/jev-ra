@@ -714,7 +714,10 @@ def skipped_line(found):
     """One line saying how many attempts were never sent to their host, why, and which hosts."""
     total = sum(item["attempts"] for item in found.values())
     said = "; ".join(f"{reason} x{item['attempts']} ({', '.join(item['hosts'])})" for reason, item in found.items())
-    return f"{total} attempt(s) skipped, never sent and counted as neither a pass nor a failure: {said}."
+    return (
+        f"{total} attempt(s) skipped, never sent and counted as neither a pass nor a failure: {said}."
+        " `jev-ra traffic` shows today's ledger."
+    )
 
 
 def cmd_bench(args):
@@ -868,6 +871,31 @@ def cmd_corpus(args):
     lines.append(verdict(payload["passed"], passed_over, "the corpus clears the bar", "the corpus is under the bar"))
     emit(args, payload, lines)
     return 0 if payload["passed"] else 1
+
+
+def traffic_lines(report):
+    """The human rendering of today's ledger."""
+    lines = [
+        f"live corpus and bench attempts on {report['day']}: {report['budget']} per host,"
+        f" {report['gap_s']:g} s apart, a host that pushes back is left alone for {report['rest_s']:g} s"
+    ]
+    if not report["hosts"]:
+        lines.append("  none yet")
+    for row in report["hosts"]:
+        line = f"  {row['host']}: {row['attempts']} attempt(s), {row['left']} left"
+        if row["resting_until"]:
+            line += f", resting until {row['resting_until_said']} ({row['why']})"
+        lines.append(line)
+    lines.append(f"ledger: {report['path']}")
+    return lines
+
+
+def cmd_traffic(args):
+    """Print today's live corpus and bench attempts per host, the hosts resting and the budget left."""
+    from . import traffic
+
+    report = traffic.ledger(load()).today()
+    return emit(args, report, traffic_lines(report))
 
 
 def skill_text():
@@ -1079,6 +1107,9 @@ def build_parser():
     corpus_run.add_argument("--list", action="store_true", help="list the tasks instead of running them")
     corpus_run.set_defaults(handler=cmd_corpus)
     corpus.set_defaults(handler=lambda _args: corpus.print_help() or 0)
+
+    traffic = add_json(sub.add_parser("traffic", help="show today's live attempts per host and the budget left"))
+    traffic.set_defaults(handler=cmd_traffic)
     return parser
 
 

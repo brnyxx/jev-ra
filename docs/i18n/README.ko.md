@@ -125,6 +125,7 @@ Python을 따로 갖추기 싫다면 `npx -y jev-ra install claude`가 npm 런�
 | `doctor` | 키, 엔드포인트, Chrome, 라이브 결정 하나를 점검한다 |
 | `bench [--live]` | 오프라인 픽스처를 재고, `--live`면 라이브 과제도 잰다 |
 | `corpus run` | 실제 사이트 코퍼스를 실행한다 |
+| `traffic` | 오늘 호스트별 라이브 시도 수와 남은 예산을 보여 준다 |
 
 `open` … `close`는 `$XDG_STATE_HOME/jev-ra/session.json`의 target id를 통해 하나의 브라우저를
 여러 호출에 걸쳐 공유한다. 어느 명령에든 `--json`을 붙이면 원본 페이로드가 나온다.

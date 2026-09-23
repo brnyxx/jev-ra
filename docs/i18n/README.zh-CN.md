@@ -123,6 +123,7 @@ uvx jev-ra run https://en.wikipedia.org/wiki/Main_Page "Open the Godel incomplet
 | `doctor` | 检查密钥、端点、Chrome 和一次实时决策 |
 | `bench [--live]` | 为离线测试页计时，加 `--live` 也为实时任务计时 |
 | `corpus run` | 运行真实网站语料 |
+| `traffic` | 显示今天每个主机的实时尝试次数和剩余预算 |
 
 `open` … `close` 通过 `$XDG_STATE_HOME/jev-ra/session.json` 里的 target id 在多次调用之间共享同一个
 浏览器。任何命令加上 `--json` 都会输出原始负载。

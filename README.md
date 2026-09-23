@@ -139,6 +139,7 @@ Every response carries `elapsed_ms`, and `decisions` plus `cost` whenever Jev wa
 | `doctor [--profile NAME]` | check the key, the endpoint, Chrome and one live decision |
 | `bench [--live]` | time the offline fixtures, and the live tasks with --live |
 | `corpus run` | run the real-site corpus |
+| `traffic` | show today's live attempts per host and the budget left |
 
 `open` … `close` share one browser across invocations through a target id in
 `$XDG_STATE_HOME/jev-ra/session.json`. Add `--json` to any command for the raw payload.

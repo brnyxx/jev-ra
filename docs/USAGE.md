@@ -189,6 +189,7 @@ positional arguments:
     search      search the web and read the best results
     bench       time the offline fixtures, and the live tasks with --live
     corpus      run the real-site corpus
+    traffic     show today's live attempts per host and the budget left
 
 options:
   -h, --help    show this help message and exit

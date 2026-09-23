@@ -450,6 +450,37 @@ def test_a_settled_attempt_whose_line_went_missing_is_written_again(make):
     assert (line["task"], line["outcome"], line["why"]) == ("t", "refused", "http 429")
 
 
+def test_the_traffic_command_prints_counts_rests_and_what_is_left(make, clock, monkeypatch, capsys):
+    ledger = make(budget=3, rest_s=1800.0)
+    ledger.settle(ledger.claim("https://shop.test/", "a"), {"status": "done", "http_status": 429})
+    for _ in range(2):
+        ledger.settle(ledger.claim("https://news.test/", "b"), {"status": "done"})
+    monkeypatch.setattr(traffic, "ledger", lambda _config=None, _env=None: ledger)
+    assert cli.main(["traffic"]) == 0
+    out = capsys.readouterr().out
+    assert "live corpus and bench attempts on 2026-09-23: 3 per host, 10 s apart" in out
+    assert "  news.test: 2 attempt(s), 1 left" in out
+    assert "  shop.test: 1 attempt(s), 2 left, resting until 12:30 (http 429)" in out
+    assert "ledger: " in out and "2026-09-23.jsonl" in out
+    assert cli.main(["traffic", "--json"]) == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["hosts"][1] == {
+        "host": "shop.test",
+        "attempts": 1,
+        "left": 2,
+        "refused": 1,
+        "resting_until": NOON + 1800,
+        "resting_until_said": "12:30",
+        "why": "http 429",
+    }
+
+
+def test_the_traffic_command_on_a_quiet_day(make, monkeypatch, capsys):
+    monkeypatch.setattr(traffic, "ledger", lambda _config=None, _env=None: make())
+    assert cli.main(["traffic"]) == 0
+    assert "  none yet" in capsys.readouterr().out
+
+
 def test_the_machine_ledger_lives_beside_the_session_state_and_follows_the_config(tmp_path):
     env = {"XDG_STATE_HOME": str(tmp_path), "JEV_RA_HOST_DAILY_BUDGET": "5", "JEV_RA_HOST_GAP_S": "2.5"}
     ledger = machine_ledger(config.load(env), env)

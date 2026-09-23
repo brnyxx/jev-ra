@@ -127,6 +127,7 @@ Python を用意したくない場合は、`npx -y jev-ra install claude` でも
 | `doctor` | 鍵、エンドポイント、Chrome、ライブ判断 1 回を確認する |
 | `bench [--live]` | オフラインのフィクスチャを計時し、`--live` ならライブタスクも計時する |
 | `corpus run` | 実サイトのコーパスを実行する |
+| `traffic` | 今日のホストごとのライブ試行数と残りの予算を表示する |
 
 `open` … `close` は `$XDG_STATE_HOME/jev-ra/session.json` の target id を通じて 1 つのブラウザを
 複数の呼び出しで共有する。どのコマンドでも `--json` を付ければ生のペイロードが得られる。
