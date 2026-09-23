@@ -641,6 +641,7 @@ SUMMARY_COLUMNS = (
     "task",
     "runs",
     "successes",
+    "human",
     "success_rate",
     "median_ms",
     "p90_ms",
@@ -655,6 +656,8 @@ RATIO_COLUMNS = ("task", "jev_ra_ms", "flash_mode_ms", "ratio", "success_rate", 
 def summary_line(row):
     """The human rendering of one benchmark summary row."""
     verified = f"{row['successes']}/{row['runs']} verified"
+    if row.get("human"):
+        verified += f", {row['human']} set aside for a person"
     if not row["median_ms"]:
         return f"  {row['task']}: {verified}; {', '.join(row['failures']) or 'no successful run'}"
     return (
@@ -756,12 +759,26 @@ def cmd_bench(args):
     return 0 if payload["passed"] else 1
 
 
-CORPUS_COLUMNS = ("task", "family", "runs", "passed", "pass_rate", "site", "median_ms", "decisions", "cost", "why")
+CORPUS_COLUMNS = (
+    "task",
+    "family",
+    "runs",
+    "passed",
+    "pass_rate",
+    "site",
+    "human",
+    "median_ms",
+    "decisions",
+    "cost",
+    "why",
+)
 
 
 def corpus_line(row):
     """The human rendering of one corpus summary row."""
     verdict = f"{row['passed']}/{row['runs']}"
+    if row.get("human"):
+        verdict += f", {row['human']} set aside for a person"
     if row["median_ms"] is None:
         return f"  {row['task']}: {verdict} - {'; '.join(row['why'])}"
     tail = f" - {'; '.join(row['why'])}" if row["why"] else ""
@@ -770,7 +787,17 @@ def corpus_line(row):
 
 def cmd_corpus(args):
     """Run the real-site corpus and report what passed, what escalated and why."""
-    from .corpus import PASS_RATE, load_tasks, markdown_table, pass_rate, reasons, run, summarise, write_results
+    from .corpus import (
+        PASS_RATE,
+        load_tasks,
+        markdown_table,
+        needed_person,
+        pass_rate,
+        reasons,
+        run,
+        summarise,
+        write_results,
+    )
 
     if args.list:
         tasks = load_tasks()
@@ -782,9 +809,11 @@ def cmd_corpus(args):
     rate = pass_rate(rows)
     histogram = reasons(rows)
     path = write_results(rows)
+    people = sum(1 for row in rows if needed_person(row))
     payload = {
         "runs": args.runs,
         "attempts": len(rows),
+        "human": people,
         "pass_rate": rate,
         "passed": rate >= PASS_RATE,
         "tasks": table,
@@ -795,6 +824,8 @@ def cmd_corpus(args):
     lines = [f"corpus, {args.runs} run(s) each, {len(rows)} attempts:"]
     lines += [corpus_line(row) for row in table]
     lines += ["", f"pass rate {rate:.0%} (bar is {PASS_RATE:.0%})"]
+    if people:
+        lines.append(f"{people} attempt(s) needed a person and count as neither a pass nor a failure")
     if histogram:
         lines.append("failures by reason: " + ", ".join(f"{k} x{v}" for k, v in histogram.items()))
     lines += ["", markdown_table(table, CORPUS_COLUMNS), "", f"rows appended to {path}"]

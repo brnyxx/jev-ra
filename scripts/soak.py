@@ -29,7 +29,7 @@ except ImportError:
     resource = None
 
 from jev_ra.agent import Agent
-from jev_ra.bench import percentile
+from jev_ra.bench import needed_person, percentile
 from jev_ra.browser.session import Session
 from jev_ra.config import load
 from jev_ra.corpus import TEXT_CHARS, classify, load_tasks
@@ -62,6 +62,8 @@ def run_once(task, session, config, decide):
             cost=0.0,
             url=task.url,
             site_error=False,
+            human_wait_ms=0,
+            needs_human=False,
             text="",
             elements=[],
         )
@@ -73,6 +75,8 @@ def run_once(task, session, config, decide):
             cost=result.cost,
             url=result.url,
             site_error=result.site_error,
+            human_wait_ms=result.human_wait_ms,
+            needs_human=result.reason == "needs_human",
             text=(result.final_page.get("text") or "")[:TEXT_CHARS],
             elements=result.final_page.get("elements") or [],
         )
@@ -82,12 +86,18 @@ def run_once(task, session, config, decide):
 
 
 def summarise(rows):
-    """Pass count, seconds, decisions and the reasons seen, over the attempts of one task soak."""
-    passed = [row for row in rows if row["passed"]]
-    times = [row["elapsed_ms"] for row in rows]
+    """Pass count, seconds, decisions and the reasons seen, over the attempts of one task soak.
+
+    An attempt that needed a person is counted apart: it passed nothing, failed nothing, and its
+    seconds are a person's, so they stay out of the soak's own.
+    """
+    people = [row for row in rows if needed_person(row)]
+    counted = [row for row in rows if not needed_person(row)]
+    passed = [row for row in counted if row["passed"]]
+    times = [row["elapsed_ms"] for row in counted]
     decisions = [row["decisions"] for row in rows]
     reasons = {}
-    for row in rows:
+    for row in counted:
         if row["passed"]:
             continue
         key = row.get("raised") or row.get("reason") or row["status"]
@@ -102,6 +112,8 @@ def summarise(rows):
         "reasons": dict(sorted(reasons.items(), key=lambda item: item[1], reverse=True)),
         "raised": sum(1 for row in rows if row.get("raised")),
         "site_error": sum(1 for row in rows if row.get("site_error")),
+        "human": len(people),
+        "human_wait_ms": sum(row.get("human_wait_ms") or 0 for row in people),
     }
 
 
@@ -113,6 +125,7 @@ def report(summary, name):
     lines.append(f"  decisions: median {summary['decisions_median']}, total {summary['decisions_total']}")
     lines.append("  reasons: " + (", ".join(f"{key} x{value}" for key, value in summary["reasons"].items()) or "none"))
     lines.append(f"  site errors: {summary['site_error']}")
+    lines.append(f"  needed a person: {summary['human']} ({summary['human_wait_ms'] / 1000:.1f} s waiting)")
     lines.append(f"  raised: {summary['raised']}")
     return lines
 

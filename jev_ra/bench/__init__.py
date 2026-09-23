@@ -226,6 +226,11 @@ def ratio_rows(summary, baseline=None):
 VERIFY_TEXT_CHARS = 4000
 
 
+def needed_person(row):
+    """Whether a run needed a person to clear a check: a pass for nobody, and a failure for nobody."""
+    return bool(row.get("needs_human")) or (row.get("human_wait_ms") or 0) > 0
+
+
 def measure(agent, task, url, values, max_steps):
     """Run one task once and say whether the page shows it was done."""
     started = time.perf_counter()
@@ -240,6 +245,8 @@ def measure(agent, task, url, values, max_steps):
         "text_calls": len(result.text_calls),
         "cost": result.cost,
         "url": result.url,
+        "human_wait_ms": result.human_wait_ms,
+        "needs_human": result.reason == "needs_human",
         "text": (result.final_page.get("text") or "")[:VERIFY_TEXT_CHARS],
         "elements": result.final_page.get("elements") or [],
         "profile": result.steps,
@@ -248,7 +255,10 @@ def measure(agent, task, url, values, max_steps):
 
 
 def verified(row, verify):
-    """A run only counts when the page says the task was done."""
+    """A run only counts when the page says the task was done, and never when a person helped it there."""
+    if needed_person(row):
+        row["ok"] = None
+        return row
     row["ok"] = bool(verify(row)) if verify else row.get("status") == "done"
     if not row["ok"] and row.get("status") == "done":
         row["reason"] = "finished but the page does not show the task done"
@@ -285,20 +295,26 @@ def decision_latency(runs):
 
 
 def summarise(rows):
-    """Per task: medians over the runs that actually worked, plus the success rate over all of them."""
+    """Per task: medians over the runs that actually worked, plus the success rate over all of them.
+
+    A run that needed a person is set aside and counted on its own: its time is a person's, and
+    whether it got there says nothing about the product either way.
+    """
     summary = {}
     for row in rows:
         summary.setdefault(row["task"], []).append(row)
     table = []
     for task, runs in summary.items():
-        good = [run for run in runs if run.get("ok")]
+        counted = [run for run in runs if not needed_person(run)]
+        good = [run for run in counted if run.get("ok")]
         times = [run["elapsed_ms"] for run in good]
         table.append(
             {
                 "task": task,
-                "runs": len(runs),
+                "runs": len(counted),
                 "successes": len(good),
-                "success_rate": round(len(good) / len(runs), 3) if runs else 0.0,
+                "human": len(runs) - len(counted),
+                "success_rate": round(len(good) / len(counted), 3) if counted else 0.0,
                 "median_ms": median(times),
                 "p90_ms": percentile(times),
                 "median_steps": median([run["steps"] for run in good]),
@@ -306,7 +322,7 @@ def summarise(rows):
                 "median_cost": round(statistics.median([run["cost"] for run in good]), 6) if good else None,
                 "text_calls": sum(run.get("text_calls", 0) for run in runs),
                 "decision_ms": decision_latency(runs),
-                "failures": sorted({run.get("reason") or run.get("status") for run in runs if not run.get("ok")}),
+                "failures": sorted({run.get("reason") or run.get("status") for run in counted if not run.get("ok")}),
             }
         )
     return table
@@ -360,6 +376,8 @@ def measure_search(task, config, decide):
         "text_calls": 0,
         "cost": payload["cost"],
         "url": payload["engine"],
+        "human_wait_ms": 0,
+        "needs_human": False,
         "results": [
             {"url": item.get("url", ""), "text": (item.get("text") or "")[:VERIFY_TEXT_CHARS]}
             for item in payload["results"]

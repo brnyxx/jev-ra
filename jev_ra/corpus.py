@@ -16,7 +16,7 @@ from datetime import date, timedelta
 from pathlib import Path
 
 from .agent import Agent
-from .bench import markdown_table
+from .bench import markdown_table, needed_person
 from .browser.session import Session
 from .config import load
 from .decide.client import DecisionClient
@@ -33,6 +33,7 @@ __all__ = [
     "families",
     "load_tasks",
     "markdown_table",
+    "needed_person",
     "pass_rate",
     "reasons",
     "run",
@@ -156,7 +157,12 @@ def check(spec, row):
 
 
 def classify(task, row):
-    """Did this run do what the task expected, and if not, what is the shortest true reason."""
+    """Did this run do what the task expected, and if not, what is the shortest true reason.
+
+    A run that needed a person to clear a check did neither: it is None, and the reason says which.
+    """
+    if needed_person(row):
+        return None, "needs_human" if row.get("needs_human") else "a person cleared a check"
     status, reason = row.get("status"), row.get("reason") or ""
     if task.expect.startswith("escalate"):
         wanted = task.expected_reason
@@ -202,6 +208,8 @@ def run_task(task, config, decide):
             "url": result.url,
             "http_status": result.http_status,
             "site_error": result.site_error,
+            "human_wait_ms": result.human_wait_ms,
+            "needs_human": result.reason == "needs_human",
             "text": (result.final_page.get("text") or "")[:TEXT_CHARS],
             "elements": result.final_page.get("elements") or [],
             "trace": [step_trace(step) for step in result.steps],
@@ -222,6 +230,8 @@ def run_task(task, config, decide):
             "url": task.url,
             "http_status": None,
             "site_error": False,
+            "human_wait_ms": 0,
+            "needs_human": False,
             "text": str(error)[:TEXT_CHARS],
             "elements": [],
             "trace": [],
@@ -261,26 +271,32 @@ def run(tasks=None, config=None, runs=1, family=None, name=None, decide=None):
 
 
 def summarise(rows):
-    """Per task: how often it passed, how long it took, and why it failed when it did."""
+    """Per task: how often it passed, how long it took, and why it failed when it did.
+
+    The attempts that needed a person are counted in `human` and nowhere else, as the attempts a
+    site answered with an error are counted in `site`.
+    """
     grouped = {}
     for row in rows:
         grouped.setdefault(row["task"], []).append(row)
     table = []
     for name, attempts in grouped.items():
-        good = [row for row in attempts if row["passed"]]
+        counted = [row for row in attempts if not needed_person(row)]
+        good = [row for row in counted if row["passed"]]
         times = [row["elapsed_ms"] for row in good]
         table.append(
             {
                 "task": name,
                 "family": attempts[0]["family"],
-                "runs": len(attempts),
+                "runs": len(counted),
                 "passed": len(good),
-                "pass_rate": round(len(good) / len(attempts), 3),
+                "pass_rate": round(len(good) / len(counted), 3) if counted else None,
                 "site": sum(1 for row in attempts if row.get("site_error")),
+                "human": len(attempts) - len(counted),
                 "median_ms": round(statistics.median(times)) if times else None,
                 "decisions": round(statistics.median([row["decisions"] for row in good])) if good else None,
                 "cost": round(statistics.median([row["cost"] for row in good]), 6) if good else None,
-                "why": sorted({row["why"] for row in attempts if not row["passed"]}),
+                "why": sorted({row["why"] for row in counted if not row["passed"]}),
             }
         )
     return table
@@ -290,7 +306,7 @@ def reasons(rows):
     """How often each escalation reason came up, worst first."""
     histogram = {}
     for row in rows:
-        if row["passed"]:
+        if row["passed"] or needed_person(row):
             continue
         key = row["why"].split(":")[0] or row["status"]
         histogram[key] = histogram.get(key, 0) + 1
@@ -298,8 +314,9 @@ def reasons(rows):
 
 
 def pass_rate(rows):
-    """The share of attempts that did what their task expected."""
-    return round(sum(1 for row in rows if row["passed"]) / len(rows), 4) if rows else 0.0
+    """The share of attempts that did what their task expected, of those that did not need a person."""
+    counted = [row for row in rows if not needed_person(row)]
+    return round(sum(1 for row in counted if row["passed"]) / len(counted), 4) if counted else 0.0
 
 
 def write_results(rows, directory=None, today=None):

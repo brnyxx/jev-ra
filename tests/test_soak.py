@@ -92,6 +92,8 @@ def test_an_empty_soak_reports_nothing_rather_than_dividing_by_zero(soak):
         "reasons": {},
         "raised": 0,
         "site_error": 0,
+        "human": 0,
+        "human_wait_ms": 0,
     }
 
 
