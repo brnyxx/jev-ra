@@ -13,8 +13,11 @@
      the provider in a pop-up window with window.open, the pop-up asks for consent, posts the result
      back to the page that opened it and closes itself. The page only changes once that happens. -->
 <h1>Notes</h1>
+<p>Write things down once and find them again anywhere: on your phone, on your laptop, and on the web.
+Notes keeps your lists, drafts and meeting notes in sync, and shares a notebook with anyone you choose.</p>
 <p id="status">You are not signed in.</p>
 <button type="button" id="signin">Continue with Acme ID</button>
+<footer><p>By continuing you agree to the Terms of Service and the Privacy Policy.</p></footer>
 <script>
   document.getElementById('signin').addEventListener('click', () => {
     window.open('/sites/popup-consent.html', 'acme-id', 'popup,width=480,height=600');
@@ -22,10 +25,13 @@
   });
   addEventListener('message', event => {
     if (event.origin !== location.origin || event.data?.type !== 'acme-id') return;
-    document.getElementById('status').textContent = event.data.granted
-      ? 'Signed in as ' + event.data.user + '.'
-      : 'Sign-in was cancelled.';
-    document.getElementById('signin').hidden = event.data.granted;
+    if (!event.data.granted) {
+      document.getElementById('status').textContent = 'Sign-in was cancelled.';
+      return;
+    }
+    document.title = 'Notes';
+    document.getElementById('status').textContent = 'Signed in as ' + event.data.user + '.';
+    document.getElementById('signin').replaceWith(Object.assign(document.createElement('button'), {type: 'button', textContent: 'New note'}));
   });
 </script>
 </body>

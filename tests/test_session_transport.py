@@ -12,6 +12,7 @@ class Bare(session_module.Session):
         self.session_id = "s1"
         self.cache = {}
         self.after_input = None
+        self.openers = []
 
 
 @pytest.fixture

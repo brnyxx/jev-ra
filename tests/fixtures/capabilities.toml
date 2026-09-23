@@ -221,7 +221,6 @@ page = "/sites/popup-signin.html"
 goal = "Sign in to Notes with Acme ID."
 plan = [["CLICK", "Continue with Acme ID"], ["CLICK", "Allow"]]
 check = "document.getElementById('status').textContent === 'Signed in as Ada Lovelace.'"
-gap = "the pop-up opens in a target the run is not driving, so its Allow button is never observed"
 
 [[capability]]
 name = "tabs_accordion"

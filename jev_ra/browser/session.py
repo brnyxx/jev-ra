@@ -312,6 +312,10 @@ TARGETED = {"click", "select", "fill", "press"}
 # The daemon reports a document that moved under a call as a protocol error. It means the same
 # thing as any other stale reading - observe again - rather than a browser that has gone away.
 MOVED = ("navigated or closed", "context was destroyed", "cannot find context", "no frame for given id")
+# What the daemon says about a session whose target has gone. For a window this session followed
+# that is the window closing, which is how a sign-in pop-up ends; for the only page it has, it is
+# the browser losing the page, and that stays a Chrome error.
+CLOSED = "session with given id not found"
 KEYS = {
     "Enter": (13, "Enter", "\r"),
     "Escape": (27, "Escape", ""),
@@ -457,7 +461,8 @@ class Inbox:
     Reading the queue empties it of every event there is, whoever it belongs to, so a session that
     read it for itself threw away what the others were waiting for: a search reads its result pages
     in parallel tabs, and each tab learns what its own page did only from events. Every session here
-    is handed what was addressed to it, and what belongs to no session here is dropped.
+    is handed what was addressed to it - or, for what the browser says about a session rather than
+    through it, such as its target going away, what names it - and the rest is dropped.
     """
 
     def __init__(self, kept=EVENTS_KEPT):
@@ -479,7 +484,8 @@ class Inbox:
         """Every event addressed to this session since it last asked, oldest first."""
         with self.lock:
             for event in drain_events():
-                box = self.boxes.get(event.get("session_id"))
+                about = event.get("session_id") or (event.get("params") or {}).get("sessionId")
+                box = self.boxes.get(about)
                 if box is not None:
                     box.append(event)
             box = self.boxes.get(session_id)
@@ -506,6 +512,10 @@ class Session:
     dialog = None
     dialogs = 0
     title = ""
+    # The windows the page had already opened before the last input, which it did not just open.
+    windows_before = None
+    # Whether Chrome said the target under this session went away: a window that closed itself.
+    detached = False
 
     def __init__(self, config=None, target_id=None, max_elements=MAX_ELEMENTS, profile=None):
         self.config = config or load()
@@ -518,6 +528,9 @@ class Session:
         self.cache = {}
         self.http_status = None
         self.frame_id = None
+        # The pages this session left for a window one of them opened, newest last, to return to
+        # when that window closes.
+        self.openers = []
         viewport = self.config.viewport
         self.cdp_url, self.chrome_source = ensure_chrome(
             viewport=(viewport.width, viewport.height),
@@ -537,11 +550,27 @@ class Session:
             cdp("Target.createTarget", url="about:blank", background=True)["targetId"] if created else target_id
         )
         try:
-            self.session_id = cdp("Target.attachToTarget", targetId=self.target_id, flatten=True)["sessionId"]
-            INBOX.open(self.session_id)
+            self.attach(self.target_id)
+        except Exception:
+            # Nobody else has the id of a target whose setup failed, so this is the only chance to
+            # close it. A target we were only handed stays open: its owner decides when it goes.
+            if created:
+                try:
+                    cdp("Target.closeTarget", targetId=self.target_id)
+                except Exception:
+                    logger.warning("Could not close target %s after its setup failed", self.target_id)
+            raise
+
+    def attach(self, target_id):
+        """Attach to one target and set it up the way every page this session drives is set up."""
+        self.session_id = cdp("Target.attachToTarget", targetId=target_id, flatten=True)["sessionId"]
+        self.detached = False
+        INBOX.open(self.session_id)
+        try:
             # Chrome tells only the sessions that listen to the page domain that a dialog opened,
             # and only they can answer it.
             self.call("Page.enable")
+            viewport = self.config.viewport
             self.call(
                 "Emulation.setDeviceMetricsOverride",
                 width=viewport.width,
@@ -554,15 +583,48 @@ class Session:
             self.speak(self.config.locale)
             self.blocked = self.block_resources() if self.config.block_resources else []
         except Exception:
-            INBOX.close(getattr(self, "session_id", None))
-            # Nobody else has the id of a target whose setup failed, so this is the only chance to
-            # close it. A target we were only handed stays open: its owner decides when it goes.
-            if created:
-                try:
-                    cdp("Target.closeTarget", targetId=self.target_id)
-                except Exception:
-                    logger.warning("Could not close target %s after its setup failed", self.target_id)
+            INBOX.close(self.session_id)
             raise
+
+    def windows(self):
+        """The pages the target this session is on has opened."""
+        return {
+            info["targetId"]
+            for info in cdp("Target.getTargets")["targetInfos"]
+            if info.get("type") == "page" and info.get("openerId") == self.target_id
+        }
+
+    def follow(self, target_id):
+        """Go where a person's attention goes when a page opens a window: into it.
+
+        A sign-in or payment provider answers in a window of its own and tells the page that opened
+        it when it is done; the page it came from reads exactly as before until then. The page this
+        session was on is kept, to return to once the window closes.
+        """
+        logger.info("The page opened a window; following it")
+        self.openers.append((self.target_id, self.session_id, self.frame_id, self.http_status, self.title))
+        self.target_id, self.frame_id, self.http_status, self.dialog = target_id, None, None, None
+        self.invalidate()
+        self.attach(target_id)
+        self.load()
+        self.paint()
+
+    def returned(self):
+        """Whether the window this session followed has closed, which puts it back on its opener."""
+        if not self.openers:
+            return False
+        try:
+            cdp("Target.getTargetInfo", targetId=self.target_id)
+            return False
+        except RuntimeError:
+            logger.info("The window closed; back on the page that opened it")
+        INBOX.close(self.session_id)
+        self.target_id, self.session_id, self.frame_id, self.http_status, self.title = self.openers.pop()
+        self.dialog, self.detached = None, False
+        self.after_input = self.moved_from = self.before_input = None
+        self.invalidate()
+        self.events()
+        return True
 
     def speak(self, locale):
         """Ask this target for one language, so an attached Chrome serves what a launched one does.
@@ -613,7 +675,8 @@ class Session:
         """One CDP call on this target's session, with a budget the caller can widen.
 
         A call the page has to answer is never sent while a dialog holds the page, and one that a
-        dialog starts holding while it waits is given up on: see `answered`. `leave` lets a
+        dialog starts holding, or whose target closes, while it waits is given up on: see
+        `answered`. `leave` lets a
         navigation the caller asked for leave a page that asks whether it may be left.
         """
         if self.dialog is not None and method.startswith(RENDERER):
@@ -631,8 +694,11 @@ class Session:
                     raise ChromeError(f"Chrome stopped answering during {method}: {error}") from error
                 logger.info("Chrome was slow to answer %s; asking once more", method)
             except RuntimeError as error:
-                if any(phrase in str(error).lower() for phrase in MOVED):
+                said = str(error).lower()
+                if any(phrase in said for phrase in MOVED):
                     raise StalePage(f"The page moved during {method}. Observe again.") from error
+                if self.openers and CLOSED in said:
+                    raise StalePage(f"The window closed during {method}. Observe again.") from error
                 raise ChromeError(f"Chrome refused {method}: {error}") from error
         raise ChromeError(f"Chrome stopped answering during {method}")
 
@@ -655,6 +721,11 @@ class Session:
         threading.Thread(target=ask, name=f"jev-ra {method}", daemon=True).start()
         while not wait([answer], timeout=DIALOG_CHECK_S).done:
             self.events()
+            if self.detached:
+                # A call pending on a target that goes away is never answered at all.
+                if self.openers:
+                    raise StalePage(f"The window closed during {method}. Observe again.")
+                raise ChromeError(f"The page this session drives closed during {method}.")
             if self.dialog is None:
                 continue
             if method.startswith("Input."):
@@ -684,6 +755,8 @@ class Session:
                 self.dialog = {**params, "id": self.dialogs}
             elif method == "Page.javascriptDialogClosed":
                 self.dialog = None
+            elif method in {"Inspector.detached", "Target.detachedFromTarget"}:
+                self.detached = True
             elif method == "Network.responseReceived" and params.get("type") == "Document":
                 if self.frame_id and params.get("frameId") != self.frame_id:
                     continue
@@ -874,7 +947,12 @@ class Session:
         action, self.after_input = self.after_input, None
         was, self.moved_from = self.moved_from, None
         before, self.before_input = self.before_input, None
+        windows, self.windows_before = self.windows_before, None
         if action is None:
+            return
+        opened = self.windows() - windows if windows is not None else set()
+        if opened:
+            self.follow(min(opened))
             return
         if action["kind"] == "wait":
             # A wait was chosen because something has not arrived yet: the next batch of a feed,
@@ -922,9 +1000,9 @@ class Session:
         deadline = time.monotonic() + ARRIVAL_BUDGET_S
         with timer.measure("wait"):
             while True:
-                if self.dialog is not None:
-                    # A dialog holds the page, which is not a document on its way: the reading
-                    # after this shows the dialog.
+                if self.dialog is not None or self.detached:
+                    # A dialog holds the page, and a window that closed itself has none: neither
+                    # is a document on its way, and the reading after this says which it was.
                     return
                 options = {"budget_ms": max(0, round((deadline - time.monotonic()) * 1000)), "poll_ms": ARRIVAL_POLL_MS}
                 try:
@@ -1035,7 +1113,10 @@ class Session:
     def observe(self, timer=None):
         """One atomic reading of the page: text, elements, actions, guards and marker."""
         timer = timer or NullTimer()
+        self.returned()
         self.settle(timer)
+        # A window that closes itself does so while its last input is still settling.
+        self.returned()
         with timer.measure("snapshot"):
             settled, self.settled = self.settled, None
             if self.dialog is not None:
@@ -1082,6 +1163,9 @@ class Session:
             raise StalePage("Page changed since this decision. Observe again.")
         self.before_input = (page.get("url", ""), control_set(page.get("elements")))
         kind = action["kind"]
+        # Any input can open a window - a button, a key, even the answer to a confirm - and the
+        # windows already open before it are not what it opened.
+        self.windows_before = self.windows() if kind not in {"wait", "scroll"} else None
         if action.get("dialog"):
             self.reply(action, text)
         elif kind == "press":
@@ -1282,8 +1366,15 @@ class Session:
         return base64.b64decode(shot["data"])
 
     def close(self):
-        """Close the target this session owns."""
+        """Close the target this session owns, and any window it followed out of it."""
         INBOX.close(self.session_id)
+        while self.openers:
+            try:
+                cdp("Target.closeTarget", targetId=self.target_id)
+            except RuntimeError:
+                logger.info("The window this session followed had already closed")
+            self.target_id, self.session_id, *_rest = self.openers.pop()
+            INBOX.close(self.session_id)
         if self.target_id:
             cdp("Target.closeTarget", targetId=self.target_id)
             self.target_id = None

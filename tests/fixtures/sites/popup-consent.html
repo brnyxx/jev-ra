@@ -12,16 +12,16 @@
 <body>
 <h1>Acme ID</h1>
 <p>Signed in as <strong>Ada Lovelace</strong> (ada@example.com)</p>
-<p><strong>Notes</strong> wants to see your name and email address.</p>
+<p><strong>Notes</strong> wants to:</p>
+<ul><li>See your name and profile picture</li><li>See your email address</li></ul>
+<p>Make sure you trust Notes. You can see and remove the access it has in your Acme ID account settings.
+Notes will use this information according to its own terms of service and privacy policy.</p>
 <div class="actions">
   <button type="button" id="deny">Cancel</button>
   <button type="button" id="allow">Allow</button>
 </div>
 <script>
-  const answer = granted => {
-    opener?.postMessage({type: 'acme-id', granted, user: 'Ada Lovelace'}, location.origin);
-    setTimeout(() => window.close(), 150);
-  };
+  const answer = granted => { location.href = '/sites/popup-callback.html?granted=' + (granted ? 1 : 0); };
   document.getElementById('allow').addEventListener('click', () => answer(true));
   document.getElementById('deny').addEventListener('click', () => answer(false));
 </script>
