@@ -1,0 +1,5 @@
+# load_ab.py: navigate the listing and wait for readyState complete, alternating plain and with an early
+# snapshot taken at DOMContentLoaded; 6 pairs, ms from navigate to complete
+plain [1970, 1715, 1694, 1580, 2080, 315] median 1704.5
+glimpse [6478, 2626, 1583, 1513, 707, 525] median 1548.0
+glimpse snapshot ms [456, 382, 429, 420]

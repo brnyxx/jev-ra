@@ -1,0 +1,134 @@
+run 1: ok=True done/goal_achieved 5360 ms decisions=4 steps=3
+  step 1 SCROLL_DOWN Scroll down      snapshot=58 actions=0 decide=0 act=3 wait=292 overhead=2 total=355 prefetched=True
+  step 2 CLICK       신상품순             snapshot=149 actions=0 decide=545 act=125 wait=1076 overhead=12 total=1907 prefetched=True
+  step 3 SCROLL_DOWN Scroll down      snapshot=174 actions=0 decide=0 act=65 wait=548 overhead=1 total=788 prefetched=True
+  timeline (ms from run start, +duration; evaluate calls under 15 ms omitted):
+       204 +  126  evaluate ready
+       330 +  166  evaluate painted
+       496 +  443  evaluate snapshot
+       939 +  835  decide top=[['SCROLL_DOWN', 0.84], ['BLOCKED', 0.1], ['CLICK', 0.05]] goal_achieved=0.05 prev_ok=None elements=53 url=...Cat100000100010014_Small
+       940 + 1188  evaluate ready
+       940 + 1188  load 
+      2128 +   15  evaluate painted
+      2128 +   15  paint 
+      2143 +    0  settle 
+      2143 +   89  evaluate snapshot
+      2143 +   97  observe 
+         0 + 2240  open 
+      2240 +    3  execute 
+      2243 +   89  evaluate settle+snapshot
+      2332 +  204  evaluate quiet
+      2536 +   58  evaluate snapshot
+      2332 +  262  wait_out 
+      2243 +  351  settle 
+      2243 +  351  observe 
+      2332 +  808  decide top=[['CLICK', 1.0], ['BLOCKED', 0.0], ['SCROLL_DOWN', 0.0]] goal_achieved=0.14 prev_ok=0.33 elements=35 url=...Cat100000100010014_Small
+      3140 +  125  execute 
+      3265 +   36  evaluate settle+snapshot
+      3301 +  470  evaluate quiet
+      3771 +   81  evaluate snapshot
+      3863 +  522  decide top=[['DONE', 0.63], ['WAIT', 0.23], ['SCROLL_DOWN', 0.08]] goal_achieved=0.3 prev_ok=0.53 elements=53 url=...%BC%2F%EC%95%B0%ED%94%8C
+      3864 +  569  evaluate quiet
+      4433 +   61  evaluate snapshot
+      3301 + 1193  wait_out 
+      3265 + 1229  settle 
+      3265 + 1236  observe 
+      4502 +   65  execute 
+      4567 +  142  evaluate settle+snapshot
+      4709 +  203  evaluate quiet
+      4912 +  106  evaluate snapshot
+      5019 +  203  evaluate quiet
+      5222 +   64  evaluate snapshot
+      4709 +  577  wait_out 
+      4567 +  719  settle 
+      4567 +  722  observe 
+      5018 +  307  decide top=[['DONE', 0.88], ['CLICK', 0.06], ['WAIT', 0.04]] goal_achieved=0.73 prev_ok=0.84 elements=35 url=...%BC%2F%EC%95%B0%ED%94%8C
+run 2: ok=True done/goal_achieved 4576 ms decisions=4 steps=3
+  step 1 SCROLL_DOWN Scroll down      snapshot=47 actions=0 decide=0 act=3 wait=297 overhead=1 total=348 prefetched=True
+  step 2 CLICK       신상품순             snapshot=188 actions=0 decide=102 act=130 wait=670 overhead=0 total=1090 prefetched=True
+  step 3 SCROLL_DOWN Scroll down      snapshot=219 actions=0 decide=401 act=18 wait=745 overhead=1 total=1384 prefetched=True
+  timeline (ms from run start, +duration; evaluate calls under 15 ms omitted):
+       138 +   86  evaluate ready
+       224 +  101  evaluate painted
+       325 +  440  evaluate snapshot
+       765 +  312  decide top=[['SCROLL_DOWN', 0.85], ['BLOCKED', 0.09], ['CLICK', 0.05]] goal_achieved=0.05 prev_ok=None elements=53 url=...Cat100000100010014_Small
+       766 +  786  evaluate ready
+       766 +  786  load 
+      1552 +   18  evaluate painted
+      1552 +   18  paint 
+      1570 +    0  settle 
+      1570 +   71  evaluate snapshot
+      1570 +   77  observe 
+         0 + 1647  open 
+      1647 +    4  execute 
+      1651 +   85  evaluate settle+snapshot
+      1736 +  212  evaluate quiet
+      1948 +   46  evaluate snapshot
+      1736 +  258  wait_out 
+      1651 +  343  settle 
+      1651 +  344  observe 
+      1736 +  361  decide top=[['CLICK', 1.0], ['SCROLL_DOWN', 0.0], ['WAIT', 0.0]] goal_achieved=0.12 prev_ok=0.31 elements=35 url=...Cat100000100010014_Small
+      2097 +  129  execute 
+      2226 +   38  evaluate settle+snapshot
+      2264 +  633  evaluate quiet
+      2897 +   93  evaluate snapshot
+      2264 +  726  wait_out 
+      2226 +  764  settle 
+      2990 +   91  evaluate snapshot
+      2226 +  859  observe 
+      2990 +  496  decide top=[['DONE', 0.67], ['WAIT', 0.19], ['SCROLL_DOWN', 0.07]] goal_achieved=0.31 prev_ok=0.57 elements=53 url=...%BC%2F%EC%95%B0%ED%94%8C
+      3486 +   18  execute 
+      3504 +  346  evaluate settle+snapshot
+      3850 +  275  evaluate quiet
+      3850 +  292  decide top=[['DONE', 0.9], ['WAIT', 0.04], ['CLICK', 0.04]] goal_achieved=0.71 prev_ok=0.85 elements=35 url=...%BC%2F%EC%95%B0%ED%94%8C
+      4125 +  128  evaluate snapshot
+      4254 +  124  evaluate quiet
+      4378 +   86  evaluate snapshot
+      3850 +  614  wait_out 
+      3504 +  960  settle 
+      3504 +  965  observe 
+      4253 +  322  decide top=[['DONE', 0.92], ['WAIT', 0.03], ['CLICK', 0.03]] goal_achieved=0.78 prev_ok=0.87 elements=35 url=...%BC%2F%EC%95%B0%ED%94%8C
+run 3: ok=True done/goal_achieved 4698 ms decisions=4 steps=3
+  step 1 SCROLL_DOWN Scroll down      snapshot=50 actions=0 decide=123 act=14 wait=374 overhead=1 total=562 prefetched=True
+  step 2 CLICK       신상품순             snapshot=159 actions=0 decide=103 act=105 wait=626 overhead=0 total=993 prefetched=True
+  step 3 SCROLL_DOWN Scroll down      snapshot=110 actions=0 decide=238 act=43 wait=569 overhead=1 total=961 prefetched=True
+  timeline (ms from run start, +duration; evaluate calls under 15 ms omitted):
+       152 +   92  evaluate ready
+       244 +  122  evaluate painted
+       366 +  450  evaluate snapshot
+       817 + 1183  evaluate ready
+       817 + 1183  load 
+      2000 +   33  evaluate painted
+      2000 +   33  paint 
+      2033 +    0  settle 
+      2033 +   83  evaluate snapshot
+      2033 +   90  observe 
+         0 + 2123  open 
+       817 + 1429  decide top=[['SCROLL_DOWN', 0.87], ['BLOCKED', 0.08], ['CLICK', 0.05]] goal_achieved=0.05 prev_ok=None elements=53 url=...Cat100000100010014_Small
+      2246 +   15  execute 
+      2261 +  165  evaluate settle+snapshot
+      2427 +  208  evaluate quiet
+      2635 +   50  evaluate snapshot
+      2426 +  259  wait_out 
+      2261 +  424  settle 
+      2261 +  425  observe 
+      2426 +  363  decide top=[['CLICK', 1.0], ['BLOCKED', 0.0], ['SCROLL_UP', 0.0]] goal_achieved=0.13 prev_ok=0.25 elements=35 url=...Cat100000100010014_Small
+      2789 +  105  execute 
+      2894 +   37  evaluate settle+snapshot
+      2931 +  589  evaluate quiet
+      3520 +  110  evaluate snapshot
+      2931 +  700  wait_out 
+      2894 +  737  settle 
+      3631 +   43  evaluate snapshot
+      2894 +  785  observe 
+      3630 +  287  decide top=[['DONE', 0.68], ['WAIT', 0.18], ['SCROLL_DOWN', 0.07]] goal_achieved=0.31 prev_ok=0.55 elements=53 url=...%BC%2F%EC%95%B0%ED%94%8C
+      3917 +   44  execute 
+      3961 +  136  evaluate settle+snapshot
+      4097 +  224  evaluate quiet
+      4321 +   54  evaluate snapshot
+      4375 +  209  evaluate quiet
+      4584 +   51  evaluate snapshot
+      4097 +  538  wait_out 
+      3961 +  674  settle 
+      3961 +  679  observe 
+      4375 +  322  decide top=[['DONE', 0.89], ['CLICK', 0.05], ['WAIT', 0.04]] goal_achieved=0.74 prev_ok=0.85 elements=35 url=...%BC%2F%EC%95%B0%ED%94%8C

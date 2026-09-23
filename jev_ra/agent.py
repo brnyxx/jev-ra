@@ -297,7 +297,9 @@ class Agent:
         binder = ValueBinder(values, self.config)
         run = _Run(self, goal, binder, started)
         self._run_id = run.run_id
-        page = self.read(self.session.open, url) if url else self.read(self.session.observe)
+        guesses, guessed = [], None
+        with self.ahead(run, guesses, run.room(limit, budgets)):
+            page = self.read(self.session.open, url) if url else self.read(self.session.observe)
         if page is None:
             return run.escalate("stale", BLANK_PAGE, detail={"error": "The page never settled to be read."})
         wall = run.walled(page)
@@ -306,7 +308,6 @@ class Agent:
         exclude, stale_retries, looks, reasked = set(), 0, 0, False
         best, waited, reasked_value = 0.0, False, False
         opened = None
-        guesses, guessed = [], None
         while True:
             over = run.over_budget(limit, budgets, len(run.steps))
             if over:

@@ -146,6 +146,14 @@ READY_JS = """(options => new Promise(resolve => {
   addEventListener('load', done, {once: true});
   setTimeout(done, options.budget_ms);
 }))"""
+# A document is parsed long before it has loaded: the load event waits for every image on the page,
+# and the words and controls a decision reads are there before most of them arrive.
+PARSED_JS = """(options => new Promise(resolve => {
+  const done = () => resolve(document.readyState);
+  if (document.readyState !== 'loading') return done();
+  document.addEventListener('DOMContentLoaded', done, {once: true});
+  setTimeout(done, options.budget_ms);
+}))"""
 # A frame that just committed its first paint can swallow the first click into it: the resolver's
 # hit test passes, the input event lands on the parent, and the field never takes focus. Give the
 # focus a moment to arrive on its own, then ask for it directly. Clicking again is not an option:
@@ -335,7 +343,7 @@ class Session:
     # Handed each reading a wait takes that could turn out to be the one observed, for a caller
     # that can start work before the page has proven it will stay that way. The observation that
     # follows is still the settled reading, taken exactly as it always was. A caller sets it for
-    # the duration of one observation; a session nobody listens to never calls anything.
+    # the duration of one open or observation; a session nobody listens to never calls anything.
     preview = None
 
     def __init__(self, config=None, target_id=None, max_elements=MAX_ELEMENTS, profile=None):
@@ -518,7 +526,9 @@ class Session:
             # earlier document may stand in for it.
             logger.info("The browser could not open %s: %s", url, moved["errorText"])
             self.http_status = None
-        self.load()
+        started = time.monotonic()
+        self.glimpse()
+        self.load(LOAD_TIMEOUT_S - (time.monotonic() - started))
         self.paint()
         # A same-document navigation is answered without a loader: nothing reloaded, so the
         # document was complete before the call and stays complete, and readyState says nothing
@@ -527,6 +537,26 @@ class Session:
         if was and not moved.get("loaderId"):
             self.wait_out({"kind": "navigate"}, was, None)
         return self.observe()
+
+    def glimpse(self, budget=LOAD_TIMEOUT_S):
+        """Hand a reading of a document that has parsed but not yet loaded to whoever can use one.
+
+        The load is still waited for, and the page is still observed once it is done: this reading
+        is only a head start for a caller that confirms, character for character, that the loaded
+        page reads the same. A document that is already complete has no load left to overlap.
+        """
+        if self.preview is None:
+            return
+        expression = f"{PARSED_JS}({json.dumps({'budget_ms': round(budget * 1000)})})"
+        try:
+            if self.evaluate(expression, await_promise=True) != "interactive" or not self.evaluate(PAINTED_JS):
+                return
+            reading = self.evaluate(snapshot_expression(self.max_elements))
+        except StalePage:
+            logger.debug("The document was replaced while it was being glimpsed")
+            return
+        if reading and not reading.get("leaving"):
+            self.preview(reading)
 
     def reload(self, timer=None):
         """Ask for the current document again, wait for it, and observe."""
