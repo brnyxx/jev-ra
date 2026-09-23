@@ -109,7 +109,7 @@ def about(browser="Chrome/153.0.8010.53", agent="Mozilla/5.0 (Macintosh) Chrome/
 
 
 def test_a_windowed_chrome_on_this_machine_can_be_seen():
-    assert Presenter(Window(), about=about()).hidden() == ""
+    assert Presenter(Window(source="BU_CDP_URL"), about=about()).hidden() == ""
 
 
 def test_a_headless_chrome_says_so_in_its_user_agent():
@@ -129,7 +129,7 @@ def test_the_answer_is_asked_for_once():
         asked.append(url)
         return {"Browser": "Chrome/153", "User-Agent": "Chrome/153"}
 
-    presenter = Presenter(Window(), about=counting)
+    presenter = Presenter(Window(source="BU_CDP_URL"), about=counting)
     assert presenter.hidden() == presenter.hidden() == ""
     assert len(asked) == 1
 
@@ -171,3 +171,9 @@ def test_a_session_knows_whether_its_own_browser_can_be_seen(session):
     said = chrome.about(session.cdp_url)
     headless = "headless" in f"{said.get('Browser', '')} {said.get('User-Agent', '')}".lower()
     assert ("headless" in session.presenter.hidden()) is headless
+
+
+def test_a_chrome_jev_ra_launched_where_there_is_a_screen_can_be_seen():
+    assert chrome.headless("http://127.0.0.1:9222", "launched", env={}, platform="darwin", read=about()) is False
+    shown = {"DISPLAY": ":0"}
+    assert chrome.headless("http://127.0.0.1:9222", "launched", env=shown, platform="linux", read=about()) is False
