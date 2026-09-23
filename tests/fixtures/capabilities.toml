@@ -54,7 +54,6 @@ goal = "Search the communities for mechanical keyboards."
 values = { query = "mechanical keyboards" }
 plan = [["TYPE_TEXT", "Search Communities", "query"], ["PRESS_ENTER"]]
 check = "document.getElementById('heading').textContent === 'Search results for \"mechanical keyboards\"'"
-gap = "Enter is offered only for a focused <input> of the document, not one inside a shadow root"
 
 [[capability]]
 name = "rich_text_editor"
@@ -73,7 +72,6 @@ goal = "Send the message supplied to #deploys."
 values = { message = "Deploy 1841 is live." }
 plan = [["TYPE_TEXT", "Message #deploys", "message"], ["PRESS_ENTER"]]
 check = "document.querySelector('#log .message:last-child')?.textContent === 'you Deploy 1841 is live.'"
-gap = "Enter is offered only for a focused <input>, never for a contenteditable composer"
 
 [[capability]]
 name = "aria_listbox"

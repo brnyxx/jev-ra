@@ -317,10 +317,17 @@
   // A search palette that only answers to the Enter key has no control to click once its input
   // holds the query, so the key is offered as an operation. It lands wherever focus is at the
   // moment it is pressed, which is not necessarily where it was when this was observed: name the
-  // field, so the decision says which one it meant and the act-time guard can check it.
-  const active=document.activeElement;
-  const typed=active?.tagName==='INPUT' && active.value?.trim() &&
-    !['password','file','hidden','checkbox','radio','submit','button','reset','image','range','color'].includes(active.type);
+  // field, so the decision says which one it meant and the act-time guard can check it. Focus is
+  // followed to where the key really lands - a search box inside a web component, a field in a
+  // same-origin frame - and a chat composer, a textarea or a contenteditable box, is a field too:
+  // Enter is how a message is sent where there is no send button at all.
+  let active=document.activeElement;
+  for (let inner; (inner=active?.shadowRoot?.activeElement ??
+      (active?.tagName==='IFRAME' ? contentOf(active)?.activeElement : null)) && inner!==active;) active=inner;
+  const held=active?.isContentEditable ? active.innerText : active?.value;
+  const typed=!!held?.trim() && !active.readOnly && (active.isContentEditable || active.tagName==='TEXTAREA' ||
+    (active.tagName==='INPUT' &&
+      !['password','file','hidden','checkbox','radio','submit','button','reset','image','range','color'].includes(active.type)));
   const submits=typed ? identity(active) : null;
   const page_key=cache.pageKey(), guards={};
   for (const element of elements) if (!(element.node in guards))

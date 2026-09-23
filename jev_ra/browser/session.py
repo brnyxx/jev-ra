@@ -433,11 +433,17 @@ FORMATS = {
 }
 
 # Whether the observed field itself holds focus, wherever it lives: a document, a shadow root or
-# a same-origin frame. Typing is only safe once this is true.
-FOCUSED_JS = """(node => {
+# a same-origin frame. Typing is only safe once this is true. A frame keeps its own focused
+# element after the page around it has moved focus elsewhere, so what counts is where a key
+# would land now, followed from the top.
+FOCUSED_JS = (
+    """(node => {
   const e=window.__jevRa?.nodes.get(node);
-  return !!e && (e.ownerDocument.activeElement===e || e.getRootNode()?.activeElement===e);
+  return !!e && ("""
+    + ACTIVE_JS
+    + """)()===e;
 })"""
+)
 # Whether pressing the observed field moved focus onto another text field, which is where a
 # person's keystrokes now go. A flight search's origin opens a dialog over the form with an input
 # of its own and focuses it; forcing focus back onto the covered field types the value where
