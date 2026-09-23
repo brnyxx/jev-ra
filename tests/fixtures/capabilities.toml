@@ -45,7 +45,6 @@ plan = [
   ["CLICK", "Request access"],
 ]
 check = "document.getElementById('status').textContent === 'Requested access for ada@example.com.'"
-gap = "a button labelled through a <slot> is named 'button': slotted text is not read"
 
 [[capability]]
 name = "shadow_dom_enter"
