@@ -97,6 +97,19 @@ Rules that keep it fast and safe:
 
 Report escalations to the user in one sentence with what you tried; do not loop more than twice on the same reason.
 
+## Running the corpus or the live bench
+
+`jev-ra corpus run`, `jev-ra bench --live`, the scripts under `scripts/` that open live sites, and
+anything that calls `corpus.run_task`, `bench.measure_page` or `bench.measure_search` share one
+ledger across every process on the machine (`$XDG_STATE_HOME/jev-ra/traffic/<date>.jsonl`): at most
+40 attempts per host a day (`JEV_RA_HOST_DAILY_BUDGET`), at least 10 s apart (`JEV_RA_HOST_GAP_S`),
+and a host that answered 429 or 403, kept serving an error page, walled the run, put up a check or
+blocked it rests for the rest of the day (`JEV_RA_HOST_REST_S`). Run `jev-ra traffic` before a pass.
+An attempt the ledger does not send is `skipped` (`host_budget`, `host_resting`): neither a pass nor
+a failure, and the verdict is `INCOMPLETE`. Do not raise the budget or shorten the rest to get a
+clean pass, and do not drive a live site from a loop of your own around `Agent.run`; go through
+`corpus.run_task` so the ledger sees it. `jev-ra run` and the MCP tools are never limited.
+
 ## Example session
 
 ```

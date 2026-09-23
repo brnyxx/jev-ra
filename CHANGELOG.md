@@ -16,6 +16,9 @@
   like a run that needed a person, named with its reason and hosts in one line, and the corpus and
   bench verdict is `INCOMPLETE` instead of PASS or FAIL.
 - `jev-ra traffic` prints today's attempts per host, the hosts resting and why, and the budget left.
+- `scripts/soak.py`, `scripts/check_site.py`, `scripts/record_bench.py` and `scripts/bu_corpus.py`
+  claim their live attempts from the same ledger; a soak stops at its first attempt the ledger
+  will not send and exits 1.
 
 ### Changed
 - `jev-ra bench` makes no speed claim for a task measured on fewer runs than `--runs` asked for,
