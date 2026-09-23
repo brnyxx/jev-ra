@@ -13,8 +13,8 @@
 - The recorded Flights spec reads Zurich the way Google spells it (Zürich).
 
 ### Site
-- The landing page opens on a race: the same job for both tools, played at 4x from the measured
-  medians, in four languages. Switching language keeps the race, and the scripts carry a version so a
+- The landing page opens on a race: the same job for both tools, played at 4x from the times
+  measured on 2026-09-18 (jev-ra's 5-run medians, browser-use's recorded runs), in four languages. Switching language keeps the race, and the scripts carry a version so a
   cached copy is not reused.
 - The recorded demo breaks its lines at the width they render, so Japanese, Chinese and Korean stay
   inside the terminal; its Google page, cursor labels and step log follow the page's language; the
@@ -114,7 +114,8 @@ release and the product bar is in `docs/DEFINITION_OF_DONE.md`.
 - The MCP server runs one tool at a time on the shared session, caps tool arguments at the edge,
   closes its browser on SIGTERM and on exit, and exits instead of hanging when terminated.
 - Only web schemes are opened; `file:` needs an opt-in.
-- The sdist carries the package, not the brand assets (3.2 MB to 208 KB).
+- The sdist carries the package, not the brand assets (3.2 MB to 248 KB, the 0.1.3 and 0.2.0 sdists
+  on PyPI).
 
 ### Fixed
 - A dead session is dropped so the next open starts over; a remembered CDP url is probed before it
