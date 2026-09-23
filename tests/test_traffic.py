@@ -374,6 +374,31 @@ def bench_row(ok=True, elapsed_ms=1_000, status="done", reason=""):
     }
 
 
+def test_a_bench_task_short_of_its_runs_makes_no_speed_claim():
+    rows = [bench_row(elapsed_ms=1_000), bench_row(elapsed_ms=3_000), bench_row(None, 0, "skipped", "host_resting")]
+    (row,) = bench.summarise(rows, requested=3)
+    assert (row["runs"], row["requested"], row["skipped"], row["short"]) == (2, 3, 1, True)
+    assert row["success_rate"] == 1.0
+    assert (row["median_ms"], row["p90_ms"], row["median_decisions"], row["median_cost"]) == (None, None, None, None)
+    (ratio,) = bench.ratio_rows([row], baseline={"flights": 66_414})
+    assert (ratio["ratio"], ratio["passed"]) == (None, False)
+    assert "2 of 3 runs measured, no speed claim" in cli.summary_line(row)
+    assert "1 skipped" in cli.summary_line(row)
+    assert "2 of 3 runs measured" in cli.ratio_line(ratio) and "FAIL" in cli.ratio_line(ratio)
+    (full,) = bench.summarise(rows[:2], requested=2)
+    assert (full["short"], full["median_ms"]) == (False, 2_000)
+    (unasked,) = bench.summarise(rows)
+    assert (unasked["short"], unasked["median_ms"]) == (False, 2_000)
+
+
+def test_a_bench_task_a_person_helped_is_short_of_its_runs_too():
+    helped = [bench_row(elapsed_ms=1_000), {**bench_row(None, 60_000), "human_wait_ms": 5_000}]
+    (row,) = bench.summarise(helped, requested=2)
+    assert (row["runs"], row["human"], row["short"], row["median_ms"]) == (1, 1, True, None)
+    (ratio,) = bench.ratio_rows([row], baseline={"flights": 66_414})
+    assert ratio["passed"] is False
+
+
 def test_the_live_bench_command_says_what_was_skipped_and_is_incomplete(monkeypatch, capsys):
     live = [bench_row(), bench_row(None, 0, "skipped", "host_resting")]
     offline = [{**bench_row(), "task": "form_fill", "url": "http://127.0.0.1/checkout.html"}]
@@ -383,7 +408,8 @@ def test_the_live_bench_command_says_what_was_skipped_and_is_incomplete(monkeypa
     monkeypatch.setattr(cli, "load", lambda: KEYED)
     assert cli.main(["bench", "--live", "--runs", "2"]) == 1
     out = capsys.readouterr().out
-    assert "flights: 1/1 verified, 1 skipped, median 1000 ms" in out
+    assert "form_fill: 1/1 verified; 1 of 2 runs measured, no speed claim" in out
+    assert "flights: 1/1 verified, 1 skipped; 1 of 2 runs measured, no speed claim" in out
     assert "1 attempt(s) skipped, never sent and counted as neither a pass nor a failure: host_resting x1" in out
     assert "INCOMPLETE: 1 attempt(s) were skipped" in out
     assert cli.main(["bench", "--live", "--runs", "2", "--json"]) == 1

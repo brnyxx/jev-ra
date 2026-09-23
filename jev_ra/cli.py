@@ -661,6 +661,8 @@ def summary_line(row):
         verified += f", {row['human']} set aside for a person"
     if row.get("skipped"):
         verified += f", {row['skipped']} skipped"
+    if row.get("short"):
+        return f"  {row['task']}: {verified}; {row['runs']} of {row['requested']} runs measured, no speed claim"
     if not row["median_ms"]:
         return f"  {row['task']}: {verified}; {', '.join(row['failures']) or 'no successful run'}"
     return (
@@ -673,7 +675,10 @@ def ratio_line(row):
     """The human rendering of one ratio row."""
     reference = f"{row['flash_mode_ms']} ms" if row["flash_mode_ms"] else "no baseline row"
     ratio = f"{row['ratio']}x" if row["ratio"] else "n/a"
-    ours = f"{row['jev_ra_ms']} ms" if row["jev_ra_ms"] else "never verified"
+    if row.get("short"):
+        ours = f"{row['runs']} of {row['requested']} runs measured"
+    else:
+        ours = f"{row['jev_ra_ms']} ms" if row["jev_ra_ms"] else "never verified"
     rate = f"{row['success_rate']:.0%} of {row['runs']} runs"
     return f"  {row['task']}: {ours} / {reference} = {ratio}, {rate}  {'PASS' if row['passed'] else 'FAIL'}"
 
@@ -731,7 +736,7 @@ def cmd_bench(args):
     config = load()
     runs = args.runs
     offline_runs = run_offline(config, runs=runs)
-    offline = summarise(offline_runs)
+    offline = summarise(offline_runs, runs)
     payload = {
         "runs": runs,
         "route": {"provider": config.provider, "endpoint": config.endpoint, "model": config.model},
@@ -751,7 +756,7 @@ def cmd_bench(args):
         emit(args, payload, lines)
         return 0
     live_runs = run_live(config, runs=runs)
-    live = summarise(live_runs)
+    live = summarise(live_runs, runs)
     rows = ratio_rows(live)
     passed_over = skips(live_runs)
     payload["live"] = live

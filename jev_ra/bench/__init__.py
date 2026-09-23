@@ -198,7 +198,8 @@ def flash_baseline(directory=None):
 def ratio_rows(summary, baseline=None):
     """One row per task: our median, the flash_mode ms, the ratio and whether it clears the bar.
 
-    A task with no recorded browser-use row has no ratio; it still has to verify on every run.
+    A task with no recorded browser-use row has no ratio; it still has to verify on every run. A
+    task measured on fewer runs than were asked for has no speed to claim and does not clear it.
     """
     baseline = flash_baseline() if baseline is None else baseline
     rows = []
@@ -215,9 +216,11 @@ def ratio_rows(summary, baseline=None):
                 "ratio": ratio,
                 "success_rate": item.get("success_rate"),
                 "runs": item.get("runs"),
+                "requested": item.get("requested"),
+                "short": bool(item.get("short")),
                 "decisions": item.get("median_decisions"),
                 "cost": item.get("median_cost"),
-                "passed": verified_every_run and (ratio is None or ratio >= ACCEPTANCE_RATIO),
+                "passed": not item.get("short") and verified_every_run and (ratio is None or ratio >= ACCEPTANCE_RATIO),
             }
         )
     return rows
@@ -339,12 +342,13 @@ def decision_latency(runs):
     }
 
 
-def summarise(rows):
+def summarise(rows, requested=None):
     """Per task: medians over the runs that actually worked, plus the success rate over all of them.
 
     A run that needed a person is set aside and counted on its own: its time is a person's, and
     whether it got there says nothing about the product either way. So is an attempt the ledger never
-    sent to its host.
+    sent to its host. When fewer runs count than the `requested` number, the task makes no speed
+    claim at all: its medians are left out rather than taken over the runs that happened to be made.
     """
     summary = {}
     for row in rows:
@@ -353,20 +357,24 @@ def summarise(rows):
     for task, runs in summary.items():
         counted = [run for run in runs if scored(run)]
         good = [run for run in counted if run.get("ok")]
-        times = [run["elapsed_ms"] for run in good]
+        short = requested is not None and len(counted) < requested
+        timed = [] if short else good
+        times = [run["elapsed_ms"] for run in timed]
         table.append(
             {
                 "task": task,
                 "runs": len(counted),
+                "requested": requested,
+                "short": short,
                 "successes": len(good),
                 "human": sum(1 for run in runs if needed_person(run)),
                 "skipped": sum(1 for run in runs if traffic.skipped(run)),
                 "success_rate": round(len(good) / len(counted), 3) if counted else 0.0,
                 "median_ms": median(times),
                 "p90_ms": percentile(times),
-                "median_steps": median([run["steps"] for run in good]),
-                "median_decisions": median([run["decisions"] for run in good]),
-                "median_cost": round(statistics.median([run["cost"] for run in good]), 6) if good else None,
+                "median_steps": median([run["steps"] for run in timed]),
+                "median_decisions": median([run["decisions"] for run in timed]),
+                "median_cost": round(statistics.median([run["cost"] for run in timed]), 6) if timed else None,
                 "text_calls": sum(run.get("text_calls", 0) for run in runs),
                 "decision_ms": decision_latency(runs),
                 "failures": sorted({run.get("reason") or run.get("status") for run in counted if not run.get("ok")}),

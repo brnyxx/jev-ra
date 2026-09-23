@@ -232,7 +232,7 @@ def test_ratio_line_renders_missing_values_as_text():
 
 def test_the_bench_command_prints_the_offline_profile(monkeypatch, capsys):
     monkeypatch.setattr(bench, "run_offline", lambda *_a, **_k: offline_rows())
-    monkeypatch.setattr(bench, "summarise", lambda _runs: summary_rows())
+    monkeypatch.setattr(bench, "summarise", lambda _runs, _requested=None: summary_rows())
     monkeypatch.setattr(bench, "profile_rows", lambda _runs: [{"category": "wait", "ms": 12, "share": 0.5}])
     monkeypatch.setattr(bench, "profile_table", lambda _runs: "| category | ms | share |")
     assert cli.main(["bench", "--profile", "--runs", "1"]) == 0
@@ -241,7 +241,7 @@ def test_the_bench_command_prints_the_offline_profile(monkeypatch, capsys):
 
 def test_the_bench_command_can_re_run_the_recorded_browser_use_script(monkeypatch, capsys):
     monkeypatch.setattr(bench, "run_offline", lambda *_a, **_k: offline_rows())
-    monkeypatch.setattr(bench, "summarise", lambda _runs: summary_rows())
+    monkeypatch.setattr(bench, "summarise", lambda _runs, _requested=None: summary_rows())
     monkeypatch.setattr(bench, "run_baseline", lambda _runs: [{"returncode": 0, "stdout": "", "stderr": ""}])
     assert cli.main(["bench", "--baseline", "--runs", "1"]) == 0
     assert "browser-use baseline re-run 1 time(s)" in capsys.readouterr().out
@@ -250,7 +250,7 @@ def test_the_bench_command_can_re_run_the_recorded_browser_use_script(monkeypatc
 def test_the_live_bench_command_prints_the_ratio_table(monkeypatch, capsys):
     monkeypatch.setattr(bench, "run_offline", lambda *_a, **_k: offline_rows())
     monkeypatch.setattr(bench, "run_live", lambda *_a, **_k: offline_rows())
-    monkeypatch.setattr(bench, "summarise", lambda _runs: summary_rows())
+    monkeypatch.setattr(bench, "summarise", lambda _runs, _requested=None: summary_rows())
     monkeypatch.setattr(bench, "ratio_rows", lambda _live: ratio_table())
     monkeypatch.setattr(bench, "profile_rows", lambda _runs: [{"category": "wait", "ms": 12, "share": 0.5}])
     monkeypatch.setattr(bench, "profile_table", lambda _runs: "| category | ms | share |")
