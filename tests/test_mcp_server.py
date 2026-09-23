@@ -75,6 +75,26 @@ def test_the_tool_list_matches_the_design_table():
     assert all(tool.description for tool in tools)
 
 
+def test_a_description_reaches_the_client_as_inspect_cleans_it_on_every_python():
+    # Python 3.13 strips a docstring's indentation when it compiles it, 3.12 does not, and the SDK
+    # sends __doc__ as it is: a description of two paragraphs reached clients on 3.12 indented.
+    server = mcp_server.MCPServer("t")
+
+    def indented():
+        return {}
+
+    indented.__doc__ = "First line.\n\n        Second paragraph,\n        two lines.\n        "
+    mcp_server.registrar(server)()(indented)
+    (tool,) = asyncio.run(tools_of(server))
+    assert tool.description == "First line.\n\nSecond paragraph,\ntwo lines."
+
+
+def test_no_served_description_carries_source_indentation():
+    server, _browser, _session = server_with()
+    for tool in asyncio.run(tools_of(server)):
+        assert not any(line.startswith(" ") for line in tool.description.splitlines()), tool.name
+
+
 HINTS = ("read_only_hint", "destructive_hint", "idempotent_hint", "open_world_hint")
 READ_ONLY = {"browser_observe", "browser_extract", "browser_screenshot", "browser_wait"}
 CLOSED_WORLD = {"browser_observe", "browser_extract", "browser_screenshot", "browser_wait", "browser_close"}

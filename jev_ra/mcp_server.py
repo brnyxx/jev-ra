@@ -204,14 +204,31 @@ def step_result(call, started, session, page_key=None):
     return summary(page, started, session)
 
 
+def registrar(mcp):
+    """`mcp.tool`, with each description the docstring as `inspect.getdoc` cleans it.
+
+    Python 3.13 strips a docstring's indentation when it compiles it and 3.12 does not, and the
+    SDK sends `__doc__` as it is, so a docstring longer than a line reached clients on 3.12 indented.
+    """
+
+    def tool(**options):
+        def register(fn):
+            return mcp.tool(description=inspect.getdoc(fn), **options)(fn)
+
+        return register
+
+    return tool
+
+
 def build_server(browser=None):
     """Build the MCP server and register every browser tool on it."""
     browser = browser or Browser()
     mcp = MCPServer("jev-ra", version=__version__, instructions=INSTRUCTIONS)
+    tool = registrar(mcp)
 
     guarded = browser.guarded
 
-    @mcp.tool(annotations=hints(idempotent=True))
+    @tool(annotations=hints(idempotent=True))
     def browser_open(url: str, profile: str | None = None) -> dict:
         """Open a URL in the shared browser session. A named profile keeps its own cookies."""
         started = time.perf_counter()
@@ -222,7 +239,7 @@ def build_server(browser=None):
 
         return guarded(opened)
 
-    @mcp.tool(annotations=hints())
+    @tool(annotations=hints())
     def browser_run(
         goal: str | None = None,
         values: dict[str, str] | None = None,
@@ -247,7 +264,7 @@ def build_server(browser=None):
 
         return run_result(guarded(ran), started)
 
-    @mcp.tool(annotations=hints())
+    @tool(annotations=hints())
     def browser_act(instruction: str, values: dict[str, str] | None = None) -> dict:
         """Take one decided step towards an instruction on the current page."""
         started = time.perf_counter()
@@ -255,7 +272,7 @@ def build_server(browser=None):
         agent = browser.agent()
         return run_result(guarded(lambda: agent.act(instruction, values=values)), started)
 
-    @mcp.tool(annotations=hints(idempotent=True))
+    @tool(annotations=hints(idempotent=True))
     def browser_search(query: str, goal: str | None = None, max_pages: int = MAX_PAGES) -> dict:
         """Search the web, read the best results in parallel tabs, and rank them against the goal."""
         started = time.perf_counter()
@@ -274,7 +291,7 @@ def build_server(browser=None):
         payload["elapsed_ms"] = round((time.perf_counter() - started) * 1000)
         return payload
 
-    @mcp.tool(annotations=hints(read_only=True, idempotent=True, open_world=False))
+    @tool(annotations=hints(read_only=True, idempotent=True, open_world=False))
     def browser_observe(max_elements: int | None = None) -> dict:
         """List the observed controls and the visible text of the current page."""
         started = time.perf_counter()
@@ -292,7 +309,7 @@ def build_server(browser=None):
             "elapsed_ms": round((time.perf_counter() - started) * 1000),
         }
 
-    @mcp.tool(annotations=hints(read_only=True, idempotent=True, open_world=False))
+    @tool(annotations=hints(read_only=True, idempotent=True, open_world=False))
     def browser_extract(mode: str = "text") -> dict:
         """Pull structured page data from the DOM: text, elements, links, tables or main."""
         started = time.perf_counter()
@@ -303,28 +320,28 @@ def build_server(browser=None):
         payload["elapsed_ms"] = round((time.perf_counter() - started) * 1000)
         return payload
 
-    @mcp.tool(annotations=hints())
+    @tool(annotations=hints())
     def browser_click(ref: str, page_key: list | None = None) -> dict:
         """Click one observed element by its ref. Pass the page_key from browser_observe to refuse a stale ref."""
         started = time.perf_counter()
         session = browser.require()
         return step_result(lambda: browser.stepper().click(ref, page_key=page_key), started, session, page_key)
 
-    @mcp.tool(annotations=hints())
+    @tool(annotations=hints())
     def browser_type(ref: str, text: str, page_key: list | None = None) -> dict:
         """Type text into one observed field by its ref, refusing a page that moved since that observation."""
         started = time.perf_counter()
         session = browser.require()
         return step_result(lambda: browser.stepper().type(ref, text, page_key=page_key), started, session, page_key)
 
-    @mcp.tool(annotations=hints(idempotent=True))
+    @tool(annotations=hints(idempotent=True))
     def browser_select(ref: str, option: str, page_key: list | None = None) -> dict:
         """Select an observed dropdown option by its value or label, refusing a stale ref."""
         started = time.perf_counter()
         session = browser.require()
         return step_result(lambda: browser.stepper().select(ref, option, page_key=page_key), started, session, page_key)
 
-    @mcp.tool(annotations=hints())
+    @tool(annotations=hints())
     def browser_scroll(direction: str = "down") -> dict:
         """Scroll the page one viewport step up or down."""
         started = time.perf_counter()
@@ -333,7 +350,7 @@ def build_server(browser=None):
             raise ToolError("direction must be up or down")
         return summary(guarded(lambda: browser.stepper().scroll(direction)), started, session)
 
-    @mcp.tool(annotations=hints())
+    @tool(annotations=hints())
     def browser_press(key: str) -> dict:
         """Press Enter, Escape or Tab."""
         started = time.perf_counter()
@@ -344,20 +361,20 @@ def build_server(browser=None):
             raise ToolError(str(error)) from None
         return summary(page, started, session)
 
-    @mcp.tool(annotations=hints(read_only=True, idempotent=True, open_world=False))
+    @tool(annotations=hints(read_only=True, idempotent=True, open_world=False))
     def browser_wait() -> dict:
         """Wait a moment and observe again."""
         started = time.perf_counter()
         session = browser.require()
         return summary(guarded(lambda: browser.stepper().wait()), started, session)
 
-    @mcp.tool(annotations=hints(read_only=True, idempotent=True, open_world=False))
+    @tool(annotations=hints(read_only=True, idempotent=True, open_world=False))
     def browser_screenshot() -> Image:
         """Capture the current viewport as a JPEG."""
         session = browser.require()
         return Image(data=guarded(session.screenshot), format="jpeg")
 
-    @mcp.tool(annotations=hints(idempotent=True, open_world=False))
+    @tool(annotations=hints(idempotent=True, open_world=False))
     def browser_close() -> dict:
         """Close the browser session held by this server."""
         started = time.perf_counter()
