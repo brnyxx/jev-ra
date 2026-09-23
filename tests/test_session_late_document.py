@@ -50,3 +50,9 @@ def test_a_page_that_never_paints_costs_one_arrival_budget_and_is_still_read(ses
     assert "page=blank" in page["url"]
     assert page["elements"] == []
     assert elapsed < SETTLE_BUDGET_S + ARRIVAL_BUDGET_S + 1.0, f"waited {elapsed:.2f}s"
+
+
+def test_a_page_that_is_a_human_check_is_not_waited_for(session, fixture_server):
+    page, elapsed = follow(session, fixture_server + FIXTURE, "Seller check")
+    assert page["challenge"]
+    assert elapsed < SETTLE_BUDGET_S, f"waited {elapsed:.2f}s on a check that shows all it will"

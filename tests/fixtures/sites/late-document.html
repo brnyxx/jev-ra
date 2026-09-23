@@ -16,7 +16,8 @@
      its standings out at opacity 0 behind a painted logo and faded them in over a second.
      `?page=` picks the page, `?delay=` how long its shell stays empty; `page=blank` never paints,
      `page=standings` is in place from the start but transparent until the delay is over, and
-     `page=receipt` is a form's answer: words at once and nothing to press. -->
+     `page=receipt` is a form's answer: words at once and nothing to press. Seller check leads to
+     a human check, which is everything that page will show until a person answers it. -->
 <header id="top"></header>
 <div id="app"></div>
 <script>
@@ -29,7 +30,8 @@
       '<a href="?page=news&amp;delay=0">Seller news</a>' +
       '<a href="?page=blank">Seller archive</a>' +
       '<a href="?page=standings&amp;delay=1200">Seller standings</a>' +
-      '<a href="?page=receipt">Seller receipt</a></nav>'],
+      '<a href="?page=receipt">Seller receipt</a>' +
+      '<a href="cloudflare-challenge.html">Seller check</a></nav>'],
     resources: ['Seller resources',
       '<h1>Seller resources</h1><p>Guides for sellers.</p>' +
       '<a href="#grading">Learn grading</a> <a href="#pricing">Learn pricing</a>'],
