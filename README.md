@@ -12,7 +12,7 @@
   <a href="https://m8ven.ai/mcp/brnyxx/jev-ra"><img alt="M8ven Score" src="https://m8ven.ai/badge/mcp/brnyxx/jev-ra"></a>
 </p>
 
-[![jev-ra: browser use for coding agents, 3-5× faster than browser-use](https://raw.githubusercontent.com/brnyxx/jev-ra/main/assets/hero.png)](https://github.com/brnyxx/jev-ra/blob/main/docs/BENCHMARKS.md)
+[![jev-ra: browser use for coding agents, 4-8.5× faster than browser-use](https://raw.githubusercontent.com/brnyxx/jev-ra/main/assets/hero.png)](https://github.com/brnyxx/jev-ra/blob/main/docs/BENCHMARKS.md)
 
 **English** · [한국어](https://github.com/brnyxx/jev-ra/blob/main/docs/i18n/README.ko.md) · [日本語](https://github.com/brnyxx/jev-ra/blob/main/docs/i18n/README.ja.md) · [简体中文](https://github.com/brnyxx/jev-ra/blob/main/docs/i18n/README.zh-CN.md)
 

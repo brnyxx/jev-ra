@@ -11,7 +11,7 @@
   <a href="../../LICENSE"><img alt="License" src="https://img.shields.io/badge/license-MIT-green"></a>
 </p>
 
-[![jev-ra：面向编码智能体的浏览器操作，比 browser-use 快 3-5×](../../assets/hero.png)](../BENCHMARKS.md)
+[![jev-ra：面向编码智能体的浏览器操作，比 browser-use 快 4-8.5×](../../assets/hero.png)](../BENCHMARKS.md)
 
 [English](../../README.md) · [한국어](README.ko.md) · [日本語](README.ja.md) · **简体中文**
 

@@ -1,6 +1,6 @@
 # Show HN draft
 
-**Title:** Show HN: jev-ra – browser use for coding agents, 3-5x faster than browser-use
+**Title:** Show HN: jev-ra – browser use for coding agents, 4-8.5x faster than browser-use
 
 **Body:**
 
@@ -12,7 +12,7 @@ Numbers, same Chrome, same key, medians of 5 runs each (2026-09-18), against bro
 - Wikipedia lookup: 2.7 s vs 23.1 s (8.5x)
 - Google Flights one-way search, verified against the results page: 8.9 s vs 66.4 s (7.5x)
 - E-commerce sort: 3.8 s vs 15.1 s (4.0x)
-Our median against browser-use's fastest single run is still 5.8x / 5.6x / 4.6x, so the title says 3-5x. Raw rows and the method are in docs/BENCHMARKS.md, and a 40-task real-site corpus is published there too: 85% pass on the second measurement, the rest are escalations with a reason.
+Against browser-use 0.13 flash_mode's recorded runs, our medians over 5 verified runs are 8.5x / 7.5x / 4.0x faster (same machine, same Chrome, same OpenRouter key, 2026-09-18). Raw rows and the method are in docs/BENCHMARKS.md, and an 83-task real-site corpus is published there too: 213 of 249 runs passed on 0.2.4.
 
 It is an MCP server + CLI. `uvx jev-ra install claude` or `npx -y jev-ra install codex`. Works with an OpenRouter key; no TypeSafe account needed.
 

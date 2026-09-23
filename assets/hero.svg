@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 800" width="1600" height="800" role="img" aria-label="jev-ra: browser use for coding agents, 3 to 5 times faster than browser-use">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 800" width="1600" height="800" role="img" aria-label="jev-ra: browser use for coding agents, 4 to 8.5 times faster than browser-use">
   <defs><linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#0B0F14"/><stop offset="1" stop-color="#151B24"/></linearGradient></defs>
   <rect width="1600" height="800" fill="url(#bg)"/>
   <g transform="translate(1120 200) scale(0.11571942317501137)"><g transform="translate(-716.682203,4243.896631) scale(0.1,-0.1)"><path fill="#F6F4EF" d="M34292 42421 c-18 -12 -45 -21 -61 -21 -16 0 -40 -9 -54 -20 -14 -11
@@ -2297,15 +2297,15 @@
   <g font-family="ui-sans-serif, -apple-system, 'Inter', 'Helvetica Neue', Arial, sans-serif" fill="#F6F4EF">
     <text x="120" y="150" font-size="56" font-weight="800" letter-spacing="-2">jev<tspan fill="#FFB703">-</tspan>ra</text>
     <text x="120" y="290" font-size="72" font-weight="800" letter-spacing="-3">Browser use for coding agents.</text>
-    <text x="120" y="376" font-size="72" font-weight="800" letter-spacing="-3" fill="#FFB703">3-5x faster than browser-use.</text>
+    <text x="120" y="376" font-size="72" font-weight="800" letter-spacing="-3" fill="#FFB703">4-8.5x faster than browser-use.</text>
     <text x="120" y="440" font-size="28" fill="#B8BCC4">Jev decides every step in ~300 ms.</text>
     <text x="120" y="478" font-size="28" fill="#B8BCC4">Your agent plans, reads the page, and takes over when it matters.</text>
   </g>
   <g font-family="ui-sans-serif, -apple-system, 'Inter', 'Helvetica Neue', Arial, sans-serif">
-    <g transform="translate(120 540)"><rect width="250" height="110" rx="16" fill="#F6F4EF" fill-opacity="0.06" stroke="#F6F4EF" stroke-opacity="0.12"/><text x="24" y="58" font-size="48" font-weight="800" fill="#F6F4EF">5.4x</text><text x="24" y="90" font-size="19" fill="#B8BCC4">Wikipedia lookup</text></g>
-    <g transform="translate(394 540)"><rect width="250" height="110" rx="16" fill="#F6F4EF" fill-opacity="0.06" stroke="#F6F4EF" stroke-opacity="0.12"/><text x="24" y="58" font-size="48" font-weight="800" fill="#F6F4EF">3.9x</text><text x="24" y="90" font-size="19" fill="#B8BCC4">Google Flights search</text></g>
-    <g transform="translate(668 540)"><rect width="250" height="110" rx="16" fill="#F6F4EF" fill-opacity="0.06" stroke="#F6F4EF" stroke-opacity="0.12"/><text x="24" y="58" font-size="48" font-weight="800" fill="#F6F4EF">2.8x</text><text x="24" y="90" font-size="19" fill="#B8BCC4">E-commerce sort</text></g>
+    <g transform="translate(120 540)"><rect width="250" height="110" rx="16" fill="#F6F4EF" fill-opacity="0.06" stroke="#F6F4EF" stroke-opacity="0.12"/><text x="24" y="58" font-size="48" font-weight="800" fill="#F6F4EF">8.5x</text><text x="24" y="90" font-size="19" fill="#B8BCC4">Wikipedia lookup</text></g>
+    <g transform="translate(394 540)"><rect width="250" height="110" rx="16" fill="#F6F4EF" fill-opacity="0.06" stroke="#F6F4EF" stroke-opacity="0.12"/><text x="24" y="58" font-size="48" font-weight="800" fill="#F6F4EF">7.5x</text><text x="24" y="90" font-size="19" fill="#B8BCC4">Google Flights search</text></g>
+    <g transform="translate(668 540)"><rect width="250" height="110" rx="16" fill="#F6F4EF" fill-opacity="0.06" stroke="#F6F4EF" stroke-opacity="0.12"/><text x="24" y="58" font-size="48" font-weight="800" fill="#F6F4EF">4.0x</text><text x="24" y="90" font-size="19" fill="#B8BCC4">E-commerce sort</text></g>
   </g>
   <g transform="translate(120 692)" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace"><rect width="600" height="58" rx="29" fill="#FFB703"/><text x="30" y="38" font-size="25" font-weight="700" fill="#0B0F14">$ uvx jev-ra install claude</text></g>
-  <text x="1480" y="770" text-anchor="end" font-family="ui-sans-serif, -apple-system, 'Inter', 'Helvetica Neue', Arial, sans-serif" font-size="18" fill="#6B7280">vs browser-use 0.13 flash_mode · same Chrome · same key · 2026-09</text>
+  <text x="1480" y="770" text-anchor="end" font-family="ui-sans-serif, -apple-system, 'Inter', 'Helvetica Neue', Arial, sans-serif" font-size="18" fill="#6B7280">jev-ra medians vs browser-use 0.13 flash_mode · same machine, Chrome and OpenRouter key · 2026-09-18</text>
 </svg>

@@ -100,24 +100,24 @@ s3 = 150 / H
     f'<text x="216" y="114" font-family="{FONT}" font-size="100" font-weight="800" letter-spacing="-5" fill="{INK}">jev<tspan fill="{AMBER}">-</tspan>ra</text></svg>\n'
 )
 s4 = 440 / W
-hero = f'''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 800" width="1600" height="800" role="img" aria-label="jev-ra: browser use for coding agents, 3 to 5 times faster than browser-use">
+hero = f'''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 800" width="1600" height="800" role="img" aria-label="jev-ra: browser use for coding agents, 4 to 8.5 times faster than browser-use">
   <defs><linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="{INK}"/><stop offset="1" stop-color="#151B24"/></linearGradient></defs>
   <rect width="1600" height="800" fill="url(#bg)"/>
   {figure(PAPER, AMBER, s4, 1120, 200)}
   <g font-family="{FONT}" fill="{PAPER}">
     <text x="120" y="150" font-size="56" font-weight="800" letter-spacing="-2">jev<tspan fill="{AMBER}">-</tspan>ra</text>
     <text x="120" y="290" font-size="72" font-weight="800" letter-spacing="-3">Browser use for coding agents.</text>
-    <text x="120" y="376" font-size="72" font-weight="800" letter-spacing="-3" fill="{AMBER}">3-5x faster than browser-use.</text>
+    <text x="120" y="376" font-size="72" font-weight="800" letter-spacing="-3" fill="{AMBER}">4-8.5x faster than browser-use.</text>
     <text x="120" y="440" font-size="28" fill="#B8BCC4">Jev decides every step in ~300 ms.</text>
     <text x="120" y="478" font-size="28" fill="#B8BCC4">Your agent plans, reads the page, and takes over when it matters.</text>
   </g>
   <g font-family="{FONT}">
-    <g transform="translate(120 540)"><rect width="250" height="110" rx="16" fill="{PAPER}" fill-opacity="0.06" stroke="{PAPER}" stroke-opacity="0.12"/><text x="24" y="58" font-size="48" font-weight="800" fill="{PAPER}">5.4x</text><text x="24" y="90" font-size="19" fill="#B8BCC4">Wikipedia lookup</text></g>
-    <g transform="translate(394 540)"><rect width="250" height="110" rx="16" fill="{PAPER}" fill-opacity="0.06" stroke="{PAPER}" stroke-opacity="0.12"/><text x="24" y="58" font-size="48" font-weight="800" fill="{PAPER}">3.9x</text><text x="24" y="90" font-size="19" fill="#B8BCC4">Google Flights search</text></g>
-    <g transform="translate(668 540)"><rect width="250" height="110" rx="16" fill="{PAPER}" fill-opacity="0.06" stroke="{PAPER}" stroke-opacity="0.12"/><text x="24" y="58" font-size="48" font-weight="800" fill="{PAPER}">2.8x</text><text x="24" y="90" font-size="19" fill="#B8BCC4">E-commerce sort</text></g>
+    <g transform="translate(120 540)"><rect width="250" height="110" rx="16" fill="{PAPER}" fill-opacity="0.06" stroke="{PAPER}" stroke-opacity="0.12"/><text x="24" y="58" font-size="48" font-weight="800" fill="{PAPER}">8.5x</text><text x="24" y="90" font-size="19" fill="#B8BCC4">Wikipedia lookup</text></g>
+    <g transform="translate(394 540)"><rect width="250" height="110" rx="16" fill="{PAPER}" fill-opacity="0.06" stroke="{PAPER}" stroke-opacity="0.12"/><text x="24" y="58" font-size="48" font-weight="800" fill="{PAPER}">7.5x</text><text x="24" y="90" font-size="19" fill="#B8BCC4">Google Flights search</text></g>
+    <g transform="translate(668 540)"><rect width="250" height="110" rx="16" fill="{PAPER}" fill-opacity="0.06" stroke="{PAPER}" stroke-opacity="0.12"/><text x="24" y="58" font-size="48" font-weight="800" fill="{PAPER}">4.0x</text><text x="24" y="90" font-size="19" fill="#B8BCC4">E-commerce sort</text></g>
   </g>
   <g transform="translate(120 692)" font-family="{MONO}"><rect width="600" height="58" rx="29" fill="{AMBER}"/><text x="30" y="38" font-size="25" font-weight="700" fill="{INK}">$ uvx jev-ra install claude</text></g>
-  <text x="1480" y="770" text-anchor="end" font-family="{FONT}" font-size="18" fill="#6B7280">vs browser-use 0.13 flash_mode · same Chrome · same key · 2026-09</text>
+  <text x="1480" y="770" text-anchor="end" font-family="{FONT}" font-size="18" fill="#6B7280">jev-ra medians vs browser-use 0.13 flash_mode · same machine, Chrome and OpenRouter key · 2026-09-18</text>
 </svg>
 '''
 (out / "hero.svg").write_text(hero)

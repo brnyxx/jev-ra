@@ -12,7 +12,7 @@
   <a href="https://github.com/brnyxx/jev-ra/blob/main/LICENSE"><img alt="License" src="https://img.shields.io/badge/license-MIT-green"></a>
 </p>
 
-[![jev-ra: browser use for coding agents, 3-5x faster than browser-use](https://raw.githubusercontent.com/brnyxx/jev-ra/main/assets/hero.png)](https://brnyxx.github.io/jev-ra/)
+[![jev-ra: browser use for coding agents, 4-8.5x faster than browser-use](https://raw.githubusercontent.com/brnyxx/jev-ra/main/assets/hero.png)](https://brnyxx.github.io/jev-ra/)
 
 <p align="center"><a href="https://brnyxx.github.io/jev-ra/">brnyxx.github.io/jev-ra</a> · <a href="https://github.com/brnyxx/jev-ra">GitHub</a> · <a href="https://github.com/brnyxx/jev-ra/blob/main/docs/USAGE.md">CLI and tool reference</a> · <a href="https://github.com/brnyxx/jev-ra/blob/main/docs/BENCHMARKS.md">Benchmarks</a></p>
 

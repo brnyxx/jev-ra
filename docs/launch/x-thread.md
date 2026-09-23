@@ -1,6 +1,6 @@
 # X thread draft
 
-1/ Coding agents drive browsers slowly because every click is an LLM call. jev-ra moves that decision to a 300 ms model. 3-5x faster than browser-use on the same tasks, same Chrome, same key.
+1/ Coding agents drive browsers slowly because every click is an LLM call. jev-ra moves that decision to a 300 ms model. 4-8.5x faster than browser-use on three recorded tasks, same Chrome, same key.
 
 2/ How: TypeSafe Jev answers typed questions for each step - which element, did the last action work, is the goal done - in about 300 ms. Your Claude Code or Codex plans, supplies the text to type, reads the page, and gets control back when jev-ra cannot continue. No second LLM.
 
