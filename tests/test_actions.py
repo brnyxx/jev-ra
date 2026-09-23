@@ -200,3 +200,8 @@ def test_an_accept_that_is_not_on_a_wall_changes_nothing():
         item.pop("overlay", None)
     space = actions.build(page)
     assert "TYPE_TEXT" in space.offered()
+
+
+def test_a_toggle_button_is_shown_with_whether_it_is_pressed():
+    view = actions.element_view(element("e1", 1, "In stock", role="button", pressed="true"))
+    assert view["pressed"] == "true"

@@ -1647,7 +1647,7 @@ def observed(node):
 # aria-expanded, a filter flips checked, a tab flips selected, a panel relabels what is already
 # there. None of that reaches the action list, which carries only an id and a kind, so the state
 # has to be read from the element view the snapshot builds beside it.
-CONTROL_KEYS = ("ref", "role", "label", "value", "checked", "selected", "expanded", "current")
+CONTROL_KEYS = ("ref", "role", "label", "value", "checked", "selected", "expanded", "pressed", "current")
 
 
 def control_set(elements):

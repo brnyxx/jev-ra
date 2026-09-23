@@ -7,7 +7,8 @@ from urllib.parse import urlsplit
 from . import MAX_ELEMENTS
 
 OPERATIONS = {"click": "CLICK", "fill": "TYPE_TEXT", "select": "SELECT"}
-STATE_KEYS = ("checked", "selected", "expanded", "current")
+# A toggle button - a filter chip, a bold button - says whether it is on with aria-pressed.
+STATE_KEYS = ("checked", "selected", "expanded", "pressed", "current")
 HOSTNAME = re.compile(r"\b(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,}\b", re.IGNORECASE)
 # Labels that belong to the registry rather than to anyone: seoul.go.kr and busan.go.kr are two
 # sites, and www.seoul.go.kr is one site with the front page of seoul.go.kr.

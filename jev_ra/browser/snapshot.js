@@ -188,7 +188,7 @@
     return [identity(e),role(e),name(e),e.value??null,e.checked??null,e.selectedIndex??null,
       e.readOnly??null,e.matches(':disabled'),e.getAttribute('aria-disabled'),
       e.getAttribute('aria-expanded'),e.getAttribute('aria-checked'),e.getAttribute('aria-selected'),
-      e.getAttribute('aria-valuenow'),
+      e.getAttribute('aria-pressed'),e.getAttribute('aria-valuenow'),
       e.getAttribute('href'),scope?.innerText?.slice(0,6000)||''];
   };
   // Which item in a group you are on. aria-current is the standard answer; most of the web
@@ -247,7 +247,7 @@
       const element={node:identity(e),role:rname,label:name(e)||(chooses(standIn(e)??e) ? 'Choose file' : rname),
         rect:{x:r.x+dx,y:r.y+dy,w:r.width,h:r.height}};
       if (root!==document) element.nested=true;
-      for (const key of ['checked','selected','expanded']) {
+      for (const key of ['checked','selected','expanded','pressed']) {
         const value=e.getAttribute('aria-'+key);
         if (value!==null) element[key]=value;
       }
