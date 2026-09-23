@@ -15,7 +15,27 @@
   const TOOL = 'browser_run(goal="Search one-way flights from Zurich to London departing 2026-09-20 and show the list of results.", values={origin, destination, departure_date})';
   // Control geometry inside the 1040x640 page area, one entry per real step target.
   const CTRL = { 1: [36, 96, 118, 40], 2: [36, 176, 200, 40], 3: [36, 168, 330, 56], 4: [36, 232, 330, 48], 5: [400, 168, 330, 56], 6: [400, 232, 330, 48], 7: [764, 168, 240, 56], 8: [520, 372, 40, 40], 9: [700, 520, 120, 44], 10: [440, 268, 160, 52] };
-  const ROWS = [["오후 4:45 – 오후 5:35", "이지젯", "1시간 50분 · 직항", "₩231,298"], ["오전 7:40 – 오전 8:35", "영국항공", "1시간 55분 · 직항", "₩246,696"], ["오후 6:20 – 오후 7:05", "영국항공", "1시간 45분 · 직항", "₩317,373"]];
+  // The run was recorded on Google Flights in Korean; the page is redrawn the way Google shows it in each language,
+  // and the step labels are the same controls named the way that page names them.
+  const PRICES = ["₩231,298", "₩246,696", "₩317,373"];
+  const G = {
+    ko: { tabs: ["항공편", "호텔", "공유숙박"], trips: ["왕복", "편도", "다구간"], from: "출발지가 어디인가요?", to: "목적지가 어디인가요?", when: "출발", zrh: "취리히 공항 (ZRH)", lon: "영국 런던", search: "검색", month: "2026년 9월", week: ["일", "월", "화", "수", "목", "금", "토"], ok: "확인", date: "9월 20일 (일)", sorted: "인기 항공편순으로 정렬됨 · 결과 21개가 반환되었습니다.",
+      rows: [["오후 4:45 – 오후 5:35", "이지젯", "1시간 50분 · 직항"], ["오전 7:40 – 오전 8:35", "영국항공", "1시간 55분 · 직항"], ["오후 6:20 – 오후 7:05", "영국항공", "1시간 45분 · 직항"]] },
+    en: { tabs: ["Flights", "Hotels", "Vacation rentals"], trips: ["Round trip", "One way", "Multi-city"], from: "Where from?", to: "Where to?", when: "Departure", zrh: "Zurich Airport (ZRH)", lon: "London, UK", search: "Search", month: "September 2026", week: ["S", "M", "T", "W", "T", "F", "S"], ok: "Done", date: "Sun, Sep 20", sorted: "Sorted by top flights · 21 results returned.",
+      rows: [["4:45 PM – 5:35 PM", "easyJet", "1 hr 50 min · Nonstop"], ["7:40 AM – 8:35 AM", "British Airways", "1 hr 55 min · Nonstop"], ["6:20 PM – 7:05 PM", "British Airways", "1 hr 45 min · Nonstop"]],
+      labels: ["Change ticket type. Round trip", "One way", "Where from?", "Zurich Airport (ZRH)", "Where to?", "London, UK", "Open Departure", "Sunday, September 20, 2026", "Done. Search for one-way flights departing on September 20, 2026", "Search"] },
+    ja: { tabs: ["フライト", "ホテル", "バケーションレンタル"], trips: ["往復", "片道", "周遊"], from: "出発地", to: "目的地", when: "出発日", zrh: "チューリッヒ空港 (ZRH)", lon: "イギリス ロンドン", search: "検索", month: "2026年9月", week: ["日", "月", "火", "水", "木", "金", "土"], ok: "完了", date: "9月20日(日)", sorted: "おすすめ順 · 21 件の結果",
+      rows: [["16:45 – 17:35", "easyJet", "1 時間 50 分 · 直行便"], ["7:40 – 8:35", "British Airways", "1 時間 55 分 · 直行便"], ["18:20 – 19:05", "British Airways", "1 時間 45 分 · 直行便"]],
+      labels: ["チケットの種類を変更します。往復", "片道", "出発地", "チューリッヒ空港 (ZRH)", "目的地", "イギリス ロンドン", "出発日を開く", "2026年9月20日日曜日", "完了。2026年9月20日出発の片道便を検索", "検索"] },
+    "zh-CN": { tabs: ["机票", "酒店", "度假屋"], trips: ["往返", "单程", "多城市"], from: "从哪里出发?", to: "要去哪里?", when: "出发时间", zrh: "苏黎世机场 (ZRH)", lon: "英国伦敦", search: "搜索", month: "2026年9月", week: ["日", "一", "二", "三", "四", "五", "六"], ok: "完成", date: "9月20日周日", sorted: "按热门航班排序 · 共返回 21 条结果。",
+      rows: [["下午4:45 – 下午5:35", "easyJet", "1小时50分钟 · 直达"], ["上午7:40 – 上午8:35", "英国航空", "1小时55分钟 · 直达"], ["下午6:20 – 下午7:05", "英国航空", "1小时45分钟 · 直达"]],
+      labels: ["更改机票类型。往返", "单程", "从哪里出发?", "苏黎世机场 (ZRH)", "要去哪里?", "英国伦敦", "打开出发时间", "2026年9月20日星期日", "完成。搜索2026年9月20日出发的单程航班", "搜索"] },
+  };
+  // September 2026 starts on a Tuesday; the calendar starts its weeks on Sunday, so the 20th is a Sunday cell.
+  const SEP1 = 2, DAY = (d) => { const i = d - 1 + SEP1; return [316 + (i % 7) * 46 + 20, 370 + Math.floor(i / 7) * 42 + 20]; };
+  CTRL[8] = [DAY(20)[0] - 20, DAY(20)[1] - 20, 40, 40];
+  const gp = () => G[locale] || G.en;
+  const stepLabel = (st) => { const ls = gp().labels; return ls ? ls[st.n - 1] : clean(st.target_label); };
   const clean = (s) => String(s || "").replace(/\?{2,}/g, "").replace(/\s+/g, " ").trim();
   const fmt = (s, v) => s.replace(/\{(\w+)\}/g, (_, k) => v[k]);
   const el = (tag, attrs, parent) => { const n = document.createElementNS(NS, tag); for (const k in attrs) n.setAttribute(k, attrs[k]); if (parent) parent.appendChild(n); return n; };
@@ -120,28 +140,28 @@
     S.loading = el("g", {}, page);
     el("rect", { x: 40, y: 40, width: 240, height: 22, rx: 6, fill: "#303134" }, S.loading); el("rect", { x: 40, y: 86, width: 960, height: 120, rx: 12, fill: "#303134", opacity: .6 }, S.loading); el("rect", { x: 40, y: 230, width: 700, height: 22, rx: 6, fill: "#303134", opacity: .4 }, S.loading);
     const pg = el("g", { class: "fade hid" }, page); S.pg = pg;
-    txt(pg, 16, 34, "항공편", "g-text", { "font-size": 16, "font-weight": 600 }); txt(pg, 90, 34, "호텔", "g-sub", { "font-size": 16 }); txt(pg, 150, 34, "공유숙박", "g-sub", { "font-size": 16 });
+    S.gTabs = [txt(pg, 16, 34, "", "g-text", { "font-size": 16, "font-weight": 600 }), txt(pg, 0, 34, "", "g-sub", { "font-size": 16 }), txt(pg, 0, 34, "", "g-sub", { "font-size": 16 })];
     el("rect", { y: 80, width: 1040, height: 260, rx: 14, fill: "#303134" }, pg);
     const rect = (r, extra) => el("rect", Object.assign({ x: r[0], y: r[1], width: r[2], height: r[3], rx: 8, fill: "none", stroke: "#5f6368" }, extra || {}), pg);
-    S.chipBox = rect(CTRL[1], { stroke: "none" }); S.chip = txt(pg, CTRL[1][0] + 12, CTRL[1][1] + 26, "왕복 ▾", "g-text", { "font-size": 17 });
+    S.chipBox = rect(CTRL[1], { stroke: "none" }); S.chip = txt(pg, CTRL[1][0] + 12, CTRL[1][1] + 26, "", "g-text", { "font-size": 17 });
     S.menu = el("g", { class: "fade hid" }, pg);
     el("rect", { x: 36, y: 140, width: 200, height: 122, rx: 8, fill: "#3c4043" }, S.menu); S.menuHi = el("rect", { x: 36, y: 176, width: 200, height: 40, fill: "rgba(138,180,248,.18)", class: "fade hid" }, S.menu);
-    ["왕복", "편도", "다구간"].forEach((s, i) => txt(S.menu, 52, 166 + i * 40, s, "g-text", { "font-size": 17 }));
+    S.gTrips = [0, 1, 2].map((i) => txt(S.menu, 52, 166 + i * 40, "", "g-text", { "font-size": 17 }));
     const field = (r, ph) => { const box = rect(r); const t = txt(pg, r[0] + 16, r[1] + r[3] / 2 + 7, ph, "g-sub", { "font-size": 18 }); return { box, t, ph }; };
-    S.origin = field(CTRL[3], "출발지가 어디인가요?"); S.dest = field(CTRL[5], "목적지가 어디인가요?"); S.date = field(CTRL[7], "출발");
-    const sug = (r, s) => { const g = el("g", { class: "fade hid" }, pg); const b = el("rect", { x: r[0], y: r[1], width: r[2], height: r[3], rx: 8, fill: "#3c4043" }, g); txt(g, r[0] + 16, r[1] + 31, s, "g-text", { "font-size": 17 }); return { g, b }; };
-    S.sugO = sug(CTRL[4], "취리히 공항 (ZRH)"); S.sugD = sug(CTRL[6], "영국 런던");
+    S.origin = field(CTRL[3], ""); S.dest = field(CTRL[5], ""); S.date = field(CTRL[7], "");
+    const sug = (r, s) => { const g = el("g", { class: "fade hid" }, pg); const b = el("rect", { x: r[0], y: r[1], width: r[2], height: r[3], rx: 8, fill: "#3c4043" }, g); const t = txt(g, r[0] + 16, r[1] + 31, s, "g-text", { "font-size": 17 }); return { g, b, t }; };
+    S.sugO = sug(CTRL[4], ""); S.sugD = sug(CTRL[6], "");
     S.search = el("rect", { x: CTRL[10][0], y: CTRL[10][1], width: CTRL[10][2], height: CTRL[10][3], rx: 26, fill: "#8ab4f8" }, pg);
-    txt(pg, CTRL[10][0] + 80, CTRL[10][1] + 33, "⌕ 검색", "", { "font-size": 19, "font-weight": 700, "text-anchor": "middle", fill: "#202124" });
+    S.gSearch = txt(pg, CTRL[10][0] + 80, CTRL[10][1] + 33, "", "", { "font-size": 19, "font-weight": 700, "text-anchor": "middle", fill: "#202124" });
     S.cal = el("g", { class: "fade hid" }, pg);
-    el("rect", { x: 300, y: 300, width: 540, height: 290, rx: 12, fill: "#3c4043" }, S.cal); txt(S.cal, 316, 328, "2026년 9월", "g-text", { "font-size": 16 });
-    for (let d = 1; d <= 30; d++) { const c = (d - 1) % 7, r = Math.floor((d - 1) / 7); const cx = 316 + c * 46 + 20, cy = 346 + r * 46 + 20; if (d === 20) S.day20 = el("circle", { cx, cy, r: 20, fill: "none" }, S.cal); txt(S.cal, cx, cy + 5, String(d), d === 20 ? "" : "g-text", { "font-size": 15, "text-anchor": "middle", id: d === 20 ? "jd-d20" : null }); }
+    el("rect", { x: 300, y: 300, width: 540, height: 290, rx: 12, fill: "#3c4043" }, S.cal); S.gMonth = txt(S.cal, 316, 328, "", "g-text", { "font-size": 16 }); S.gWeek = [0, 1, 2, 3, 4, 5, 6].map((c) => txt(S.cal, 336 + c * 46, 356, "", "g-sub", { "font-size": 13, "text-anchor": "middle" }));
+    for (let d = 1; d <= 30; d++) { const [cx, cy] = DAY(d); if (d === 20) S.day20 = el("circle", { cx, cy, r: 20, fill: "none" }, S.cal); txt(S.cal, cx, cy + 5, String(d), d === 20 ? "" : "g-text", { "font-size": 15, "text-anchor": "middle", id: d === 20 ? "jd-d20" : null }); }
     S.d20 = S.cal.querySelector("#jd-d20"); S.d20.setAttribute("fill", "#e8eaed");
-    S.confirm = el("rect", { x: 700, y: 520, width: 120, height: 44, rx: 22, fill: "#8ab4f8" }, S.cal); txt(S.cal, 760, 548, "확인", "", { "font-size": 17, "font-weight": 700, "text-anchor": "middle", fill: "#202124" });
+    S.confirm = el("rect", { x: 700, y: 520, width: 120, height: 44, rx: 22, fill: "#8ab4f8" }, S.cal); S.gOk = txt(S.cal, 760, 548, "", "", { "font-size": 17, "font-weight": 700, "text-anchor": "middle", fill: "#202124" });
     S.placeholder = el("rect", { y: 380, width: 1040, height: 200, rx: 14, fill: "rgba(48,49,52,.5)", class: "fade" }, pg);
     S.results = el("g", { class: "fade hid" }, pg);
-    txt(S.results, 0, 376, "인기 항공편순으로 정렬됨 · 결과 21개가 반환되었습니다.", "g-sub", { "font-size": 15 });
-    ROWS.forEach((r, i) => { const y = 392 + i * 66; el("rect", { y, width: 1040, height: 58, rx: 10, fill: "#303134" }, S.results); txt(S.results, 18, y + 36, r[0], "g-text", { "font-size": 17 }); txt(S.results, 278, y + 36, r[1], "g-sub", { "font-size": 17 }); txt(S.results, 420, y + 36, r[2], "g-sub", { "font-size": 17 }); txt(S.results, 1022, y + 36, r[3], "g-text", { "font-size": 17, "font-weight": 700, "text-anchor": "end" }); });
+    S.gSorted = txt(S.results, 0, 376, "", "g-sub", { "font-size": 15 });
+    S.gRows = PRICES.map((price, i) => { const y = 392 + i * 66; el("rect", { y, width: 1040, height: 58, rx: 10, fill: "#303134" }, S.results); const cells = [txt(S.results, 18, y + 36, "", "g-text", { "font-size": 17 }), txt(S.results, 278, y + 36, "", "g-sub", { "font-size": 17 }), txt(S.results, 470, y + 36, "", "g-sub", { "font-size": 17 })]; txt(S.results, 1022, y + 36, price, "g-text", { "font-size": 17, "font-weight": 700, "text-anchor": "end" }); return cells; });
     S.chipLabel = el("g", { class: "fade hid" }, page); S.chipBg = el("rect", { height: 24, rx: 4, fill: "#FFB703" }, S.chipLabel); S.chipTxt = txt(S.chipLabel, 0, 0, "", "m ink", { "font-size": 14 });
     S.cursor = el("g", { id: "cursor", class: "fade hid" }, page);
     S.ripple = el("circle", { r: 24, class: "ripple", cx: 6, cy: 8 }, S.cursor);
@@ -175,6 +195,12 @@
 
   function applyLocale() {
     const s = L[locale] || L.en; const v = { steps: run.steps.length, decisions: run.decisions, s: (elapsed / 1000).toFixed(1), cost: run.cost.toFixed(4) };
+    const g = gp();
+    let tx = 16; S.gTabs.forEach((t, i) => { t.textContent = g.tabs[i]; t.setAttribute("x", tx); tx += t.getComputedTextLength() + 34; });
+    S.gTrips.forEach((t, i) => { t.textContent = g.trips[i]; }); S.gWeek.forEach((t, i) => { t.textContent = g.week[i]; });
+    S.origin.ph = g.from; S.dest.ph = g.to; S.date.ph = g.when; S.sugO.t.textContent = g.zrh; S.sugD.t.textContent = g.lon;
+    S.gSearch.textContent = "⌕ " + g.search; S.gMonth.textContent = g.month; S.gOk.textContent = g.ok; S.gSorted.textContent = g.sorted;
+    S.gRows.forEach((cells, i) => cells.forEach((t, j) => { t.textContent = g.rows[i][j]; }));
     setLines(S.recorded, 140, s.recorded, 1640, 24);
     setLines(S.doneLine, 26, fmt(s.done, v), TERM_W - 26, 21);
     setLines(S.summary, 42, s.summary, TERM_W - 42, 26);
@@ -188,7 +214,7 @@
 
   const show = (n, on) => n.classList.toggle("hid", !on);
   let logged = 0, rippled = -1;
-  function reset() { logged = 0; rippled = -1; S.log.replaceChildren(); S.promptSpans.forEach((t) => { t.textContent = ""; }); show(S.tool, false); show(S.open, false); show(S.doneLine, false); show(S.summary, false); show(S.summaryBar, false); show(S.browser, false); S.browser.style.transform = "translate(60px,0)"; show(S.pg, false); show(S.loading, true); show(S.menu, false); show(S.menuHi, false); show(S.sugO.g, false); show(S.sugD.g, false); show(S.cal, false); show(S.results, false); show(S.placeholder, true); show(S.cursor, false); show(S.chipLabel, false); show(S.compare, false); show(S.outro, false); show(S.session, true); show(S.ratio, false); S.url.textContent = "google.com/travel/flights"; S.chip.textContent = "왕복 ▾"; [S.origin, S.dest, S.date].forEach((f) => { f.t.textContent = f.ph; f.t.setAttribute("class", "g-sub"); f.box.classList.remove("focus"); }); S.day20.setAttribute("fill", "none"); S.d20.setAttribute("fill", "#e8eaed"); S.search.classList.remove("focus"); S.confirm.classList.remove("focus"); S.chipBox.classList.remove("focus"); S.sugO.b.classList.remove("focus"); S.sugD.b.classList.remove("focus"); S.bu.fill.setAttribute("width", 0); S.jr.fill.setAttribute("width", 0); }
+  function reset() { logged = 0; rippled = -1; S.log.replaceChildren(); S.promptSpans.forEach((t) => { t.textContent = ""; }); show(S.tool, false); show(S.open, false); show(S.doneLine, false); show(S.summary, false); show(S.summaryBar, false); show(S.browser, false); S.browser.style.transform = "translate(60px,0)"; show(S.pg, false); show(S.loading, true); show(S.menu, false); show(S.menuHi, false); show(S.sugO.g, false); show(S.sugD.g, false); show(S.cal, false); show(S.results, false); show(S.placeholder, true); show(S.cursor, false); show(S.chipLabel, false); show(S.compare, false); show(S.outro, false); show(S.session, true); show(S.ratio, false); S.url.textContent = "google.com/travel/flights"; S.chip.textContent = gp().trips[0] + " ▾"; [S.origin, S.dest, S.date].forEach((f) => { f.t.textContent = f.ph; f.t.setAttribute("class", "g-sub"); f.box.classList.remove("focus"); }); S.day20.setAttribute("fill", "none"); S.d20.setAttribute("fill", "#e8eaed"); S.search.classList.remove("focus"); S.confirm.classList.remove("focus"); S.chipBox.classList.remove("focus"); S.sugO.b.classList.remove("focus"); S.sugD.b.classList.remove("focus"); S.bu.fill.setAttribute("width", 0); S.jr.fill.setAttribute("width", 0); }
 
   function frame() {
     const t = now() - t0; const s = L[locale] || L.en;
@@ -214,23 +240,23 @@
       const loading = ms < timed[0].startMs; show(S.loading, loading); show(S.pg, !loading); show(S.cursor, !loading);
       while (logged < timed.length && ms >= timed[logged].decidedMs) {
         const st = timed[logged]; const y = 300 + logged * 22; const line = el("text", { x: 26, y, class: "m muted", "font-size": 15 }, S.log);
-        const a = el("tspan", { class: "dim" }, line); a.textContent = "⎿ "; const b = el("tspan", { class: "paper" }, line); b.textContent = s.step + " " + st.n; const c = el("tspan", {}, line); c.textContent = " · "; const d = el("tspan", { class: "amber" }, line); d.textContent = st.operation; const e = el("tspan", {}, line); e.textContent = ' "' + clean(st.target_label).slice(0, 24) + '"'; if (st.text) { const f = el("tspan", {}, line); f.textContent = " ← "; const g = el("tspan", { class: "cyan" }, line); g.textContent = st.text; } const h = el("tspan", {}, line); h.textContent = " · " + st.latency_ms + " ms";
-        for (let keep = 23; keep > 3 && line.getComputedTextLength() > TERM_W - 26; keep -= 2) e.textContent = ' "' + clean(st.target_label).slice(0, keep) + '…"';
+        const a = el("tspan", { class: "dim" }, line); a.textContent = "⎿ "; const b = el("tspan", { class: "paper" }, line); b.textContent = s.step + " " + st.n; const c = el("tspan", {}, line); c.textContent = " · "; const d = el("tspan", { class: "amber" }, line); d.textContent = st.operation; const e = el("tspan", {}, line); e.textContent = ' "' + stepLabel(st).slice(0, 24) + '"'; if (st.text) { const f = el("tspan", {}, line); f.textContent = " ← "; const g = el("tspan", { class: "cyan" }, line); g.textContent = st.text; } const h = el("tspan", {}, line); h.textContent = " · " + st.latency_ms + " ms";
+        for (let keep = 23; keep > 3 && line.getComputedTextLength() > TERM_W - 26; keep -= 2) e.textContent = ' "' + stepLabel(st).slice(0, keep) + '…"';
         logged++;
         while (S.log.children.length > 7) S.log.removeChild(S.log.firstChild); [...S.log.children].forEach((c2, i) => c2.setAttribute("y", 300 + i * 22));
       }
       const typed = (n, text) => { const st = timed[n - 1]; if (ms < st.decidedMs) return ""; return text.slice(0, Math.min(text.length, Math.floor(((ms - st.decidedMs) / st.act_ms) * text.length) + 1)); };
-      S.chip.textContent = has(2) ? "편도 ▾" : "왕복 ▾"; S.chipBox.classList.toggle("focus", cur && cur.n === 1);
+      S.chip.textContent = gp().trips[has(2) ? 1 : 0] + " ▾"; S.chipBox.classList.toggle("focus", cur && cur.n === 1);
       show(S.menu, has(1) && !has(2)); show(S.menuHi, cur && cur.n === 2);
       const setField = (f, val, active) => { f.t.textContent = val || f.ph; f.t.setAttribute("class", val ? "g-text" : "g-sub"); f.box.classList.toggle("focus", !!active); };
-      const origin = has(4) ? "취리히 공항 (ZRH)" : typed(3, "Zurich"); const dest = has(6) ? "영국 런던" : typed(5, "London");
-      setField(S.origin, origin, cur && cur.n === 3); setField(S.dest, dest, cur && cur.n === 5); setField(S.date, has(9) ? "9월 20일 (일)" : "", cur && cur.n === 7);
+      const origin = has(4) ? gp().zrh : typed(3, "Zurich"); const dest = has(6) ? gp().lon : typed(5, "London");
+      setField(S.origin, origin, cur && cur.n === 3); setField(S.dest, dest, cur && cur.n === 5); setField(S.date, has(9) ? gp().date : "", cur && cur.n === 7);
       show(S.sugO.g, cur && (cur.n === 3 || cur.n === 4) && origin.length > 0); S.sugO.b.classList.toggle("focus", cur && cur.n === 4);
       show(S.sugD.g, cur && (cur.n === 5 || cur.n === 6) && dest.length > 0); S.sugD.b.classList.toggle("focus", cur && cur.n === 6);
       const calOpen = has(7) && !has(9); show(S.cal, calOpen); show(S.placeholder, !calOpen && !(ms >= timed[9].actedMs + 450));
       const pick = has(8) || (cur && cur.n === 8); S.day20.setAttribute("fill", pick ? "#8ab4f8" : "none"); S.d20.setAttribute("fill", pick ? "#202124" : "#e8eaed"); S.day20.classList.toggle("focus", cur && cur.n === 8); S.confirm.classList.toggle("focus", cur && cur.n === 9); S.search.classList.toggle("focus", cur && cur.n === 10);
       const results = ms >= timed[9].actedMs + 450; show(S.results, results); S.url.textContent = results ? "google.com/travel/flights/search?tfs=CBwQAhojEgoyMDI2LTA5LTIw…" : "google.com/travel/flights";
-      if (cur) { const r = CTRL[cur.n]; S.cursor.style.transform = `translate(${r[0] + r[2] * 0.55}px,${r[1] + r[3] * 0.55}px)`; show(S.chipLabel, ms >= cur.startMs + cur.snapshot_ms); const label = "[" + cur.target + "] " + clean(cur.target_label).slice(0, 30); S.chipTxt.textContent = label; const w = S.chipTxt.getComputedTextLength() + 16; S.chipBg.setAttribute("width", w); S.chipLabel.setAttribute("transform", `translate(${r[0] + r[2] + 12} ${r[1] + r[3] / 2 - 12})`); S.chipTxt.setAttribute("x", 8); S.chipTxt.setAttribute("y", 17);
+      if (cur) { const r = CTRL[cur.n]; S.cursor.style.transform = `translate(${r[0] + r[2] * 0.55}px,${r[1] + r[3] * 0.55}px)`; show(S.chipLabel, ms >= cur.startMs + cur.snapshot_ms); const label = "[" + cur.target + "] " + stepLabel(cur).slice(0, 30); S.chipTxt.textContent = label; const w = S.chipTxt.getComputedTextLength() + 16; S.chipBg.setAttribute("width", w); S.chipLabel.setAttribute("transform", `translate(${r[0] + r[2] + 12} ${r[1] + r[3] / 2 - 12})`); S.chipTxt.setAttribute("x", 8); S.chipTxt.setAttribute("y", 17);
         if (cur.operation === "CLICK" && ms >= cur.decidedMs && rippled !== cur.n) { rippled = cur.n; S.ripple.classList.remove("go"); void S.ripple.getBBox(); S.ripple.classList.add("go"); }
       } else if (!loading) { show(S.chipLabel, false); S.cursor.style.transform = "translate(560px,420px)"; }
       show(S.doneLine, t >= T.done); if (t >= T.done) { const y = 300 + Math.min(logged, 7) * 22 + 10; S.doneLine.setAttribute("y", y); [...S.doneLine.children].forEach((c2, i) => c2.setAttribute("y", y + i * 21)); const sy = y + 46; S.summaryBar.setAttribute("y", sy - 18); S.summaryBar.setAttribute("height", S.summary.children.length * 26 + 8); S.summary.setAttribute("y", sy); [...S.summary.children].forEach((c2, i) => c2.setAttribute("y", sy + i * 26)); }
