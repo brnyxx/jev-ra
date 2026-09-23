@@ -282,8 +282,11 @@
         e.isContentEditable || view.role==='combobox' ? e.innerText.trim() : '';
       actions.push({...shared,kind:editable?'fill':'click',label:view.label,value:view.value,
         ...(drawn(e) ? {format:e.type} : {})});
-      // A combobox often needs its list opened before its suggestions can be clicked.
-      if (editable && !drawn(e)) actions.push({...shared,kind:'click',label:'Open '+view.label,value:view.value});
+      // A combobox often needs its list opened before its suggestions can be clicked, and a text
+      // field its date picker. A number field has nothing to open: pressing it only focuses it,
+      // and offered beside typing into it, that press is the step a run repeats until it is stuck.
+      if (editable && !drawn(e) && view.role!=='spinbutton')
+        actions.push({...shared,kind:'click',label:'Open '+view.label,value:view.value});
     }
   });
   // Two readings of one walk. `text` is what a reader can see right now, which is what one

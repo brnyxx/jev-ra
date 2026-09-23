@@ -77,3 +77,10 @@ def test_a_refused_value_leaves_the_field_as_it_was(session, fixture_server):
         session.act(field(page, "Accent colour"), page, text="18")
     assert session.evaluate("document.getElementById('accent').value") == "#1a56db"
     assert text_of(session, "preview") == "Saved: text 14 px, accent #1a56db"
+
+
+def test_a_number_field_is_typed_into_and_never_offered_as_something_to_open(session, fixture_server):
+    page = session.open(f"{fixture_server}/sites/native-inputs.html")
+    assert not [a for a in page["actions"] if a["label"] == "Open Guests"]
+    session.act(field(page, "Guests"), page, text="3")
+    assert session.evaluate("document.getElementById('guests').value") == "3"
