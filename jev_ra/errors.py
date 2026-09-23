@@ -71,6 +71,12 @@ class DialogOpen(StalePage):
     next_step = "Observe the page: the dialog and its answers are what it offers."
 
 
+class BadValue(JevRaError):
+    """A field would not take the value it was given; the message says what it takes."""
+
+    next_step = "Supply the value the way the field takes it, then call again."
+
+
 class Escalated(JevRaError):
     """The run stopped and handed control back to the host agent."""
 

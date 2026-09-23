@@ -16,7 +16,7 @@ from .config import load, redact
 from .decide.client import DecisionClient
 from .decide.policy import Decision, InvalidDecision, build_questions, build_state, read_answers
 from .decide.questions import CANDIDATES, GOAL_ACHIEVED_THRESHOLD
-from .errors import Escalated, JevBadResponse, JevError, JevRaError, StalePage, render
+from .errors import BadValue, Escalated, JevBadResponse, JevError, JevRaError, StalePage, render
 from .pacing import SHARED
 from .profile import CATEGORIES, StepTimer
 from .runs import resumable
@@ -634,6 +634,11 @@ class Agent:
                 logger.info("[%s] Page went stale; re-observing (%s/%s)", run.run_id, stale_retries, STALE_RETRIES)
                 page = self.session.observe()
                 continue
+            except BadValue as error:
+                # The field said what it takes, and the value came from the host: the host is the
+                # one who can supply it again in that form.
+                refused = NeedsValue(decision.action, goal, error.message)
+                return run.escalate("needs_value", page, decision, detail=refused.detail)
             stale_retries = 0
             reasked_value = False
             if value is not None:

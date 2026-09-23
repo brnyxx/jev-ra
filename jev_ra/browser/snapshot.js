@@ -131,6 +131,11 @@
         n.nodeType===1 && n.getAttribute('aria-hidden')!=='true' ? name(n,seen) : '').join(' ').trim()) ||
       e.getAttribute('title') || e.getAttribute('placeholder') || '';
   };
+  // Inputs the browser draws itself and that take a value only in its own format: a date, a time,
+  // a colour, a position on a slider. Their value is set, the way their own picker sets it -
+  // pressing one opens that picker, or moves the slider to wherever the pointer landed.
+  const drawn = e => e.tagName==='INPUT' &&
+    ['date','time','datetime-local','month','week','color','range'].includes(e.type);
   const roles=['button','link','checkbox','radio','switch','tab','menuitem','menuitemradio',
     'option','gridcell','combobox','textbox','searchbox','spinbutton'];
   const selector='a,button,input,textarea,select,summary,iframe,label,[contenteditable="true"],'+
@@ -161,7 +166,8 @@
       if (['button','submit','reset','image'].includes(e.type)) return 'button';
       if (e.type==='search') return 'searchbox';
       if (e.type==='number') return 'spinbutton';
-      if (['text','email','url','tel'].includes(e.type)) return 'textbox';
+      if (e.type==='range') return 'slider';
+      if (['text','email','url','tel'].includes(e.type) || drawn(e)) return 'textbox';
     }
     return null;
   };
@@ -270,13 +276,14 @@
           label:view.label+' → '+o.label});
     } else {
       const editable=!e.readOnly && e.getAttribute('aria-readonly')!=='true' &&
-        (['textbox','searchbox','spinbutton'].includes(view.role) ||
+        (['textbox','searchbox','spinbutton'].includes(view.role) || drawn(e) ||
           (view.role==='combobox' && ['INPUT','TEXTAREA'].includes(e.tagName)));
       view.value='value' in e ? String(e.value) :
         e.isContentEditable || view.role==='combobox' ? e.innerText.trim() : '';
-      actions.push({...shared,kind:editable?'fill':'click',label:view.label,value:view.value});
+      actions.push({...shared,kind:editable?'fill':'click',label:view.label,value:view.value,
+        ...(drawn(e) ? {format:e.type} : {})});
       // A combobox often needs its list opened before its suggestions can be clicked.
-      if (editable) actions.push({...shared,kind:'click',label:'Open '+view.label,value:view.value});
+      if (editable && !drawn(e)) actions.push({...shared,kind:'click',label:'Open '+view.label,value:view.value});
     }
   });
   // Two readings of one walk. `text` is what a reader can see right now, which is what one
@@ -310,7 +317,7 @@
   // field, so the decision says which one it meant and the act-time guard can check it.
   const active=document.activeElement;
   const typed=active?.tagName==='INPUT' && active.value?.trim() &&
-    !['password','file','hidden','checkbox','radio','submit','button','reset','image'].includes(active.type);
+    !['password','file','hidden','checkbox','radio','submit','button','reset','image','range','color'].includes(active.type);
   const submits=typed ? identity(active) : null;
   const page_key=cache.pageKey(), guards={};
   for (const element of elements) if (!(element.node in guards))

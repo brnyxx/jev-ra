@@ -252,7 +252,6 @@ plan = [
   ["CLICK", "Find a table"],
 ]
 check = "document.getElementById('status').textContent === 'Looking for a table for 3 on 2026-10-05 at 19:30.'"
-gap = "date and time inputs are never observed"
 
 [[capability]]
 name = "native_range_color"
@@ -262,7 +261,6 @@ goal = "Set the text size to 18 and the accent colour to #ff6600."
 values = { size = "18", accent = "#ff6600" }
 plan = [["TYPE_TEXT", "Text size", "size"], ["TYPE_TEXT", "Accent colour", "accent"]]
 check = "document.getElementById('preview').textContent === 'Saved: text 18 px, accent #ff6600'"
-gap = "range and colour inputs are never observed"
 
 [[capability]]
 name = "aria_slider"

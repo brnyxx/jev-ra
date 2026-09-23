@@ -19,6 +19,7 @@ TAXONOMY = (
     errors.BadUrl,
     errors.StalePage,
     errors.DialogOpen,
+    errors.BadValue,
     errors.Escalated,
 )
 

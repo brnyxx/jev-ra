@@ -14,7 +14,7 @@ from browser_harness.admin import ensure_daemon
 from browser_harness.helpers import cdp, drain_events
 
 from ..config import load
-from ..errors import BadUrl, ChromeError, DialogOpen, StalePage
+from ..errors import BadUrl, BadValue, ChromeError, DialogOpen, StalePage
 from ..profile import NullTimer
 from . import CHALLENGE_JS, MAX_ELEMENTS, QUIET_STATE_JS, guard_expression, marker_expression, snapshot_expression
 from .chrome import ensure as ensure_chrome
@@ -393,6 +393,40 @@ SETTLE_JS = """(action => new Promise(resolve => {
   };
   requestAnimationFrame(ready);
 }))"""
+
+# A field the browser draws itself takes its value the way its own picker gives it one: set on the
+# element, then announced with the input and change events a picker fires. The setter is the
+# element's own prototype's, because a framework that tracks a controlled input's value hears a
+# plain assignment as no change at all. Whether the browser would keep the value is asked first,
+# of a detached input of the same kind and scale, so a refused value never touches the page: a
+# date the browser cannot read becomes empty, a colour black, and a slider rounds and clamps.
+SET_JS = """(args => {
+  const cache=window.__jevRa, e=cache?.nodes.get(args.node);
+  if (!e?.isConnected || e.disabled || e.readOnly || !e.checkVisibility({checkVisibilityCSS:true}) ||
+      !cache.point(e)) return null;
+  const text=args.text.trim(), probe=e.ownerDocument.createElement('input');
+  probe.type=e.type;
+  for (const key of ['min', 'max', 'step'])
+    if (e.getAttribute(key) !== null) probe.setAttribute(key, e.getAttribute(key));
+  probe.value=text;
+  const took = e.type==='color' ? probe.value===text.toLowerCase() :
+    e.type==='range' ? text!=='' && Number(probe.value)===Number(text) : probe.value!=='' || text==='';
+  if (!took) return {took, min: e.min || '0', max: e.max || '100', step: e.step || '1'};
+  e.focus();
+  Object.getOwnPropertyDescriptor(e.ownerDocument.defaultView.HTMLInputElement.prototype, 'value').set.call(e, text);
+  e.dispatchEvent(new Event('input', {bubbles: true}));
+  e.dispatchEvent(new Event('change', {bubbles: true}));
+  return {took};
+})"""
+# What a field the browser draws itself takes, said the way a caller has to supply it.
+FORMATS = {
+    "date": "a date as yyyy-mm-dd, like 2026-10-05",
+    "time": "a time as HH:MM on a 24-hour clock, like 19:30",
+    "datetime-local": "a date and time as yyyy-mm-ddTHH:MM, like 2026-10-05T19:30",
+    "month": "a month as yyyy-mm, like 2026-10",
+    "week": "a week as yyyy-Www, like 2026-W41",
+    "color": "a colour as #rrggbb, like #ff6600",
+}
 
 # Whether the observed field itself holds focus, wherever it lives: a document, a shadow root or
 # a same-origin frame. Typing is only safe once this is true.
@@ -1101,6 +1135,9 @@ class Session:
             if self.evaluate(f"{RESOLVE_JS}({json.dumps(action)})") is None:
                 raise StalePage("Dropdown execution was not confirmed. Observe again.")
             return
+        if action["kind"] == "fill" and action.get("format"):
+            self.set_value(action, text)
+            return
         self.click(self.resolve(action))
         if self.dialog is not None:
             return
@@ -1111,6 +1148,17 @@ class Session:
         if action["kind"] == "fill":
             self.select_all()
             self.call("Input.insertText", text=text)
+
+    def set_value(self, action, text):
+        """Give a field the browser draws itself its value, or say what it takes when it will not keep it."""
+        answer = self.evaluate(f"{SET_JS}({json.dumps({'node': observed(action['node']), 'text': text})})")
+        if answer is None:
+            raise StalePage("Target changed or is covered. Observe again.")
+        if answer["took"]:
+            return
+        kind = action["format"]
+        takes = FORMATS.get(kind) or (f"a number from {answer['min']} to {answer['max']} in steps of {answer['step']}")
+        raise BadValue(f"{action.get('label') or 'The field'} takes {takes}, and {text!r} is not one.")
 
     def resolve(self, action):
         """The target's live top-level coordinates, or a stale page when it moved or is covered."""
