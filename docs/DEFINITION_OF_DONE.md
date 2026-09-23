@@ -2,7 +2,8 @@
 
 Agreed 2026-09-22: no tag and no release discussion until every row below is green on `main`.
 Each row names the check; a row is green only when the check has been run and its output is in
-the PR or the commit that closes it.
+the PR or the commit that closes it. 0.2.3, 0.2.4 and 0.2.5 were tagged as patch releases while
+rows below were still red.
 
 ## Lanes landed
 
@@ -42,19 +43,21 @@ release, site, launch posts. Not before.
 
 ## Where things stand, 2026-09-22
 
-Measured on main at 0.2.2 (CI green on `371d417`: test x3, image, macos, windows, cold-start).
+The CI row was measured on main at 0.2.2 (CI green on `371d417`: test x3, image, macos, windows,
+cold-start). The test rows were re-run on 0.2.5 (`354da08` plus documentation only) on 2026-09-23;
+the corpus, head-to-head and recorded-task rows name their own release, date and route.
 
 | gate | state | measured |
 |---|---|---|
 | lint, format, types | green | CI |
 | generated docs | green | CI |
-| tests without a browser | green | 731 passed, 91.3 % |
-| tests with a browser | green | 925 passed, 95.62 % |
+| tests without a browser | green | 784 passed, 169 skipped, 91.15 % |
+| tests with a browser | green | 953 passed, 95.50 %, Chrome on 9377 with `JEV_RA_REQUIRE_BROWSER=1` |
 | CI | green | `371d417` |
-| real-site corpus | red | 207/234 possible tasks = 88.5 % on `f26087c`, 3 runs via TypeSafe direct; run-to-run noise about ±5 of 240 (docs/BENCHMARKS.md) |
-| head-to-head | green | docs/BENCHMARKS.md, browser-use 29/40 = 72 % at 19.4 s vs 102/120 = 85 % at 3.1 s |
-| recorded tasks | amber | 0.2.5, 5 runs each: all five verified 5/5 back to back with 0.2.4; oliveyoung 2.66x under the 3x bar on the TypeSafe direct route (docs/BENCHMARKS.md, 0.2.5) |
-| recovery, live | green | docs/PRODUCTION_REVIEW_2026-09-22.md sequence, 22.5 s relaunch |
+| real-site corpus | red | 213/231 possible tasks = 92.2 % on 0.2.4 (`2cf1e4d`), 3 runs via TypeSafe direct, 2026-09-23, the six walled tasks excluded; file_upload_picker and reddit_login_wall escalated 2/3 for their reason; run-to-run noise about ±5 of 240 (docs/BENCHMARKS.md) |
+| head-to-head | amber | docs/BENCHMARKS.md, browser-use 29/40 = 72 % at 19.4 s (one run, 2026-09-22) vs jev-ra 102/120 = 85 % at 3.1 s (0.1 `f581761`, three runs, 2026-09-18): published side by side, but not on the same commit, day or run count |
+| recorded tasks | amber | 0.2.5, 5 runs each: all five verified 5/5 back to back with 0.2.4; oliveyoung 2.66x under the 3x bar, jev-ra on the TypeSafe direct route on 2026-09-23 against browser-use's OpenRouter runs of 2026-09-18, which were not repeated (docs/BENCHMARKS.md, 0.2.5) |
+| recovery, live | green | docs/PRODUCTION_REVIEW_2026-09-22.md sequence; the relaunch time is not recorded there |
 | public benchmarks | red | 10 + 10 judged only; Online-Mind2Web 3/10 |
 | quality bar | green | every row names its check; Debt is empty |
 
@@ -63,6 +66,6 @@ What remains, in the order it pays off:
 1. **Decision quality**. The three mechanisms (late-route wait, href-less anchors, date grid) are on main as of 0.2.3 and hold on their fixtures; since 0.2.5 a link's click carries its address, so the wait runs on real pages: nhk went from 0/5 to 4/5 live and Google Flights from 0/5 to 5/5 (the field that opens an editor is typed into there). The state-evidence change and the `JEV_RA_HYBRID` helper sit on `fix/decisions` (`416273c`, `3f2f950`): the first makes hackernews_page_two read as BLOCKED on every rerun and is not merged until that is understood; the second depends on it. Measuring either on the public twenty needs OpenRouter credits (judges are o4-mini and gpt-4o).
 2. **Walled sites**: gov.kr (now plus.gov.kr) and oliveyoung join the walls in corpus/egress.md; eight sites need a `JEV_RA_PROXY` egress to be measured at all.
 3. **Public benchmarks at full size**: Online-Mind2Web all 300 through WebJudge, trajectories published; WebVoyager as the regression gate.
-4. **Recorded tasks**: oliveyoung is 2.66x against the 3x bar. The 3x runs of 0.1 went through OpenRouter and these through TypeSafe direct, on different days; run both routes back to back on one machine before blaming either, then work on the task's own steps.
+4. **Recorded tasks**: oliveyoung is 2.66x against the 3x bar. The 3x runs of 0.1 went through OpenRouter and these through TypeSafe direct, on different days, and the ratio divides into browser-use's runs of 2026-09-18, which were not repeated; run both routes and browser-use back to back on one machine before blaming either, then work on the task's own steps.
 
 Browser tests skip silently when no Chrome answers on 9222; a local pass without one is not a pass. Start one as ci.yml does and run with `JEV_RA_REQUIRE_BROWSER=1`.

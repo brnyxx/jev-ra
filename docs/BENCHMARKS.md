@@ -1,21 +1,26 @@
 # Benchmarks
 
-Everything here was measured on one machine on 2026-09-18. No number is estimated. A run that
-finishes without doing the task counts as a failure, not as a time.
+Every section names its date and route. The 0.1 sections, from Method to Cost and latency, were
+measured on one machine through OpenRouter on 2026-09-18, except the browser-use corpus run and the
+public benchmarks (both 2026-09-22); the sections from 0.2.3 on ran through the TypeSafe direct
+route. No number is estimated. A run that finishes without doing the task counts as a failure, not
+as a time.
 
 ## Method
 
 - **Machine and browser**: one dedicated Chrome 153 on a non-default profile, remote debugging on
   `http://127.0.0.1:9222`, 1280×900 viewport. Both sides drive the same browser.
-- **Route**: every model call goes through OpenRouter. jev-ra uses `typesafe/jev-1.13`; browser-use
-  uses the driver model named in each column.
+- **Route**: every model call in the 0.1 sections goes through OpenRouter. jev-ra uses
+  `typesafe/jev-1.13`; browser-use uses the driver model named in each column. From the 0.2.3
+  section on, OpenRouter had no credits and jev-ra ran on the TypeSafe direct route.
 - **browser-use**: 0.13.10, `use_vision=False`, `max_steps=25`, 240 s timeout per task. Wall time is
   measured around `agent.run()` and includes the CDP connect.
 - **jev-ra**: `jev-ra bench --live --runs 5`. Wall time is measured around `Agent.run()` and includes
   the first navigation.
 - **Verification**: every run is checked against the page it left behind, not against the agent's own
-  opinion. Wikipedia = the article URL; Flights = a submitted one-way search whose results page names
-  both cities, the date, a duration and a price, in whatever language it came back in; Olive Young =
+  opinion. Wikipedia = the article URL; Flights = a submitted search (a `travel/flights` URL carrying
+  `tfs=`) whose page names both cities, the date, a duration and a price, in whatever language it came
+  back in, without a check of the trip type; Olive Young =
   `prdSort=02` in the URL or the 신상품순 tab marked active; search = a page containing the year and a
   URL to cite; form fill = the confirmation carrying every typed value. Predicates:
   [`jev_ra/bench/verify.py`](../jev_ra/bench/verify.py).
@@ -73,7 +78,8 @@ claude-sonnet-5 could not drive browser-use through OpenRouter at all: its struc
 was rejected with `compiled grammar is too large`. Its row is kept in the raw data and excluded from
 every ratio. The gpt-5-mini Flights row hit the step budget and its final URL is not a verified
 one-way search. The `flash_mode` column is the one the ratios use, because it is browser-use's own
-fast mode and therefore the fairest comparison.
+fast mode and therefore the fairest comparison. On Flights the default mode's single run (63,565 ms)
+was faster than `flash_mode`'s; against it jev-ra's median is 7.15×.
 
 ## Where the time goes
 
@@ -90,7 +96,9 @@ fast mode and therefore the fairest comparison.
 | overhead | 11 | 0.0 % | everything else in Python, per step |
 | outside steps | 20,116 | 38.7 % | the first navigation, the terminal decision that produces no step, and the search task, whose work is not step-shaped |
 
-Every `Result.steps[i]` carries the same six fields, and they sum to that step's `total_ms`.
+Every `Result.steps[i]` carries the same six fields, and they sum to that step's `total_ms`. The
+profile's own output was not saved as rows; the table is as written when it was measured, in
+`c820204`.
 
 ### The decision rule for a rewrite
 
@@ -100,12 +108,16 @@ of five tasks. A faster language would be optimising something that does not exi
 
 The levers that do exist, in the order they are worth pulling:
 
-1. **Decision count.** Each decision is ~300-500 ms of `decide`, and every avoided round trip also
-   avoids a `wait` and a `snapshot`. This is why the operation, the target and the value are settled
+1. **Decision count.** Each decision took 253-380 ms of `decide` in the recorded Flights run
+   (OpenRouter, 2026-09-18, [`demo-run-flights.json`](benchmarks/2026-09-18-v0.1/demo-run-flights.json)),
+   and every avoided round trip also avoids a `wait` and a `snapshot`. This is why the operation, the target and the value are settled
    in one request rather than three.
-2. **Network.** The direct TypeSafe endpoint is roughly 140 ms per decision faster than OpenRouter by
-   the upstream measurements; HTTP/2 keep-alive is already on, and the state sent is the element
-   table and the visible text rather than the HTML.
+2. **Network.** Which route answers faster has not been measured under the same conditions. The
+   upstream jev-ultrafast recording has a 178 ms median decision on the direct route
+   ([docs/performance.md](https://github.com/browser-use/jev-ultrafast/blob/main/docs/performance.md));
+   the recorded Flights run here has a 296 ms median through OpenRouter. They ran on different
+   machines and days, so the difference is not a measurement of the route. HTTP/2 keep-alive is
+   already on, and the state sent is the element table and the visible text rather than the HTML.
 3. **Wait caps.** `wait` is the largest measured category. The 600 ms quiescence budget is a ceiling,
    not a cost: it returns as soon as two markers agree. Lowering it trades reliability on
    single-page apps for latency, which is the trade that made Google Flights answer `BLOCKED`
@@ -113,9 +125,10 @@ The levers that do exist, in the order they are worth pulling:
 
 ## The real-site corpus, 3 runs per task
 
-`corpus/sites.toml` holds 40 tasks across eight families (e-commerce, search and reading, booking,
-forms, news, documentation SPAs, government portals, login walls), each with an `expect` and a
-`verify` spec. `uv run jev-ra corpus run --runs 3` runs all of them against the live web.
+At 0.1, `corpus/sites.toml` held 40 tasks across eight families (e-commerce, search and reading,
+booking, forms, news, documentation SPAs, government portals, login walls), each with an `expect`
+and a `verify` spec. It has held 80 tasks in ten families since 0.2.0 and 83 since 0.2.4.
+`uv run jev-ra corpus run --runs 3` runs all of them against the live web.
 
 Measured twice on 2026-09-18. First on main `03973c6` (raw rows:
 `docs/benchmarks/2026-09-18-v0.1/corpus-3runs.jsonl`): 97 / 120 = 81 %. Then on main `f581761`,
@@ -150,10 +163,12 @@ cause at a time (`af4247a..f581761`). GitHub's secondary rate limit, which block
 
 The 0.1.0 bar is this measurement, published. The 0.2 bar is 90 % on the corpus as it stands
 today, re-measured on a tagged commit. The two booking loops and the Seoul check are the open items.
+No full corpus pass on a 0.2 release has reached it; the latest, 0.2.4, measured 213 / 249 =
+85.5 % (its section below).
 
 ## The same corpus, browser-use on the other side
 
- runs browser-use 0.13.10 (`flash_mode=True`, gemini-3-flash via OpenRouter,
+`scripts/bu_corpus.py` runs browser-use 0.13.10 (`flash_mode=True`, gemini-3-flash via OpenRouter,
 `use_vision=False`, the fastest configuration in the recorded baseline) on the same 40 tasks and judges
 every final page with the same `corpus.check` specs. One run per task on 2026-09-22 (raw rows:
 `docs/benchmarks/2026-09-18-v0.1/browser-use-corpus-1run.jsonl`). browser-use closes its tab inside
@@ -175,9 +190,14 @@ favours it: a FAIL here is a FAIL by its own account.
 Wall time on passing tasks, median: jev-ra 3.1 s, browser-use 19.4 s
 (p90 5.7 s vs 35.3 s).
 
+The two columns were not measured under the same conditions: jev-ra's is the 0.1 pass on `f581761`,
+three runs through OpenRouter on 2026-09-18, and browser-use's is one run on 2026-09-22. They differ
+in day, run count and jev-ra version, so neither the totals nor the times are like for like.
+
 The difference that matters most is not in the totals. Two tasks hold back a value on purpose
-(`httpbin_form_missing_value`, `file_upload_picker`): browser-use invented the missing input and
-submitted; jev-ra escalated `needs_value` both times. One task cannot be done at all
+(`httpbin_form_missing_value`, `file_upload_picker`): browser-use filled in a customer name it was
+never given and submitted, and reported uploading a file it was never given; jev-ra escalated
+`needs_value` on the form and stopped `blocked` at the file picker, on all three runs of each. One task cannot be done at all
 (`canvas_drawing`, a canvas with no controls): browser-use reported success; jev-ra escalated
 `blocked`. An agent that fills in a customer name it was never given, or says it drew on a canvas
 it cannot see, is not a pass, whatever the page says afterwards.
@@ -202,8 +222,12 @@ commits, what had to be worked around to run each judge at all, and where the tr
 
 Ten tasks is a smoke, not a score: every pass is the same ten tasks, and two passes of the same
 build differ by one to three of them, which is more than the gap between most leaderboard entries.
-The published bars are 90.53 % on Online-Mind2Web (ABP + Claude Opus 4.6, human-evaluated, 285 of
-300) and a saturated 99.19 % on WebVoyager.
+The published bars are 90.53 % on Online-Mind2Web (ABP + Claude Opus 4.6, 258 of the 285 tasks human
+evaluators judged possible, 86.00 % over all 300;
+[results](https://github.com/theredsix/abp-online-mind2web-results)) and a saturated 99.19 % on
+WebVoyager ([leaderboard](https://leaderboard.steel.dev/leaderboards/webvoyager/)). These passes ran
+on 2026-09-22; the per-task verdicts are in `bench/public/README.md`, and the run rows and
+trajectories are not committed.
 
 The reruns followed four fixes the first pass had traced: a post-input settle on the plain call
 budget (which failed `ArXiv--0` twice and now passes it twice), a browser that asked sites for the
@@ -216,13 +240,15 @@ as an impossible task - the wall class `ROADMAP_COMMERCIAL.md` Track B names is 
 
 | measurement | value |
 |---|---|
-| one Jev decision, OpenRouter | 274-508 ms across runs |
+| one Jev decision, OpenRouter, the recorded Flights run | 253-380 ms, median 296 ms, over the 10 decisions that made a step ([`demo-run-flights.json`](benchmarks/2026-09-18-v0.1/demo-run-flights.json)) |
 | cheapest task end to end | $0.00035 (search, 4 decisions) |
 | dearest task end to end | $0.00317 (Flights, 14 decisions) |
+| mean per decision, the five recorded tasks | $0.00023 ($0.0068 for 30 decisions) |
 | text-model calls | 0 |
 
-Cost scales with decisions, not with page size: the state sent is the element table and the visible
-text, never the HTML.
+All of it through OpenRouter on 2026-09-18. The TypeSafe direct route's answers carry no price, so
+the 0.2 rows record a cost of 0. Cost scales with decisions, not with page size: the state sent is
+the element table and the visible text, never the HTML.
 
 ## Reproducing
 
@@ -254,13 +280,17 @@ Measured 2026-09-22 through the TypeSafe direct route (OpenRouter was out of cre
 each, same eighty specs with the Flights date now written as `{today+30}`. Raw rows:
 [`2026-09-22-v0.2/`](benchmarks/2026-09-22-v0.2/).
 
-| tree | passed / 240 | possible tasks (walled sites excluded) |
+| tree | passed / 240 | possible tasks (the six walled tasks excluded) |
 |---|---|---|
-| main `f26087c` (0.2.2 + the date placeholder) | 207 = 86.2 % | 207 / 234 = 88.5 % |
-| candidate `1f87f60` (+ late-route wait, href-less anchors, date picker, route content) | 202 = 84.2 % | 202 / 234 = 86.3 % |
+| main `f26087c` (0.2.2 + the date placeholder) | 207 = 86.2 % | 207 / 222 = 93.2 % |
+| candidate `1f87f60` (+ late-route wait, href-less anchors, date picker, route content) | 202 = 84.2 % | 202 / 222 = 91.0 % |
+
+The six walled tasks are the ones a site wall stopped on every attempt on both trees (coupang,
+rakuten, reuters, taobao, jd and gov.kr: 18 attempts). This column first read 207 / 234 and
+202 / 234, which took out six attempts instead of eighteen.
 
 The five-task gap is not the code. The eight tasks that differed were rerun five times each on
-both trees: amazon, hackernews, tailwind 5/5 on both; the two httpbin form tasks went 0/5 on main
+both trees (the rerun rows are not in the repository): amazon, hackernews, tailwind 5/5 on both; the two httpbin form tasks went 0/5 on main
 and 5/5 on the candidate (httpbin.org answers with an error page for minutes at a time, which the
 run reads as `blocked`); nhk 0/5 on both; react 2/5 against 1/5. So a single three-run pass moves
 by about ±5 of 240 on site weather alone, and a change is only read as a gain or a loss when a
@@ -276,11 +306,14 @@ column counting those attempts.
 ## 0.2.4: site weather, and the same machine for the speed check
 
 Measured 2026-09-23 through the TypeSafe direct route (OpenRouter out of credits); decisions took
-495-604 ms there. The 0.1 table was measured through OpenRouter on 2026-09-18 at 274-508 ms per
-decision, on a different day and machine load, so the two routes have not been compared under the
-same conditions and the gap is not attributed to either. Raw rows: [`2026-09-23-v0.2.4/`](benchmarks/2026-09-23-v0.2.4/).
+495-604 ms there, a range noted at the time with no per-decision rows saved. In the 0.1 run recorded
+through OpenRouter on 2026-09-18 they took 253-380 ms, on a different day and machine load, so the
+two routes have not been compared under the same conditions and the gap is not attributed to either. Raw rows: [`2026-09-23-v0.2.4/`](benchmarks/2026-09-23-v0.2.4/).
 
-Corpus, three runs, 83 tasks (the three httpbin forms now also run against httpbingo.org): 213 / 249.
+Corpus, three runs, 83 tasks (the three httpbin forms now also run against httpbingo.org): 213 / 249;
+without the six walled tasks, 213 / 231 = 92.2 %. The rows file is exactly this pass. As first
+committed it had been cut from the day's results at the wrong line: five NHK rows from an earlier
+rerun in, the last five rows of the third pass out, which read as 208 / 249.
 On the 80 tasks shared with 0.2.3: 204 / 240 against 207 / 240, inside the ±5 run-to-run noise;
 the one row the new site-error path produced is booking.com answering HTTP 502 twice, reported as
 `blocked_by_site` instead of being decided on.
@@ -299,8 +332,8 @@ The release is not slower than the one before it. Google Flights fails on both a
 
 ## 0.2.5: Google Flights and NHK pass again
 
-Measured 2026-09-23 on the same machine and the same TypeSafe direct route as 0.2.4 (`jev-ra doctor`:
-DONE in 575 ms via jev-1.13.0). Raw rows: [`2026-09-23-v0.2.5/`](benchmarks/2026-09-23-v0.2.5/).
+Measured 2026-09-23 on the same machine and the same TypeSafe direct route as 0.2.4 (one
+`jev-ra doctor` reading: DONE in 575 ms via jev-1.13.0). Raw rows: [`2026-09-23-v0.2.5/`](benchmarks/2026-09-23-v0.2.5/).
 
 Recorded tasks, five runs each, 0.2.4 and this release back to back:
 
@@ -312,14 +345,15 @@ Recorded tasks, five runs each, 0.2.4 and this release back to back:
 | Search with a citation | 5/5, 2,858 ms | 5/5, 2,491 ms |
 | Form fill | 5/5, 1,923 ms | 5/5, 1,707 ms |
 
-Google Flights is 5.7x faster than browser-use flash_mode's 66,414 ms and Wikipedia 4.9x faster than
-its 23,058 ms. Olive Young is 2.66x faster than its 15,071 ms, under the 3x bar on both trees (0.2.4:
-2.15x). Decisions here took about 575 ms against 274-508 ms in the 0.1 OpenRouter runs, but those
-were measured on another day under another load, so the shortfall is not pinned on the route. The first pass of this
-release had Olive Young at 2/5. Two alternating corpus passes of `oliveyoung_sort_newest` came out
+Against browser-use's recorded `flash_mode` runs (2026-09-18, through OpenRouter) these medians
+come to 5.7x on Google Flights (66,414 ms), 4.9x on Wikipedia (23,058 ms) and 2.66x on Olive Young
+(15,071 ms), under the 3x bar on both trees (0.2.4: 2.15x). That ratio mixes conditions:
+browser-use was not re-run on 2026-09-23, and jev-ra ran on another route, day and machine load, so
+the shortfall is pinned on neither the release nor the route. The first pass of this release had
+Olive Young at 2/5. Two alternating corpus passes of `oliveyoung_sort_newest` came out
 10/10 on both trees (median 5,457 ms against 5,689 ms), and the back-to-back bench came out 5/5 on
 both, so that pass is counted as the site's minute, not the release.
 
 `ja_nhk_society_section`, five runs: 4/5, median 2,022 ms. The one miss ended on a URL without
-`genre/society`. In the 0.2.3 corpus passes it was 0/5 on both trees.
+`genre/society`. In the 0.2.3 corpus passes it was 0/3 on both trees, and 0/5 in the reruns.
 
