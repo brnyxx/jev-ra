@@ -99,6 +99,12 @@ def test_element_view_keeps_meaning_and_drops_geometry():
     assert view == {"ref": "e4", "role": "checkbox", "label": "Refundable", "checked": "false"}
 
 
+def test_element_view_says_which_item_of_a_group_is_the_current_one():
+    view = actions.element_view(element("e5", 5, "Newest", role="link", current="true"))
+    assert view["current"] == "true"
+    assert "current" not in actions.element_view(element("e6", 6, "Popular", role="link"))
+
+
 LINKS = {
     "url": "https://en.wikipedia.org/wiki/Zebra",
     "elements": [
