@@ -15,9 +15,10 @@ from .config import load, redact
 from .decide.client import DecisionClient
 from .decide.policy import Decision, InvalidDecision, build_questions, build_state, read_answers
 from .decide.questions import CANDIDATES, GOAL_ACHIEVED_THRESHOLD
-from .errors import Escalated, JevBadResponse, JevError, StalePage, render
+from .errors import Escalated, JevBadResponse, JevError, JevRaError, StalePage, render
 from .pacing import SHARED
 from .profile import CATEGORIES, StepTimer
+from .runs import resumable
 from .runs import write as store_run
 from .text import NeedsValue, ValueBinder
 
@@ -109,9 +110,13 @@ UNSEEN_STEP = (
     "Nobody can clear it in this browser: {reason}. Rerun where a person can see the Chrome window - "
     "without BU_CDP_URL, or pointing it at a Chrome on this desktop, and on Linux with DISPLAY set - "
     "or clear the check once by hand in a named profile (`jev-ra open URL --profile NAME` on a desktop) "
-    "and rerun with --profile NAME, which keeps what the site remembered."
+    "and rerun with --profile NAME, which keeps what the site remembered. `jev-ra run --resume {run_id}` "
+    "carries this run on from where it stopped."
 )
-UNCLEARED_STEP = "Nobody cleared it within {wait:g} s. Ask the person at this machine to clear it in the Chrome window."
+UNCLEARED_STEP = (
+    "Nobody cleared it within {wait:g} s. Ask the person at this machine to clear it in the Chrome window, "
+    'then carry the run on with browser_run(resume="{run_id}") or `jev-ra run --resume {run_id}`.'
+)
 # The page controls a snapshot offers beside the elements, which no input of its own removes.
 CONTROL_ACTIONS = ("scroll_down", "scroll_up", "wait")
 # An answer nobody is waiting for is worth the moment it takes to price it, and no longer.
@@ -440,17 +445,51 @@ class Agent:
         if not found.human:
             return run.escalate("blocked_by_site", page, decision, detail=found.detail())
         site = urlsplit(page.get("url", "")).hostname or ""
-        step = UNSEEN_STEP.format(reason=unseen) if unseen else UNCLEARED_STEP.format(wait=self.config.human_wait_s)
-        return run.escalate("needs_human", page, decision, detail={**found.detail(), "site": site, "next_step": step})
+        wait = self.config.human_wait_s
+        step = (UNSEEN_STEP if unseen else UNCLEARED_STEP).format(reason=unseen, wait=wait, run_id=run.run_id)
+        detail = {**found.detail(), "site": site, "resume": run.run_id, "next_step": step}
+        return run.escalate("needs_human", page, decision, detail=detail)
 
-    def run(self, goal, values=None, max_steps=None, url=None):
-        """Pursue a goal until it is done, blocked, escalated or out of budget."""
+    def returning(self, kept):
+        """Where a resumed run starts: None to go on from the page the browser shows, else the page it stopped on.
+
+        A browser still on the stopped run's site is where the person cleared the check, or is
+        about to; a browser anywhere else - a fresh tab, another site - is sent back to the page.
+        """
+        here = self.read(self.session.observe)
+        where = urlsplit(kept.get("url", "")).hostname
+        if here is not None and where and urlsplit(here.get("url", "")).hostname == where:
+            return None
+        return kept.get("url") or None
+
+    def run(self, goal=None, values=None, max_steps=None, url=None, resume=None):
+        """Pursue a goal until it is done, blocked, escalated or out of budget.
+
+        `resume` is the run id a needs_human escalation handed back. That run carries on from the
+        page it stopped on, with its goal, history, steps and counts; values are never stored, so
+        they are supplied again, and the ones it already typed stay spent.
+        """
+        stored = resumable(resume) if resume else None
+        kept = stored["resume"] if stored else {}
+        if stored and goal and goal != kept.get("goal"):
+            raise JevRaError(
+                f"Run {resume} is pursuing {kept.get('goal')!r}, and a resume carries that goal on.",
+                next_step="Resume without a goal, or start the other goal as a run of its own.",
+            )
+        goal = goal or kept.get("goal")
+        if not goal:
+            raise JevRaError("A run needs a goal, or the id of a run to resume.")
+        if stored:
+            self.run_id = resume
         started = self.clock()
         budgets = self.config.budgets
-        limit = max_steps or budgets.max_steps
+        limit = max_steps or kept.get("limit") or budgets.max_steps
         binder = ValueBinder(values, self.config)
-        run = _Run(self, goal, binder, started)
+        run = _Run(self, goal, binder, started, limit)
         self._run_id = run.run_id
+        if stored:
+            run.restore(stored)
+            url = self.returning(kept)
         guesses, guessed = [], None
         if url:
             self.pacer.wait(url, self.config.pace_s)
@@ -745,7 +784,7 @@ class Agent:
 class _Run:
     """Per-run bookkeeping: history, budgets, verification and the Result it ends with."""
 
-    def __init__(self, agent, goal, binder, started):
+    def __init__(self, agent, goal, binder, started, limit=None):
         self.agent = agent
         # A host that already named this run - `jev-ra serve` logs the id before the tools run -
         # spends that name here, so its log line and the stored run are the same run.
@@ -754,6 +793,8 @@ class _Run:
         self.goal = goal
         self.binder = binder
         self.started = started
+        self.limit = limit
+        self.before_ms = 0
         self.history = []
         self.steps = []
         self.decisions = 0
@@ -766,8 +807,38 @@ class _Run:
         self.human_wait_ms = 0
 
     def elapsed_ms(self):
-        """Milliseconds since the run started."""
-        return round((self.agent.clock() - self.started) * 1000)
+        """Milliseconds since the run started, counting the calls it ran in before this one."""
+        return self.before_ms + round((self.agent.clock() - self.started) * 1000)
+
+    def restore(self, stored):
+        """Take up a stored run where it stopped: its history, its steps, and what it has spent."""
+        kept = stored["resume"]
+        self.steps = list(stored.get("steps") or [])
+        self.history = [
+            {"action": step.get("target_label", ""), **{key: step.get(key) for key in ("kind", "text", "page_changed")}}
+            for step in self.steps
+        ]
+        self.decisions = stored.get("decisions", 0)
+        self.speculations = stored.get("speculations", 0)
+        self.prefetched = stored.get("prefetched", 0)
+        self.cost = stored.get("cost", 0.0)
+        self.site_error = bool(stored.get("site_error"))
+        self.human_wait_ms = stored.get("human_wait_ms", 0)
+        self.before_ms = stored.get("elapsed_ms", 0)
+        self.binder.used = list(kept.get("spent") or [])
+        self.binder.calls = list(stored.get("text_calls") or [])
+
+    def carried(self, page):
+        """What a resume needs that the Result does not keep. The values are never kept, only which were spent."""
+        session = self.agent.session
+        return {
+            "goal": self.goal,
+            "url": page.get("url", ""),
+            "limit": self.limit,
+            "spent": list(self.binder.used),
+            "target_id": getattr(session, "target_id", None),
+            "profile": getattr(session, "profile", None),
+        }
 
     def room(self, limit, budgets):
         """Whether this run could still take another step, which is what a speculation is for."""
@@ -929,7 +1000,7 @@ class _Run:
             candidates=decision.candidates[:CANDIDATES] if decision else [],
             detail=detail,
         )
-        store_run(result)
+        store_run(result, resume=self.carried(page) if reason == "needs_human" else None)
         return result
 
     def finish(self, status, reason, page, decision=None):

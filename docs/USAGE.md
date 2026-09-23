@@ -82,13 +82,17 @@ Hints: read-only no, destructive no, idempotent no, open-world yes.
 
 Pursue a whole goal on the current page. Supply values for anything that must be typed.
 
+Pass resume with the run id a needs_human escalation returned, once the person has
+cleared the check, to carry that run on instead of starting the goal again.
+
 Hints: read-only no, destructive no, idempotent no, open-world yes.
 
 | argument | type | required | default |
 |---|---|---|---|
-| `goal` | str | yes | - |
+| `goal` | str \| none | no | - |
 | `values` | object[str] \| none | no | - |
 | `max_steps` | int \| none | no | - |
+| `resume` | str \| none | no | - |
 
 ### `browser_screenshot`
 

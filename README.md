@@ -92,7 +92,7 @@ One decision per step. The only text typed into the page is text you supplied.
 | tool | arguments | what it does |
 |---|---|---|
 | `browser_open` | url | Open a URL in the shared session and summarise the page. |
-| `browser_run` | goal, values?, max_steps? | Pursue a whole goal. Supply values for anything that must be typed. |
+| `browser_run` | goal, values?, max_steps?, resume? | Pursue a whole goal. Supply values for anything that must be typed. `resume` carries on a run that stopped with `needs_human`. |
 | `browser_search` | query, goal?, max_pages? | Search, read the best results in parallel tabs, rank them against the goal. |
 | `browser_act` | instruction, values? | Take one decided step towards an instruction. |
 | `browser_observe` | max_elements? | List the observed controls and the visible text. |
@@ -115,7 +115,7 @@ Every response carries `elapsed_ms`, and `decisions` plus `cost` whenever Jev wa
 
 | command | what it does |
 |---|---|
-| `run URL "goal" [--value name=text ...] [--max-steps N] [--profile NAME]` | pursue a goal from a URL until it is done or escalates |
+| `run URL "goal" [--value name=text ...] [--max-steps N] [--profile NAME]`, `run --resume RUN_ID` | pursue a goal from a URL until it is done or escalates |
 | `search "query" ["what the page must answer"] [--max-pages 3] [--profile NAME]` | search the web and read the best results |
 | `open URL [--profile NAME]` | open a URL and keep the session for later commands |
 | `observe` | list the controls and text of the open page |

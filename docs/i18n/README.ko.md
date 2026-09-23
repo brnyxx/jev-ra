@@ -85,7 +85,7 @@ Python을 따로 갖추기 싫다면 `npx -y jev-ra install claude`가 npm 런�
 | 도구 | 인자 | 하는 일 |
 |---|---|---|
 | `browser_open` | url | 공유 세션에서 URL을 열고 페이지를 요약한다. |
-| `browser_run` | goal, values?, max_steps? | 목표 전체를 수행한다. 입력이 필요한 값은 values로 준다. |
+| `browser_run` | goal, values?, max_steps?, resume? | 목표 전체를 수행한다. 입력이 필요한 값은 values로 준다. `resume`은 `needs_human`으로 멈춘 실행을 이어 간다. |
 | `browser_search` | query, goal?, max_pages? | 검색하고, 상위 결과를 병렬 탭에서 읽어 목표 기준으로 순위를 매긴다. |
 | `browser_act` | instruction, values? | 지시에 맞는 한 단계를 결정해 실행한다. |
 | `browser_observe` | max_elements? | 관측된 컨트롤과 보이는 텍스트를 나열한다. |
@@ -105,7 +105,7 @@ Python을 따로 갖추기 싫다면 `npx -y jev-ra install claude`가 npm 런�
 
 | 명령 | 하는 일 |
 |---|---|
-| `run URL "goal" [--value name=text ...] [--max-steps N]` | URL에서 목표를 추구하고 완료되거나 에스컬레이션되면 멈춘다 |
+| `run URL "goal" [--value name=text ...] [--max-steps N]`, `run --resume RUN_ID` | URL에서 목표를 추구하고 완료되거나 에스컬레이션되면 멈춘다 |
 | `search "query" ["what the page must answer"] [--max-pages 3]` | 웹을 검색하고 가장 좋은 결과를 읽는다 |
 | `open URL` | URL을 열고 이후 명령을 위해 세션을 유지한다 |
 | `observe` | 열린 페이지의 컨트롤과 텍스트를 나열한다 |

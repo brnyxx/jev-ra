@@ -12,7 +12,7 @@ import sys
 import time
 from pathlib import Path
 
-from . import __version__
+from . import __version__, runs
 from .agent import Agent
 from .browser import MAX_ELEMENTS, actions
 from .browser.chrome import alive, find_browser, forget_pid, forget_port, profile_dir, read_pid, read_port, url_for
@@ -190,6 +190,9 @@ def result_lines(result):
     )
     if result.get("human_wait_ms"):
         lines.append(f"{result['human_wait_ms']} ms of that waiting for a person to clear a check, outside the budgets")
+    step = (result.get("detail") or {}).get("next_step")
+    if step:
+        lines.append(step)
     return lines
 
 
@@ -199,15 +202,44 @@ def agent_for(session):
     return Agent(session=session, config=load(), client=client), client
 
 
+def run_session(args):
+    """The session a run drives: its own, or for a resume the tab the stopped run left open."""
+    if not args.resume:
+        if not args.url or not args.goal:
+            raise ValueError("run needs a URL and a goal, or --resume RUN_ID to carry a stopped run on")
+        return Session(load(), profile=args.profile)
+    if args.url:
+        raise ValueError("--resume carries the stopped run on from its own page; give it no URL")
+    kept = runs.resumable(args.resume)["resume"]
+    profile = args.profile or kept.get("profile")
+    if kept.get("target_id"):
+        try:
+            return Session(load(), target_id=kept["target_id"], profile=profile)
+        except RuntimeError as error:
+            logger.info("The tab run %s stopped in is gone (%s); opening its page again", args.resume, error)
+    return Session(load(), profile=profile)
+
+
+def seen(session):
+    """Whether someone at this machine can see the browser this session drives."""
+    presenter = getattr(session, "presenter", None)
+    return presenter is not None and not presenter.hidden()
+
+
 def cmd_run(args):
-    """Pursue a goal from a URL in a session of its own."""
-    session = Session(load(), profile=args.profile)
+    """Pursue a goal from a URL in a session of its own, or carry on a run a human check stopped."""
+    session = run_session(args)
     agent, client = agent_for(session)
+    kept = False
     try:
-        result = agent.run(args.goal, values=parse_values(args.value), max_steps=args.max_steps, url=args.url)
+        result = agent.run(
+            args.goal, values=parse_values(args.value), max_steps=args.max_steps, url=args.url, resume=args.resume
+        )
+        kept = result.reason == "needs_human" and seen(session)
     finally:
         client.close()
-        session.close()
+        if not kept:
+            session.close()
     return emit(args, result.as_dict(), result_lines(result.as_dict()))
 
 
@@ -790,7 +822,7 @@ def cmd_skill(args):
 
 def cmd_trace(args):
     """Render a stored run by its id."""
-    from . import runs, trace
+    from . import trace
 
     payload = runs.read(args.run_id)
     if args.html is None:
@@ -802,7 +834,7 @@ def cmd_trace(args):
 
 def cmd_profile(args):
     """Print where a stored run's time went, step by step."""
-    from . import profile, runs
+    from . import profile
 
     payload = runs.read(args.run_id)
     steps = payload.get("steps") or []
@@ -859,8 +891,9 @@ def build_parser():
     sub = parser.add_subparsers(dest="command", metavar="COMMAND")
 
     run = add_profile(add_json(sub.add_parser("run", help="pursue a goal from a URL until it is done or escalates")))
-    run.add_argument("url")
-    run.add_argument("goal")
+    run.add_argument("url", nargs="?")
+    run.add_argument("goal", nargs="?")
+    run.add_argument("--resume", metavar="RUN_ID", help="carry on a run that stopped with needs_human")
     run.add_argument("--value", action="append", metavar="NAME=TEXT", help="a value the agent may type")
     run.add_argument(
         "--max-steps", type=bounded(1, MAX_STEPS_LIMIT, "max_steps"), help="override the configured step budget"

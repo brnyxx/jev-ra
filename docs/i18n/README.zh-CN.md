@@ -83,7 +83,7 @@ uvx jev-ra run https://en.wikipedia.org/wiki/Main_Page "Open the Godel incomplet
 | 工具 | 参数 | 作用 |
 |---|---|---|
 | `browser_open` | url | 在共享会话中打开 URL 并给出页面摘要。 |
-| `browser_run` | goal, values?, max_steps? | 完成整个目标。需要输入的值都放进 values。 |
+| `browser_run` | goal, values?, max_steps?, resume? | 完成整个目标。需要输入的值都放进 values。`resume` 接着执行以 `needs_human` 停下的运行。 |
 | `browser_search` | query, goal?, max_pages? | 搜索，并行标签页读取最佳结果，按目标排序。 |
 | `browser_act` | instruction, values? | 针对一条指令决策并执行一步。 |
 | `browser_observe` | max_elements? | 列出观测到的控件和可见文本。 |
@@ -103,7 +103,7 @@ uvx jev-ra run https://en.wikipedia.org/wiki/Main_Page "Open the Godel incomplet
 
 | 命令 | 作用 |
 |---|---|
-| `run URL "goal" [--value name=text ...] [--max-steps N]` | 从 URL 开始完成目标，直到完成或升级 |
+| `run URL "goal" [--value name=text ...] [--max-steps N]`, `run --resume RUN_ID` | 从 URL 开始完成目标，直到完成或升级 |
 | `search "query" ["what the page must answer"] [--max-pages 3]` | 搜索网络并读取最佳结果 |
 | `open URL` | 打开 URL 并为后续命令保留会话 |
 | `observe` | 列出打开页面的控件和文本 |

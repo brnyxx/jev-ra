@@ -12,7 +12,7 @@ from mcp.server.mcpserver import Image, MCPServer
 from mcp.server.mcpserver.exceptions import ToolError
 from mcp.types import ToolAnnotations
 
-from . import __version__
+from . import __version__, runs
 from .agent import Agent
 from .browser import MAX_ELEMENTS, actions
 from .browser.session import Session
@@ -223,13 +223,29 @@ def build_server(browser=None):
         return guarded(opened)
 
     @mcp.tool(annotations=hints())
-    def browser_run(goal: str, values: dict[str, str] | None = None, max_steps: int | None = None) -> dict:
-        """Pursue a whole goal on the current page. Supply values for anything that must be typed."""
+    def browser_run(
+        goal: str | None = None,
+        values: dict[str, str] | None = None,
+        max_steps: int | None = None,
+        resume: str | None = None,
+    ) -> dict:
+        """Pursue a whole goal on the current page. Supply values for anything that must be typed.
+
+        Pass resume with the run id a needs_human escalation returned, once the person has
+        cleared the check, to carry that run on instead of starting the goal again.
+        """
         started = time.perf_counter()
+        if not goal and not resume:
+            raise ToolError("browser_run needs a goal, or resume with the run id a needs_human escalation returned")
         values = checked_values(values)
         steps = clamp(max_steps, 1, MAX_STEPS_LIMIT, "max_steps")
-        agent = browser.agent()
-        return run_result(guarded(lambda: agent.run(goal, values=values, max_steps=steps)), started)
+
+        def ran():
+            if resume and browser.session is None:
+                browser.open(runs.resumable(resume)["resume"].get("profile"))
+            return browser.agent().run(goal, values=values, max_steps=steps, resume=resume)
+
+        return run_result(guarded(ran), started)
 
     @mcp.tool(annotations=hints())
     def browser_act(instruction: str, values: dict[str, str] | None = None) -> dict:

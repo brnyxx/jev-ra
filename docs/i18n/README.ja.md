@@ -87,7 +87,7 @@ Python を用意したくない場合は、`npx -y jev-ra install claude` でも
 | ツール | 引数 | 何をするか |
 |---|---|---|
 | `browser_open` | url | 共有セッションで URL を開き、ページを要約する。 |
-| `browser_run` | goal, values?, max_steps? | ゴール全体を遂行する。入力が必要な値は values で渡す。 |
+| `browser_run` | goal, values?, max_steps?, resume? | ゴール全体を遂行する。入力が必要な値は values で渡す。`resume` は `needs_human` で止まった実行を続ける。 |
 | `browser_search` | query, goal?, max_pages? | 検索し、上位の結果を並列タブで読み、ゴールに対して順位づけする。 |
 | `browser_act` | instruction, values? | 指示に沿った 1 ステップを判断して実行する。 |
 | `browser_observe` | max_elements? | 観測されたコントロールと可視テキストを列挙する。 |
@@ -107,7 +107,7 @@ Python を用意したくない場合は、`npx -y jev-ra install claude` でも
 
 | コマンド | 何をするか |
 |---|---|
-| `run URL "goal" [--value name=text ...] [--max-steps N]` | URL からゴールを遂行し、完了かエスカレーションで止まる |
+| `run URL "goal" [--value name=text ...] [--max-steps N]`, `run --resume RUN_ID` | URL からゴールを遂行し、完了かエスカレーションで止まる |
 | `search "query" ["what the page must answer"] [--max-pages 3]` | Web を検索し、最良の結果を読む |
 | `open URL` | URL を開き、以降のコマンドのためにセッションを保持する |
 | `observe` | 開いているページのコントロールとテキストを列挙する |

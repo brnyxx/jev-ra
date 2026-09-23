@@ -16,9 +16,9 @@ def steps_asked(monkeypatch):
     seen = []
     original = Agent.run
 
-    def record(self, goal, values=None, max_steps=None, url=None):
+    def record(self, goal=None, values=None, max_steps=None, url=None, resume=None):
         seen.append(max_steps)
-        return original(self, goal, values=values, max_steps=max_steps, url=url)
+        return original(self, goal, values=values, max_steps=max_steps, url=url, resume=resume)
 
     monkeypatch.setattr(Agent, "run", record)
     return seen
