@@ -139,8 +139,12 @@
   // pressing one opens that picker, or moves the slider to wherever the pointer landed.
   const drawn = e => e.tagName==='INPUT' &&
     ['date','time','datetime-local','month','week','color','range'].includes(e.type);
+  // A slider a page draws from its own elements - a shop's price range, a volume knob - has no
+  // value to set. It says where it stands in aria-valuenow and moves by the keys every slider
+  // answers to, so it is given its value the way a keyboard user gives it one.
+  const slides = e => e.tagName!=='INPUT' && e.getAttribute('role')==='slider';
   const roles=['button','link','checkbox','radio','switch','tab','menuitem','menuitemradio',
-    'option','gridcell','combobox','textbox','searchbox','spinbutton'];
+    'option','gridcell','combobox','textbox','searchbox','spinbutton','slider'];
   const selector='a,button,input,textarea,select,summary,iframe,label,[contenteditable="true"],'+
     roles.map(role=>'[role="'+role+'"]').join(',');
   // A label only counts as a control of its own when the thing it labels cannot be pressed where
@@ -184,6 +188,7 @@
     return [identity(e),role(e),name(e),e.value??null,e.checked??null,e.selectedIndex??null,
       e.readOnly??null,e.matches(':disabled'),e.getAttribute('aria-disabled'),
       e.getAttribute('aria-expanded'),e.getAttribute('aria-checked'),e.getAttribute('aria-selected'),
+      e.getAttribute('aria-valuenow'),
       e.getAttribute('href'),scope?.innerText?.slice(0,6000)||''];
   };
   // Which item in a group you are on. aria-current is the standard answer; most of the web
@@ -285,16 +290,17 @@
           label:view.label+' → '+(e.multiple ? (o.selected ? 'remove ' : 'add ') : '')+o.label});
     } else {
       const editable=!e.readOnly && e.getAttribute('aria-readonly')!=='true' &&
-        (['textbox','searchbox','spinbutton'].includes(view.role) || drawn(e) ||
+        (['textbox','searchbox','spinbutton'].includes(view.role) || drawn(e) || slides(e) ||
           (view.role==='combobox' && ['INPUT','TEXTAREA'].includes(e.tagName)));
       view.value='value' in e ? String(e.value) :
+        slides(e) ? e.getAttribute('aria-valuetext') ?? e.getAttribute('aria-valuenow') ?? '' :
         e.isContentEditable || view.role==='combobox' ? e.innerText.trim() : '';
       actions.push({...shared,kind:editable?'fill':'click',label:view.label,value:view.value,
-        ...(drawn(e) ? {format:e.type} : {})});
+        ...(drawn(e) ? {format:e.type} : slides(e) ? {format:'slider'} : {})});
       // A combobox often needs its list opened before its suggestions can be clicked, and a text
       // field its date picker. A number field has nothing to open: pressing it only focuses it,
       // and offered beside typing into it, that press is the step a run repeats until it is stuck.
-      if (editable && !drawn(e) && view.role!=='spinbutton')
+      if (editable && !drawn(e) && !slides(e) && view.role!=='spinbutton')
         actions.push({...shared,kind:'click',label:'Open '+view.label,value:view.value});
     }
   });

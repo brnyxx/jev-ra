@@ -3,6 +3,8 @@
 import base64
 import json
 import logging
+import math
+import re
 import sys
 import threading
 import time
@@ -46,7 +48,7 @@ PAINTED_JS = (
     + """)()) return true;
   const selector='a[href],button,input,select,textarea,summary,[contenteditable=""],'+
     '[contenteditable="true"],[role="button"],[role="link"],[role="tab"],[role="checkbox"],'+
-    '[role="radio"],[role="option"],[role="combobox"],[role="textbox"],[role="searchbox"]';
+    '[role="radio"],[role="option"],[role="combobox"],[role="textbox"],[role="searchbox"],[role="slider"]';
   const deepest=(x,y)=>{
     let node=document.elementFromPoint(x,y);
     while (node?.shadowRoot) {
@@ -321,6 +323,20 @@ KEYS = {
     "Escape": (27, "Escape", ""),
     "Tab": (9, "Tab", ""),
 }
+# The keys every slider answers to, by the ARIA slider pattern: a step either way, a larger step
+# either way, and either end.
+SLIDER_KEYS = {"ArrowRight": 39, "ArrowLeft": 37, "PageUp": 33, "PageDown": 34, "Home": 36, "End": 35}
+# How many keys one value may cost. A price range of 5,000 in steps of 100 is five larger steps.
+SLIDER_PRESSES = 60
+# A larger step is worth learning only when the value is further away than this many steps.
+SLIDER_FAR = 10
+# Where an observed slider stands and the range it moves in, as it announces them.
+SLIDER_JS = """(node => {
+  const e=window.__jevRa?.nodes.get(node);
+  if (!e?.isConnected || !e.checkVisibility({checkVisibilityCSS:true})) return null;
+  const number=name=>{ const v=parseFloat(e.getAttribute(name)); return Number.isFinite(v) ? v : null; };
+  return {now:number('aria-valuenow'), min:number('aria-valuemin'), max:number('aria-valuemax')};
+})"""
 
 # The element a keystroke lands on: the focused element, followed into open shadow roots and
 # same-origin frames.
@@ -1311,6 +1327,9 @@ class Session:
 
     def set_value(self, action, text):
         """Give a field the browser draws itself its value, or say what it takes when it will not keep it."""
+        if action["format"] == "slider":
+            self.slide(action, text)
+            return
         answer = self.evaluate(f"{SET_JS}({json.dumps({'node': observed(action['node']), 'text': text})})")
         if answer is None:
             raise StalePage("Target changed or is covered. Observe again.")
@@ -1319,6 +1338,72 @@ class Session:
         kind = action["format"]
         takes = FORMATS.get(kind) or (f"a number from {answer['min']} to {answer['max']} in steps of {answer['step']}")
         raise BadValue(f"{action.get('label') or 'The field'} takes {takes}, and {text!r} is not one.")
+
+    def slide(self, action, text):
+        """Move a slider a page draws itself to a value by the keys its role promises, or refuse the value.
+
+        One arrow says how far a step goes, and a value between two steps is refused with the
+        handle put back. A far value is reached by the larger step once it is known to land on a
+        step, and an end of the range by Home or End. A handle that stops moving - held back by the
+        other handle of a range - is reported where it stopped.
+        """
+        node = observed(action["node"])
+        label = action.get("label") or "The slider"
+        start = self.slider(node)
+        low, high, now = start["min"], start["max"], start["now"]
+        target = amount(text)
+        if target is None or now is None or (low is not None and target < low) or (high is not None and target > high):
+            span = f" from {low:g} to {high:g}" if low is not None and high is not None else ""
+            raise BadValue(f"{label} takes a number{span}, and {text!r} is not one.")
+        if same(target, now):
+            return
+        if not self.focused(node) and not self.focus(node):
+            raise StalePage("The slider never took focus. Observe again.")
+        if target in (low, high):
+            self.keystroke(SLIDER_KEYS["End" if target == high else "Home"], "End" if target == high else "Home")
+            return
+        rising = target > now
+        arrow, back = ("ArrowRight", "ArrowLeft") if rising else ("ArrowLeft", "ArrowRight")
+        after = self.nudge(node, arrow)
+        step = abs(after - now)
+        if not step:
+            return
+        if not whole((target - now) / step):
+            self.nudge(node, back)
+            raise BadValue(f"{label} moves in steps of {step:g} from {now:g}, and {text!r} is not one of them.")
+        now, page, presses = after, None, 1
+        while not same(now, target) and presses < SLIDER_PRESSES:
+            far = abs(target - now)
+            if page is None and far > SLIDER_FAR * step:
+                larger, smaller = ("PageUp", "PageDown") if rising else ("PageDown", "PageUp")
+                moved = self.nudge(node, larger)
+                presses += 1
+                page = abs(moved - now)
+                if (moved - target) * (now - target) < 0 or not whole(page / step) or page <= step:
+                    moved, page = self.nudge(node, smaller), 0
+                    presses += 1
+                now = moved
+                continue
+            key = ("PageUp" if rising else "PageDown") if page and far >= page else arrow
+            moved = self.nudge(node, key)
+            presses += 1
+            if same(moved, now):
+                break
+            now = moved
+        if not same(now, target):
+            raise BadValue(f"{label} stopped at {now:g}, and {text!r} is past where it goes from here.")
+
+    def slider(self, node):
+        """Where an observed slider stands and the range it moves in."""
+        held = self.evaluate(f"({SLIDER_JS})({node})")
+        if held is None:
+            raise StalePage("The slider is gone. Observe again.")
+        return held
+
+    def nudge(self, node, key):
+        """Press one slider key and read where the slider went."""
+        self.keystroke(SLIDER_KEYS[key], key)
+        return self.slider(node)["now"]
 
     def resolve(self, action):
         """The target's live top-level coordinates, or a stale page when it moved or is covered."""
@@ -1404,10 +1489,17 @@ class Session:
         """Press one of the supported keys."""
         if key not in KEYS:
             raise ValueError(f"press supports {', '.join(KEYS)}")
-        code, name, text = KEYS[key]
+        self.keystroke(*KEYS[key])
+        self.after_input = None
+        self.invalidate()
+        time.sleep(WAIT_SLEEP_S)
+        return {"executed": f"press:{key}", "kind": "press"}
+
+    def keystroke(self, code, name, text=""):
+        """One key pressed and released wherever focus is, unless a dialog takes it first."""
         for event in ("keyDown", "keyUp"):
             if self.dialog is not None:
-                break
+                return
             self.call(
                 "Input.dispatchKeyEvent",
                 type=event,
@@ -1417,10 +1509,6 @@ class Session:
                 nativeVirtualKeyCode=code,
                 **({"text": text} if text and event == "keyDown" else {}),
             )
-        self.after_input = None
-        self.invalidate()
-        time.sleep(WAIT_SLEEP_S)
-        return {"executed": f"press:{key}", "kind": "press"}
 
     def front(self):
         """Bring this target's tab to the front, and its window back when it was minimized.
@@ -1510,6 +1598,24 @@ def dialog_page(dialog, title, width, height):
         "omitted": 0,
         "dialog": dialog["type"],
     }
+
+
+def amount(text):
+    """The number a value names, however it is written: 2000, 2,000 or $2,000. None when it names none."""
+    try:
+        return float(re.sub(r"[^\d.\-]", "", text or ""))
+    except ValueError:
+        return None
+
+
+def same(one, other):
+    """Whether two positions a slider announces are the same one."""
+    return one is not None and other is not None and math.isclose(one, other, rel_tol=1e-9, abs_tol=1e-9)
+
+
+def whole(ratio):
+    """Whether a distance is a whole number of steps."""
+    return math.isclose(ratio, round(ratio), abs_tol=1e-6)
 
 
 def check_url(url, config):

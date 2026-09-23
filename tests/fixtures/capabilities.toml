@@ -264,7 +264,6 @@ goal = "Set the maximum price to $2,000."
 values = { max_price = "2000" }
 plan = [["TYPE_TEXT", "Maximum price", "max_price"]]
 check = "document.getElementById('range').textContent === '$0 - $2,000'"
-gap = "role=slider is never observed, and there is no operation that moves a handle"
 
 [[capability]]
 name = "validation_native"
