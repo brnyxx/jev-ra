@@ -6,6 +6,7 @@ from jev_ra.agent import Agent, speculate
 from jev_ra.browser.session import StalePage
 from jev_ra.decide import DecisionClient, JevBadResponse, Reply
 from jev_ra.errors import Escalated
+from jev_ra.pacing import Pacer
 
 FORM_ACTIONS = [
     {"id": "e1", "node": 1, "role": "textbox", "kind": "fill", "label": "City", "value": ""},
@@ -67,6 +68,18 @@ class FakeSession:
     def observe(self, timer=None):
         return self.pages[min(self.index, len(self.pages) - 1)]
 
+    def reload(self, timer=None):
+        return self.observe()
+
+    def quiet(self, budget_s, after=None, quiet_ms=None):
+        return {"quiet": True, "count": 0}
+
+    def load(self, budget=None):
+        return True
+
+    def paint(self, budget=None):
+        return True
+
     def act(self, action, page, text=None, timer=None):
         if self.stale > 0:
             self.stale -= 1
@@ -102,6 +115,7 @@ def decider(script, latency_ms=300, cost=0.0002):
 
 
 def agent_with(decide, session=None, env=None, **options):
+    options.setdefault("pacer", Pacer(backoff=0, sleep=lambda _seconds: None))
     return Agent(session=session or FakeSession(), config=config.load(env or {}), decide=decide, **options)
 
 
@@ -392,12 +406,12 @@ def test_a_long_page_that_mentions_a_refusal_is_not_serving_one():
 
 
 def test_every_listed_wall_phrase_is_read_as_one():
-    from jev_ra.agent import WALL_PHRASES
+    from jev_ra.agent import CHECK_PHRASES, WALL_PHRASES
 
     for phrase in WALL_PHRASES:
         session = FakeSession([walled(f"Before {phrase.upper()} after")])
         result = agent_with(decider([CLICK_SUBMIT]), session=session).run("search the shop")
-        assert result.reason == "blocked_by_site", phrase
+        assert result.reason == ("needs_human" if phrase in CHECK_PHRASES else "blocked_by_site"), phrase
 
 
 def test_three_opens_on_one_host_that_say_nothing_are_the_host_saying_it():

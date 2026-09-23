@@ -188,6 +188,8 @@ def result_lines(result):
         f"{len(result['steps'])} steps, {result['decisions']} decisions,"
         f" {len(result['text_calls'])} text calls, {result['elapsed_ms']} ms, ${result['cost']:.6f}"
     )
+    if result.get("human_wait_ms"):
+        lines.append(f"{result['human_wait_ms']} ms of that waiting for a person to clear a check, outside the budgets")
     return lines
 
 

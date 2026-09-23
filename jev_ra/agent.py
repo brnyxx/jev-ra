@@ -10,7 +10,7 @@ from urllib.parse import urlsplit
 
 from .browser import actions
 from .browser.actions import LIST_ROLES, calendar_control
-from .browser.session import Session
+from .browser.session import PAINT_BUDGET_S, Session
 from .config import load, redact
 from .decide.client import DecisionClient
 from .decide.policy import Decision, InvalidDecision, build_questions, build_state, read_answers
@@ -100,6 +100,18 @@ SITE_ERROR_PHRASES = (
 # it is answered on: the leaderboards' own top entries end on one sentence. These are the openings
 # a question takes when it does not end in a question mark.
 QUESTION_STARTS = ("what", "which", "how many", "when", "who", "find the")
+# A check is watched in slices this long. The page's own next change ends a slice early; a check
+# answered without the page around it changing - a token written into a hidden field - is still
+# seen within one slice of being answered.
+WATCH_SLICE_S = 0.5
+# What the host is told when nobody at this machine can clear a check in the browser the run drives.
+UNSEEN_STEP = (
+    "Nobody can clear it in this browser: {reason}. Rerun where a person can see the Chrome window - "
+    "without BU_CDP_URL, or pointing it at a Chrome on this desktop, and on Linux with DISPLAY set - "
+    "or clear the check once by hand in a named profile (`jev-ra open URL --profile NAME` on a desktop) "
+    "and rerun with --profile NAME, which keeps what the site remembered."
+)
+UNCLEARED_STEP = "Nobody cleared it within {wait:g} s. Ask the person at this machine to clear it in the Chrome window."
 # The page controls a snapshot offers beside the elements, which no input of its own removes.
 CONTROL_ACTIONS = ("scroll_down", "scroll_up", "wait")
 # An answer nobody is waiting for is worth the moment it takes to price it, and no longer.
@@ -245,6 +257,7 @@ class Result:
     prefetched: int = 0
     text_calls: list = field(default_factory=list)
     elapsed_ms: int = 0
+    human_wait_ms: int = 0
     cost: float = 0.0
     final_page: dict = field(default_factory=dict)
     candidates: list = field(default_factory=list)
@@ -258,11 +271,12 @@ class Result:
 class Agent:
     """The loop: observe, decide once, verify, and hand control back when stuck."""
 
-    def __init__(self, session=None, config=None, decide=None, client=None, prefetch=True, pacer=None):
+    def __init__(self, session=None, config=None, decide=None, client=None, prefetch=True, pacer=None, clock=None):
         self.config = config or load()
         self.session = session or Session(self.config)
         self.run_id = None
         self.pacer = pacer or SHARED
+        self.clock = clock or time.perf_counter
         # A decider that answers from a script rather than from the questions cannot be asked twice.
         self.prefetch = prefetch
         self._client = client
@@ -339,15 +353,99 @@ class Agent:
         return self.read(self.session.reload, timer)
 
     def retried(self, run, page, found):
-        """A check on a page the run opened, backed off and asked for once more, and what it shows then."""
-        reloaded = self.again(run, page, found.said)
+        """A check on a page the run opened, backed off and asked for once more, and what it shows then.
+
+        The page is read before it is reloaded: a check that answered itself while the backoff ran
+        has already sent the browser on, and reloading it would only start it over.
+        """
+        url = page.get("url", "")
+        delay = self.pacer.backoff(url)
+        logger.info("[%s] %s; asking once more in %.1f s", run.run_id, found.said, delay)
+        self.pacer.wait(url, self.config.pace_s)
+        looked = self.read(self.session.observe)
+        if looked is not None and document(looked) != document(page):
+            looked = self.arrived(looked, self.clock() + PAINT_BUDGET_S)
+        if looked is not None and not held(looked):
+            return looked, wall(looked)
+        reloaded = self.read(self.session.reload)
         if reloaded is None:
             return page, found
         return reloaded, wall(reloaded)
 
+    def hold(self, run, page, found, opened=False):
+        """Wait out a human check in the run it stopped, and say what the page is once the wait ends.
+
+        A check on a page the run opened is backed off and asked for once more first, as a site's
+        error is. What is left is put in front of the person at this machine, when one can see the
+        browser, and watched until it clears or the wait runs out. That time is the person's, not
+        the run's: it is kept apart in human_wait_ms and spends no step and no time budget.
+
+        Returns the page, the wall still on it (None once it is gone) and why nobody could be
+        asked, which is empty when somebody was.
+        """
+        started = self.clock()
+        try:
+            if opened:
+                page, found = self.retried(run, page, found)
+            else:
+                self.pacer.backoff(page.get("url", ""))
+            if found is None or not found.human:
+                return page, found, ""
+            presenter = getattr(self.session, "presenter", None)
+            if presenter is None:
+                return page, found, "the session has no window to show"
+            unseen = presenter.hidden()
+            if unseen:
+                logger.info("[%s] %s, and nobody can clear it: %s", run.run_id, found.said, unseen)
+                return page, found, unseen
+            site = urlsplit(page.get("url", "")).hostname or ""
+            wait = self.config.human_wait_s
+            logger.info("[%s] %s put up a %s; waiting up to %g s for a person", run.run_id, site, found.check, wait)
+            presenter.present(site, found.check)
+            page, found = self.watch(page, self.clock() + wait)
+            return page, found, ""
+        finally:
+            run.human_wait_ms += round((self.clock() - started) * 1000)
+
+    def watch(self, page, deadline):
+        """Read the page until it is no longer a human check or the deadline passes.
+
+        Between readings the page is waited on, not slept on: each wait ends at the page's next
+        change or at the slice. A check that clears by sending the browser on is followed until
+        the page it lands on has loaded and painted, as an open is. Returns the last reading and
+        the wall it shows, which is None once the check is gone.
+        """
+        found, count = wall(page), None
+        while found is not None and found.human:
+            remaining = deadline - self.clock()
+            if remaining <= 0:
+                break
+            answer = self.session.quiet(min(remaining, WATCH_SLICE_S), after=count)
+            count = None if answer is None else answer["count"]
+            reading = self.read(self.session.observe) or page
+            if answer is None or document(reading) != document(page):
+                reading, count = self.arrived(reading, deadline), None
+            page, found = reading, wall(reading)
+        return page, found
+
+    def arrived(self, page, deadline):
+        """The page a new document settles into once it has loaded and painted, within the deadline."""
+        budget = max(0.0, deadline - self.clock())
+        self.session.load(budget)
+        self.session.paint(min(budget, PAINT_BUDGET_S))
+        return self.read(self.session.observe) or page
+
+    def stop(self, run, page, found, unseen="", decision=None):
+        """End the run on a wall: a refusal as blocked_by_site, a check nobody cleared as needs_human."""
+        if not found.human:
+            return run.escalate("blocked_by_site", page, decision, detail=found.detail())
+        site = urlsplit(page.get("url", "")).hostname or ""
+        step = UNSEEN_STEP.format(reason=unseen) if unseen else UNCLEARED_STEP.format(wait=self.config.human_wait_s)
+        return run.escalate("needs_human", page, decision, detail={**found.detail(), "site": site, "next_step": step})
+
     def run(self, goal, values=None, max_steps=None, url=None):
         """Pursue a goal until it is done, blocked, escalated or out of budget."""
-        started = time.perf_counter()
+        started = self.clock()
         budgets = self.config.budgets
         limit = max_steps or budgets.max_steps
         binder = ValueBinder(values, self.config)
@@ -360,11 +458,11 @@ class Agent:
             page = self.read(self.session.open, url) if url else self.read(self.session.observe)
         if page is None:
             return run.escalate("stale", BLANK_PAGE, detail={"error": "The page never settled to be read."})
-        found = run.walled(page)
-        if found is not None and found.human and url:
-            page, found = self.retried(run, page, found)
+        found, unseen = run.walled(page), ""
+        if found is not None and found.human:
+            page, found, unseen = self.hold(run, page, found, opened=bool(url))
         if found is not None:
-            return run.escalate("blocked_by_site", page, detail=found.detail())
+            return self.stop(run, page, found, unseen)
         exclude, stale_retries, looks, reasked = set(), 0, 0, False
         best, waited, reasked_value = 0.0, False, False
         opened = None
@@ -528,11 +626,12 @@ class Agent:
             before, page = page, after
             run.record(step, page, timer, guessed is not None)
             opened = step.leaves_open(page)
-            found = run.walled(page, before)
+            found, unseen = run.walled(page, before), ""
+            if found is not None and found.human:
+                page, found, unseen = self.hold(run, page, found)
+                opened = None
             if found is not None:
-                if found.human:
-                    self.pacer.backoff(page.get("url", ""))
-                return run.escalate("blocked_by_site", page, decision, detail=found.detail())
+                return self.stop(run, page, found, unseen, decision)
             stuck = run.stuck(space)
             if stuck:
                 return run.escalate(stuck, page, decision)
@@ -664,10 +763,11 @@ class _Run:
         self.cost = 0.0
         self.opens = ()
         self.site_error = False
+        self.human_wait_ms = 0
 
     def elapsed_ms(self):
         """Milliseconds since the run started."""
-        return round((time.perf_counter() - self.started) * 1000)
+        return round((self.agent.clock() - self.started) * 1000)
 
     def room(self, limit, budgets):
         """Whether this run could still take another step, which is what a speculation is for."""
@@ -694,7 +794,7 @@ class _Run:
             return f"max_steps ({limit}) reached"
         if self.decisions >= budgets.max_decisions:
             return f"max_decisions ({budgets.max_decisions}) reached"
-        if self.elapsed_ms() >= budgets.timeout_s * 1000:
+        if self.elapsed_ms() - self.human_wait_ms >= budgets.timeout_s * 1000:
             return f"timeout_s ({budgets.timeout_s}) reached"
         return None
 
@@ -823,6 +923,7 @@ class _Run:
             prefetched=self.prefetched,
             text_calls=self.binder.calls,
             elapsed_ms=self.elapsed_ms(),
+            human_wait_ms=self.human_wait_ms,
             cost=round(self.cost, 6),
             final_page=self.final_page(page),
             candidates=decision.candidates[:CANDIDATES] if decision else [],
@@ -987,6 +1088,17 @@ def wall(page):
     if page.get("http_status") == 403 and not fields:
         return Wall(REFUSAL, "http 403")
     return None
+
+
+def held(page):
+    """Whether this page is a check a person has to clear."""
+    found = wall(page)
+    return found is not None and found.human
+
+
+def document(page):
+    """Which document a reading was taken of: its time origin, which a new document never shares."""
+    return (page.get("page_key") or [None])[0]
 
 
 def site_error(page):

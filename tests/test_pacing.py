@@ -194,9 +194,10 @@ def test_a_check_on_an_opened_page_backs_off_and_asks_once_more(session, flaky_s
 
 
 @pytest.mark.browser
-def test_a_check_that_is_still_there_after_the_reload_is_a_wall(session, flaky_server):
+def test_a_check_that_is_still_there_after_the_reload_is_handed_back(session, flaky_server):
     paced, clock = pacer()
+    session.presenter.reason = "the browser is headless"
     result = run_on(session, flaky_server(status=200, failures=2, body=CHECK), paced)
-    assert (result.status, result.reason) == ("escalate", "blocked_by_site")
+    assert (result.status, result.reason) == ("escalate", "needs_human")
     assert result.detail["kind"] == HUMAN
     assert clock.slept == [BACKOFF_S]

@@ -51,7 +51,7 @@ def test_the_readme_lists_every_escalation_reason():
 
 # AGENTS.md is the maintainer's file. A reason added here lands in it on their next pass, and this
 # set names what is still waiting for that so the guard keeps working for every other reason.
-PENDING_IN_AGENTS = {"provider_error"}
+PENDING_IN_AGENTS = {"provider_error", "needs_human"}
 
 
 def agents_reasons():

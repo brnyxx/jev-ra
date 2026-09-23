@@ -156,7 +156,7 @@ Jev が*あなたが渡した*値のどれがそのフィールドに入るか�
 
 `Result.status` は `done`、`blocked`、`escalate`、`budget` のいずれか。実行が途中で止まったときの
 `reason` は `needs_value`、`stuck_loop`、`unverified_done`、`stale`、`invalid_decision`、
-`too_many_controls`、`provider_error`、`blocked`、`blocked_by_site` のいずれか。`budget` で終わった実行は使い切った
+`too_many_controls`、`provider_error`、`blocked`、`blocked_by_site`、`needs_human` のいずれか。`budget` で終わった実行は使い切った
 予算(ステップ、判断、時間)を `reason` に入れる。`provider_error` はプロバイダが答えること自体を
 拒んだということなので、ゴールを再試行せず鍵と経路を確認する。
 escalate には確率つきの上位 8 件の操作/対象候補と、最大 3,000 文字のページテキストが含まれる。
@@ -261,6 +261,7 @@ v0.1 の基準に対する PASS/FAIL を表示する。0.2.5 で TypeSafe 直接
 | `JEV_RA_PROXY` | jev-ra が起動する Chrome の egress。例: `http://host:8080` |
 | `JEV_RA_PACE_S` | 1 回の実行が同じホストへ始める 2 つの遷移の最小間隔 (秒)。既定 `1`、`0` で無効、このマシン自身は対象外 |
 | `JEV_RA_NOTIFY` | `0` で人間確認のデスクトップ通知を止める |
+| `JEV_RA_HUMAN_WAIT_S` | 人間確認を人が解くのを待つ時間。既定 `120`、`0` ですぐに返す |
 | `JEV_RA_ALLOW_FILE_URLS` | `1` でセッションが `file:` URL を開けるようになる |
 | `JEV_RA_SEARCH_URL` | 検索エンドポイントのテンプレート。`{query}` が置換される |
 | `JEV_RA_TEXT_MODEL`, `JEV_RA_TEXT_BASE_URL`, `JEV_RA_TEXT_API_KEY` | 任意のテキストヘルパー。既定はオフ |

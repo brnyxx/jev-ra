@@ -154,7 +154,7 @@ Jev가 *당신이 준* 값 중 어느 것이 그 필드에 들어갈지 고른�
 
 `Result.status`는 `done`, `blocked`, `escalate`, `budget` 중 하나다. 실행이 중간에 멈추면 `reason`은
 `needs_value`, `stuck_loop`, `unverified_done`, `stale`, `invalid_decision`, `too_many_controls`,
-`provider_error`, `blocked`, `blocked_by_site` 중 하나다. `budget`으로 끝난 실행은 소진된 예산(스텝, 결정, 시간)을
+`provider_error`, `blocked`, `blocked_by_site`, `needs_human` 중 하나다. `budget`으로 끝난 실행은 소진된 예산(스텝, 결정, 시간)을
 `reason`에 담는다. `provider_error`는 공급자가 답하기를 거부한 것이므로, 목표를 다시 시도하지
 말고 키와 경로를 확인한다. escalate에는 확률이
 붙은 상위 8개 연산/대상 후보와 최대 3,000자의 페이지 텍스트가 담긴다. 다시 관측하지 않고도 판단할
@@ -259,6 +259,7 @@ browser-use 0.13.10 `flash_mode`는 2026-09-22 에 한 번씩 돌려 **29 / 40 =
 | `JEV_RA_PROXY` | jev-ra가 띄우는 Chrome의 egress. 예: `http://host:8080` |
 | `JEV_RA_PACE_S` | 한 실행이 같은 호스트로 여는 두 이동 사이의 최소 초. 기본 `1`, `0`이면 끔, 이 머신은 제외 |
 | `JEV_RA_NOTIFY` | `0`이면 사람 확인이 띄우는 데스크톱 알림을 끔 |
+| `JEV_RA_HUMAN_WAIT_S` | 사람 확인을 사람이 풀어 주기를 기다리는 시간. 기본 `120`, `0`이면 바로 돌려줌 |
 | `JEV_RA_ALLOW_FILE_URLS` | `1`이면 세션이 `file:` URL을 열 수 있다 |
 | `JEV_RA_SEARCH_URL` | 검색 엔드포인트 템플릿, `{query}`가 치환된다 |
 | `JEV_RA_TEXT_MODEL`, `JEV_RA_TEXT_BASE_URL`, `JEV_RA_TEXT_API_KEY` | 선택적 텍스트 헬퍼, 기본은 꺼짐 |

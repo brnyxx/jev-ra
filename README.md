@@ -184,7 +184,7 @@ current value. You supply the value and call again. The default install has no t
 
 `Result.status` is `done`, `blocked`, `escalate` or `budget`. When a run stops short, `reason` is one
 of `needs_value`, `stuck_loop`, `unverified_done`, `stale`, `invalid_decision`, `too_many_controls`,
-`provider_error`, `blocked` or `blocked_by_site`. A run that ends on `budget` names the budget it hit (steps, decisions
+`provider_error`, `blocked`, `blocked_by_site` or `needs_human`. A run that ends on `budget` names the budget it hit (steps, decisions
 or time) in `reason` instead; `provider_error` is the provider refusing to answer at all, so check
 the key and the route rather than retrying the goal. An escalation
 also carries the top eight operation/target candidates with their probabilities, and up to 3,000
@@ -308,6 +308,7 @@ supplied. You can still configure one with `JEV_RA_TEXT_MODEL`.
 | `JEV_RA_PROXY` | egress for a Chrome jev-ra launches, e.g. `http://host:8080` |
 | `JEV_RA_PACE_S` | least seconds between two navigations a run starts on one host; default `1`, `0` for none, this machine exempt |
 | `JEV_RA_NOTIFY` | `0` to stop the desktop notification a human check raises |
+| `JEV_RA_HUMAN_WAIT_S` | how long a run waits for a person to clear a human check; default `120`, `0` hands it back at once |
 | `JEV_RA_ALLOW_FILE_URLS` | `1` to let a session open `file:` URLs |
 | `JEV_RA_SEARCH_URL` | search endpoint template, `{query}` substituted |
 | `JEV_RA_TEXT_MODEL`, `JEV_RA_TEXT_BASE_URL`, `JEV_RA_TEXT_API_KEY` | optional text helper, off by default |

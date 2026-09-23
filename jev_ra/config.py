@@ -27,6 +27,8 @@ DEFAULT_LOCALE = "en-US"
 # a person reads a page for longer than this, so it only ever holds a loop that reopens one host
 # back to back. Zero turns it off.
 PACE_S = 1.0
+# How long a run waits for the person at the window to clear a check before it hands the run back.
+HUMAN_WAIT_S = 120.0
 ENV_VARIABLES = (
     *KEY_VARIABLES,
     "JEV_RA_ENDPOINT",
@@ -42,6 +44,7 @@ ENV_VARIABLES = (
     "JEV_RA_PROXY",
     "JEV_RA_PACE_S",
     "JEV_RA_NOTIFY",
+    "JEV_RA_HUMAN_WAIT_S",
     "JEV_RA_ALLOW_FILE_URLS",
     "JEV_RA_SEARCH_URL",
     "JEV_RA_TEXT_MODEL",
@@ -116,6 +119,7 @@ class Config:
     proxy: str | None = None
     pace_s: float = PACE_S
     notify: bool = True
+    human_wait_s: float = HUMAN_WAIT_S
 
     @property
     def provider(self):
@@ -338,4 +342,7 @@ def load(env=None, path=None):
         proxy=read_proxy(env.get("JEV_RA_PROXY") or stored.get("proxy")),
         pace_s=non_negative_float(env.get("JEV_RA_PACE_S", stored.get("pace_s", PACE_S)), PACE_S, "pace_s"),
         notify=read_flag(env.get("JEV_RA_NOTIFY", stored.get("notify")), True),
+        human_wait_s=non_negative_float(
+            env.get("JEV_RA_HUMAN_WAIT_S", stored.get("human_wait_s", HUMAN_WAIT_S)), HUMAN_WAIT_S, "human_wait_s"
+        ),
     )

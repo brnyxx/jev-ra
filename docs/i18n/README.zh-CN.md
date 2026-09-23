@@ -151,7 +151,7 @@ TYPE_TEXT 需要一个字符串，而 jev-ra 不会凭空造一个。在选定�
 
 `Result.status` 为 `done`、`blocked`、`escalate` 或 `budget` 之一。运行中途停下时，`reason` 是
 `needs_value`、`stuck_loop`、`unverified_done`、`stale`、`invalid_decision`、`too_many_controls`、
-`provider_error`、`blocked` 或 `blocked_by_site` 之一。以 `budget` 结束的运行会把被耗尽的预算（步数、决策数、时间）
+`provider_error`、`blocked`、`blocked_by_site` 或 `needs_human` 之一。以 `budget` 结束的运行会把被耗尽的预算（步数、决策数、时间）
 放进 `reason`；`provider_error` 是提供方根本拒绝作答，应检查密钥与路径，而不是重试目标。
 escalate 还会带上按概率排序的前八个
 操作/目标候选，以及最多 3,000 个字符的页面文本，足够在不重新观测的情况下做判断。
@@ -252,6 +252,7 @@ jev-ra 版本都不同，不是同等条件下的比较。一轮 3 次的测量�
 | `JEV_RA_PROXY` | jev-ra 启动的 Chrome 的出口代理，例如 `http://host:8080` |
 | `JEV_RA_PACE_S` | 一次运行对同一主机发起的两次导航之间的最短秒数；默认 `1`，`0` 为关闭，本机不受限 |
 | `JEV_RA_NOTIFY` | `0` 关闭人工验证触发的桌面通知 |
+| `JEV_RA_HUMAN_WAIT_S` | 等待人完成人工验证的时长；默认 `120`，`0` 为立即交还 |
 | `JEV_RA_ALLOW_FILE_URLS` | 设为 `1` 可让会话打开 `file:` URL |
 | `JEV_RA_SEARCH_URL` | 搜索端点模板，`{query}` 会被替换 |
 | `JEV_RA_TEXT_MODEL`, `JEV_RA_TEXT_BASE_URL`, `JEV_RA_TEXT_API_KEY` | 可选的文本助手，默认关闭 |

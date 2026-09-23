@@ -111,6 +111,8 @@ def table(payload):
     wall = payload.get("elapsed_ms", 0)
     outside = max(0, wall - inside)
     lines += ["", f"{wall} ms in the run, {outside} ms of it outside the steps (the first page, and the last)"]
+    if payload.get("human_wait_ms"):
+        lines.append(f"{payload['human_wait_ms']} ms of the run was waiting for a person to clear a check")
     prefetched = sum(1 for step in steps if step.get("prefetched"))
     if payload.get("speculations"):
         lines.append(f"{prefetched} of {payload['speculations']} decisions were ready before the page was")
