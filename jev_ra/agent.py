@@ -16,6 +16,7 @@ from .decide.client import DecisionClient
 from .decide.policy import Decision, InvalidDecision, build_questions, build_state, read_answers
 from .decide.questions import CANDIDATES, GOAL_ACHIEVED_THRESHOLD
 from .errors import Escalated, JevBadResponse, JevError, StalePage, render
+from .pacing import SHARED
 from .profile import CATEGORIES, StepTimer
 from .runs import write as store_run
 from .text import NeedsValue, ValueBinder
@@ -84,10 +85,6 @@ WALL_TEXT_CHARS = 1500
 # form; three opens in a row on one host that answer with nothing is the host answering.
 THIN_TEXT_CHARS = 200
 THIN_OPENS = 3
-# A site's hiccup is the site's, not the task's: the same address a moment later is often the
-# working page. One retry is spent before any decision is made on an error answer, and a site
-# that is still serving it after that is reported as the site refusing, never as blocked.
-SITE_RETRY_S = 2.0
 # An error page is a short page, and that is what keeps an article about an outage from reading
 # as one. The phrases are what a site says when the number is missing or rewritten.
 SITE_ERROR_CHARS = 600
@@ -261,10 +258,11 @@ class Result:
 class Agent:
     """The loop: observe, decide once, verify, and hand control back when stuck."""
 
-    def __init__(self, session=None, config=None, decide=None, client=None, prefetch=True):
+    def __init__(self, session=None, config=None, decide=None, client=None, prefetch=True, pacer=None):
         self.config = config or load()
         self.session = session or Session(self.config)
         self.run_id = None
+        self.pacer = pacer or SHARED
         # A decider that answers from a script rather than from the questions cannot be asked twice.
         self.prefetch = prefetch
         self._client = client
@@ -319,20 +317,33 @@ class Agent:
     def site(self, page, run, timer=None):
         """The page after one reload when the site answered an error, and the wall still there.
 
-        A decision made on a site's error page is a decision about nothing. Spend one reload on
-        it - the site's bad minute should cost a retry, not the task - and report what the reload
-        cannot fix as the site refusing, with the status it kept answering with.
+        A decision made on a site's error page is a decision about nothing. Back off and spend one
+        reload on it - the site's bad minute should cost a retry, not the task - and report what
+        the reload cannot fix as the site refusing, with the status it kept answering with.
         """
         error = site_error(page)
         if error is None:
             return page, None
         run.site_error = True
-        logger.info("[%s] The site answered %s; reloading once in %s s", run.run_id, error, SITE_RETRY_S)
-        time.sleep(SITE_RETRY_S)
-        reloaded = self.read(self.session.reload, timer)
+        reloaded = self.again(run, page, error, timer)
         if reloaded is None:
             return page, error
         return reloaded, site_error(reloaded)
+
+    def again(self, run, page, why, timer=None):
+        """The page asked for once more after the host's backoff, or None when it never settled."""
+        url = page.get("url", "")
+        delay = self.pacer.backoff(url)
+        logger.info("[%s] The site answered %s; reloading once in %.1f s", run.run_id, why, delay)
+        self.pacer.wait(url, self.config.pace_s)
+        return self.read(self.session.reload, timer)
+
+    def retried(self, run, page, found):
+        """A check on a page the run opened, backed off and asked for once more, and what it shows then."""
+        reloaded = self.again(run, page, found.said)
+        if reloaded is None:
+            return page, found
+        return reloaded, wall(reloaded)
 
     def run(self, goal, values=None, max_steps=None, url=None):
         """Pursue a goal until it is done, blocked, escalated or out of budget."""
@@ -343,11 +354,15 @@ class Agent:
         run = _Run(self, goal, binder, started)
         self._run_id = run.run_id
         guesses, guessed = [], None
+        if url:
+            self.pacer.wait(url, self.config.pace_s)
         with self.ahead(run, guesses, run.room(limit, budgets)):
             page = self.read(self.session.open, url) if url else self.read(self.session.observe)
         if page is None:
             return run.escalate("stale", BLANK_PAGE, detail={"error": "The page never settled to be read."})
         found = run.walled(page)
+        if found is not None and found.human and url:
+            page, found = self.retried(run, page, found)
         if found is not None:
             return run.escalate("blocked_by_site", page, detail=found.detail())
         exclude, stale_retries, looks, reasked = set(), 0, 0, False
@@ -515,6 +530,8 @@ class Agent:
             opened = step.leaves_open(page)
             found = run.walled(page, before)
             if found is not None:
+                if found.human:
+                    self.pacer.backoff(page.get("url", ""))
                 return run.escalate("blocked_by_site", page, decision, detail=found.detail())
             stuck = run.stuck(space)
             if stuck:

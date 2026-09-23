@@ -23,6 +23,10 @@ DEFAULT_TEXT_BASE_URL = "https://api.openai.com/v1"
 # page from the one the goal was written against. An operator who wants the machine's own
 # language back says so with a blank value.
 DEFAULT_LOCALE = "en-US"
+# The least time between two navigations a run starts on one host. A run opens its address once and
+# a person reads a page for longer than this, so it only ever holds a loop that reopens one host
+# back to back. Zero turns it off.
+PACE_S = 1.0
 ENV_VARIABLES = (
     *KEY_VARIABLES,
     "JEV_RA_ENDPOINT",
@@ -36,6 +40,7 @@ ENV_VARIABLES = (
     "JEV_RA_TIMEOUT_S",
     "JEV_RA_BLOCK_RESOURCES",
     "JEV_RA_PROXY",
+    "JEV_RA_PACE_S",
     "JEV_RA_ALLOW_FILE_URLS",
     "JEV_RA_SEARCH_URL",
     "JEV_RA_TEXT_MODEL",
@@ -108,6 +113,7 @@ class Config:
     block_resources: bool = True
     allow_file_urls: bool = False
     proxy: str | None = None
+    pace_s: float = PACE_S
 
     @property
     def provider(self):
@@ -223,6 +229,18 @@ def positive_float(value, default, label):
     return number
 
 
+def non_negative_float(value, default, label):
+    """A float of zero or more, or the default with a warning."""
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        number = -1.0
+    if not number >= 0:
+        logger.warning("Ignoring invalid %s %r; using %s", label, value, default)
+        return default
+    return number
+
+
 def read_viewport(raw):
     """A viewport from `WIDTHxHEIGHT` or a mapping, falling back to the default."""
     default = Viewport()
@@ -316,4 +334,5 @@ def load(env=None, path=None):
         block_resources=read_flag(env.get("JEV_RA_BLOCK_RESOURCES", stored.get("block_resources")), True),
         allow_file_urls=read_flag(env.get("JEV_RA_ALLOW_FILE_URLS", stored.get("allow_file_urls")), False),
         proxy=read_proxy(env.get("JEV_RA_PROXY") or stored.get("proxy")),
+        pace_s=non_negative_float(env.get("JEV_RA_PACE_S", stored.get("pace_s", PACE_S)), PACE_S, "pace_s"),
     )

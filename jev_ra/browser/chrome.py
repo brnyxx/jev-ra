@@ -1,5 +1,6 @@
 """Find, launch and reuse one dedicated automation Chrome. BU_CDP_URL always wins."""
 
+import ipaddress
 import json
 import logging
 import os
@@ -173,6 +174,17 @@ def read_pid(profile):
 def url_for(port):
     """The CDP base url for a port on loopback."""
     return f"http://127.0.0.1:{port}"
+
+
+def loopback(host):
+    """Whether a host name or address is this machine."""
+    host = (host or "").strip("[]").lower()
+    if host == "localhost" or host.endswith(".localhost"):
+        return True
+    try:
+        return ipaddress.ip_address(host).is_loopback
+    except ValueError:
+        return False
 
 
 def alive(url, timeout=PROBE_TIMEOUT_S):
