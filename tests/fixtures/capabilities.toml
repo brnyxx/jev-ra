@@ -99,7 +99,6 @@ page = "/sites/choice-cards.html"
 goal = "Choose Express delivery and turn on email delivery updates."
 plan = [["CLICK", "radio Express"], ["CLICK", "switch Email me delivery updates"]]
 check = "document.getElementById('summary').textContent === 'Delivery: express, updates: on'"
-gap = "a visually hidden radio is pressed at its own 1px box, where the pointer lands on its row and not its label"
 
 [[capability]]
 name = "file_upload"

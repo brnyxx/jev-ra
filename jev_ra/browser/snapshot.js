@@ -46,13 +46,15 @@
     return node;
   };
   const safe = e => !['password','file','hidden'].includes(e.type);
-  // Whether a pointer landing on `top` reaches `e`: itself, its own subtree, or the label that
-  // forwards a click to it - which is how a shop paints its filter checkboxes.
   // Whether a pointer landing on `top` reaches `e`: itself, its own subtree, an ancestor that
-  // took the pointer for it, or the label that forwards a click to it. A cover is none of those:
-  // a consent wall is a sibling of what it hides, never its parent.
+  // took the pointer for it, or the label that forwards a click to it - which is how a shop paints
+  // its filter checkboxes. A cover is none of those: a consent wall is a sibling of what it hides,
+  // never its parent. An ancestor can carry the click for a link or a button it wraps, because
+  // its handler is what does the work; it never checks a box or picks a radio, which only the
+  // input itself or its label does, and a press on the row around one changes nothing.
   cache.reaches = (e,top) => !!top &&
-    (top===e || e.contains(top) || top.contains(e) || top.closest('label')?.control===e);
+    (top===e || e.contains(top) || top.closest('label')?.control===e ||
+      (top.contains(e) && !['checkbox','radio'].includes(e.type)));
   // Where to put the pointer. The centre is where a person aims, but a bar floating over the
   // middle of a filter list leaves the names beside it perfectly clickable, so a few points along
   // the element are tried before giving up on it. The first one that reaches is the one used, by
@@ -133,15 +135,16 @@
     'option','gridcell','combobox','textbox','searchbox','spinbutton'];
   const selector='a,button,input,textarea,select,summary,iframe,label,[contenteditable="true"],'+
     roles.map(role=>'[role="'+role+'"]').join(',');
-  // A label only counts as a control of its own when the thing it labels has no pixels: a
-  // dropdown checkbox sized to nothing, a toggle drawn entirely in CSS. Where the control is
-  // there to be clicked, the label is just its name, and offering both says the same thing twice.
+  // A label only counts as a control of its own when the thing it labels cannot be pressed where
+  // it is: a dropdown checkbox sized to nothing, a toggle drawn entirely in CSS, a radio card whose
+  // input is clipped to one invisible pixel with the label beside it. Where the control is there
+  // to be clicked, the label is just its name, and offering both says the same thing twice.
   const standIn = e => {
     if (e.tagName!=='LABEL') return null;
     const control=e.control;
     if (!control || !safe(control)) return null;
     const r=control.getBoundingClientRect();
-    return (!rendered(control) || !r.width || !r.height) ? control : null;
+    return (!rendered(control) || !r.width || !r.height || !cache.point(control)) ? control : null;
   };
   const role = e => {
     const stand=standIn(e);
