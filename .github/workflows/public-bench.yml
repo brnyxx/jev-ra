@@ -28,7 +28,7 @@ jobs:
       JEV_RA_TEXT_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
       JEV_RA_LOG_LEVEL: INFO
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Require a key
         run: |
@@ -38,7 +38,7 @@ jobs:
           fi
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v5
+        uses: astral-sh/setup-uv@v7
         with:
           python-version: "3.12"
 
@@ -46,7 +46,7 @@ jobs:
         run: uv sync --locked
 
       - name: Install Chrome
-        uses: browser-actions/setup-chrome@v1
+        uses: browser-actions/setup-chrome@v2
         with:
           chrome-version: stable
 
@@ -90,7 +90,7 @@ jobs:
 
       - name: Upload the trajectories
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: public-bench-${{ github.run_id }}
           path: bench/public/runs/
