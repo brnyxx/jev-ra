@@ -21,6 +21,7 @@ os.environ.setdefault("BROWSER_USE_LOGGING_LEVEL", "warning")
 
 from browser_use import Agent, Browser, ChatOpenAI
 
+from jev_ra import traffic
 from jev_ra.browser.session import Session
 from jev_ra.config import load
 from jev_ra.corpus import TEXT_CHARS, check, load_tasks
@@ -132,11 +133,18 @@ async def main():
     names = set(sys.argv[5:])
     cdp_url = os.environ.get("BU_CDP_URL", "http://127.0.0.1:9333")
     tasks = [t for t in load_tasks() if not names or t.name in names]
+    ledger = traffic.ledger()
     passed = total = 0
     with out.open("a") as handle:
         for attempt in range(runs):
             for task in tasks:
+                # browser-use asks the same hosts the corpus does, so it spends the same budget.
+                claim = ledger.claim(task.url, f"{task.name} (browser-use)")
+                if claim.skipped:
+                    print(f"{task.name}: SKIPPED {claim.said}", flush=True)
+                    continue
                 row = await run_one(task, model, mode == "flash", cdp_url)
+                ledger.settle(claim, {"status": "done" if row.get("is_done") else "unfinished"})
                 row["run"] = attempt + 1
                 handle.write(json.dumps(row, ensure_ascii=False) + "\n")
                 handle.flush()

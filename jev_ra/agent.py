@@ -16,7 +16,7 @@ from .config import load, redact
 from .decide.client import DecisionClient
 from .decide.policy import Decision, InvalidDecision, build_questions, build_state, read_answers
 from .decide.questions import CANDIDATES, GOAL_ACHIEVED_THRESHOLD
-from .errors import Escalated, JevBadResponse, JevError, JevRaError, StalePage, render
+from .errors import BadValue, Escalated, JevBadResponse, JevError, JevRaError, StalePage, render
 from .pacing import SHARED
 from .profile import CATEGORIES, StepTimer
 from .runs import resumable
@@ -118,8 +118,9 @@ UNCLEARED_STEP = (
     "Nobody cleared it within {wait:g} s. Ask the person at this machine to clear it in the Chrome window, "
     'then carry the run on with browser_run(resume="{run_id}") or `jev-ra run --resume {run_id}`.'
 )
-# The page controls a snapshot offers beside the elements, which no input of its own removes.
-CONTROL_ACTIONS = ("scroll_down", "scroll_up", "wait")
+# The page controls a snapshot offers beside the elements, which no input of its own removes:
+# typing into a field inside a dialog leaves the dialog there to be closed.
+CONTROL_ACTIONS = ("press_escape", "scroll_down", "scroll_up", "wait")
 # An answer nobody is waiting for is worth the moment it takes to price it, and no longer.
 DISCARD_WAIT_S = 1.0
 # The readings a step's settle takes before the page proves it has stopped moving are usually the
@@ -268,6 +269,7 @@ class Result:
     final_page: dict = field(default_factory=dict)
     candidates: list = field(default_factory=list)
     detail: dict = field(default_factory=dict)
+    downloads: list = field(default_factory=list)
 
     def as_dict(self):
         """The result as plain JSON-safe data."""
@@ -634,6 +636,11 @@ class Agent:
                 logger.info("[%s] Page went stale; re-observing (%s/%s)", run.run_id, stale_retries, STALE_RETRIES)
                 page = self.session.observe()
                 continue
+            except BadValue as error:
+                # The field said what it takes, and the value came from the host: the host is the
+                # one who can supply it again in that form.
+                refused = NeedsValue(decision.action, goal, error.message)
+                return run.escalate("needs_value", page, decision, detail=refused.detail)
             stale_retries = 0
             reasked_value = False
             if value is not None:
@@ -667,6 +674,12 @@ class Agent:
                 )
             before, page = page, after
             run.record(step, page, timer, guessed is not None)
+            asked = page.get("file_chooser")
+            if asked is not None:
+                # The page asked for a file, and only the host has one to give: jev-ra never picks
+                # one from the disk it runs on.
+                detail = {"field": decision.action.get("label", ""), **asked}
+                return run.escalate("needs_file", page, decision, detail=detail)
             opened = step.leaves_open(page)
             found, unseen = run.walled(page, before), ""
             if found is not None and found.human:
@@ -677,6 +690,9 @@ class Agent:
             stuck = run.stuck(space)
             if stuck:
                 return run.escalate(stuck, page, decision)
+            spent = run.spent()
+            if spent:
+                exclude = {spent}
 
     @contextmanager
     def ahead(self, run, guesses, room, step=None):
@@ -757,7 +773,7 @@ class Agent:
             raise StalePage(STALE_OBSERVATION)
         candidates = [a for a in page["actions"] if a["id"] == ref and a["kind"] == kind]
         if kind == "select":
-            candidates = [a for a in candidates if option in (a.get("value"), a.get("label", "").split(" → ")[-1])]
+            candidates = [a for a in candidates if option in (a.get("value"), a.get("option"))]
         if not candidates:
             raise LookupError(f"No {kind} action for {ref} on this page")
         self.session.act(candidates[0], page, text=text)
@@ -809,6 +825,7 @@ class _Run:
         self.opens = ()
         self.site_error = False
         self.human_wait_ms = 0
+        self.downloads = []
 
     def elapsed_ms(self):
         """Milliseconds since the run started, counting the calls it ran in before this one."""
@@ -828,6 +845,7 @@ class _Run:
         self.cost = stored.get("cost", 0.0)
         self.site_error = bool(stored.get("site_error"))
         self.human_wait_ms = stored.get("human_wait_ms", 0)
+        self.downloads = list(stored.get("downloads") or [])
         self.before_ms = stored.get("elapsed_ms", 0)
         self.binder.used = list(kept.get("spent") or [])
         self.binder.calls = list(stored.get("text_calls") or [])
@@ -913,6 +931,7 @@ class _Run:
             }
         )
         self.history.append(line)
+        self.downloads.extend(after.get("downloads", []))
 
     def walled(self, page, before=None):
         """The wall this site put up instead of the page, or None.
@@ -937,6 +956,23 @@ class _Run:
         if len(self.opens) < THIN_OPENS:
             return None
         return Wall(REFUSAL, f"{host} answered {THIN_OPENS} opens with under {THIN_TEXT_CHARS} characters")
+
+    def spent(self):
+        """The choice the last two steps both made without the page moving, or None.
+
+        Asked the same question about the same page, the model gives the same answer, and the third
+        press of a control that twice did nothing ends the run with the one beside it never tried.
+        One retry stays on offer, because a first press is sometimes swallowed while a page is still
+        wiring its controls up; after a second that does nothing, the choice sits out one question.
+        A wait is how loading is waited out, so waits never count.
+        """
+        recent = self.steps[-2:]
+        choices = {(step["operation"], step["target"]) for step in recent}
+        if len(recent) < 2 or len(choices) != 1:
+            return None
+        if any(step["page_changed"] or step["kind"] == "wait" for step in recent):
+            return None
+        return choices.pop()
 
     def stuck(self, space):
         """The escalation reason if the run is going nowhere, else None."""
@@ -1003,6 +1039,7 @@ class _Run:
             final_page=self.final_page(page),
             candidates=decision.candidates[:CANDIDATES] if decision else [],
             detail=detail,
+            downloads=self.downloads,
         )
         store_run(result, resume=self.carried(page) if reason == "needs_human" else None)
         return result
@@ -1012,9 +1049,21 @@ class _Run:
         return self.result(status, reason, page, decision)
 
     def escalate(self, reason, page, decision=None, detail=None, status="escalate"):
-        """End the run and hand back what the host needs to decide."""
+        """End the run and hand back what the host needs to decide.
+
+        A frame from another origin is one opaque element to jev-ra, and on a page that has one the
+        controls a goal needs are often inside it - a card number, a sign-in. The escalation names
+        each such frame and where it is served from, so the host knows what the run could not see.
+        """
         detail = dict(detail or {})
         detail["page_text"] = page.get("text", "")[:ESCALATION_TEXT_CHARS]
+        frames = [
+            {"label": element.get("label", ""), "host": element.get("host", "")}
+            for element in page.get("elements", [])
+            if element.get("role") == "frame"
+        ]
+        if frames:
+            detail["frames"] = frames
         return self.result(status, reason, page, decision, detail)
 
 

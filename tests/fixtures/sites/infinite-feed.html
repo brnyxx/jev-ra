@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Journal</title>
+<style>
+  body { font: 15px/1.5 system-ui; margin: 0; padding: 0 24px; max-width: 680px; }
+  article { border-bottom: 1px solid #eee; padding: 14px 0; height: 52px; }
+  article a { font-weight: 600; }
+  #sentinel { height: 1px; }
+  #loading { color: #777; padding: 12px 0; }
+  #reader { position: fixed; top: 16px; right: 16px; width: 320px; background: #fff; border: 1px solid #ccc; padding: 16px; box-shadow: 0 4px 16px rgba(0,0,0,.2); }
+  #reader[hidden] { display: none; }
+</style>
+</head>
+<body>
+<!-- A feed that loads as you read, the way blogs and social timelines do: fifteen posts arrive with the
+     page, and the next twenty are fetched only when a sentinel at the end of the list scrolls into
+     view. The post a goal names does not exist in the document until the reader gets near it. -->
+<h1>Journal</h1>
+<div id="reader" role="dialog" aria-labelledby="opened" hidden>
+  <h2 id="opened"></h2><p>The full post opens here.</p>
+  <button type="button" onclick="document.getElementById('reader').hidden = true">Close</button>
+</div>
+<div id="feed"></div>
+<div id="sentinel"></div>
+<p id="loading" hidden>Loading more posts…</p>
+<script>
+  const places = ['Lisbon', 'Kyoto', 'Oslo', 'Quito', 'Hanoi', 'Tunis', 'Perth', 'Cusco', 'Riga', 'Accra'];
+  const things = ['harbor', 'market', 'library', 'station', 'bakery', 'garden'];
+  const feed = document.getElementById('feed');
+  let shown = 0, loading = false;
+  const title = n => 'Post ' + n + ': The ' + things[n % things.length] + ' in ' + places[Math.floor(n / things.length) % places.length];
+  const more = count => {
+    for (let i = 0; i < count && shown < 60; i++) {
+      const n = ++shown;
+      const post = document.createElement('article');
+      post.innerHTML = '<a href="#post-' + n + '"></a><p>A short note, number ' + n + '.</p>';
+      post.querySelector('a').textContent = title(n);
+      post.querySelector('a').addEventListener('click', event => {
+        event.preventDefault();
+        document.getElementById('opened').textContent = 'Reading: ' + title(n);
+        document.getElementById('reader').hidden = false;
+      });
+      feed.appendChild(post);
+    }
+  };
+  more(15);
+  new IntersectionObserver(entries => {
+    if (!entries.some(entry => entry.isIntersecting) || loading || shown >= 60) return;
+    loading = true;
+    document.getElementById('loading').hidden = false;
+    setTimeout(() => { more(20); loading = false; document.getElementById('loading').hidden = true; }, 900);
+  }, {rootMargin: '200px'}).observe(document.getElementById('sentinel'));
+</script>
+</body>
+</html>

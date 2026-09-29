@@ -19,6 +19,7 @@ from pathlib import Path
 if str(Path(__file__).resolve().parents[1]) not in sys.path:
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from jev_ra import traffic
 from jev_ra.bench import FLASH_MODEL, LIVE_TASKS, OFFLINE_TASKS, baseline_dir, serve
 from jev_ra.bench.scripted import scripted
 from jev_ra.browser.chrome import ensure as ensure_chrome
@@ -91,12 +92,22 @@ def task_named(key):
     raise SystemExit(f"unknown task {key!r}; try one of " + ", ".join(t.key for t in (*LIVE_TASKS, *OFFLINE_TASKS)))
 
 
+def claimed(config, url, key):
+    """A live recording's claim on its host from the machine's ledger, or a SystemExit saying why not."""
+    ledger = traffic.ledger(config)
+    claim = ledger.claim(url, key)
+    if claim.skipped:
+        raise SystemExit(claim.said)
+    return ledger, claim
+
+
 def record_jev_ra(key, out_dir, fps=DEFAULT_FPS):
     from jev_ra.agent import Agent
 
     task = task_named(key)
     config = load()
     offline = hasattr(task, "plan")
+    ledger, claim = (None, None) if offline else claimed(config, task.url, key)
     client = None if offline else DecisionClient(config)
     session = Session(config)
     directory = Path(out_dir) / "jev-ra"
@@ -109,6 +120,17 @@ def record_jev_ra(key, out_dir, fps=DEFAULT_FPS):
             with Recorder(session, directory, fps) as recorder:
                 result = agent.run(task.goal, values=task.values, max_steps=task.max_steps, url=url)
             elapsed_ms = round((time.perf_counter() - started) * 1000)
+        if ledger:
+            ledger.settle(
+                claim,
+                {
+                    "status": result.status,
+                    "reason": result.reason,
+                    "http_status": result.http_status,
+                    "site_error": result.site_error,
+                    "human_wait_ms": result.human_wait_ms,
+                },
+            )
         return write_manifest(
             directory,
             "jev-ra",
@@ -171,6 +193,7 @@ def record_browser_use(key, out_dir, fps=DEFAULT_FPS, model=FLASH_MODEL):
     config = load()
     cdp_url, _source = ensure_chrome(viewport=(config.viewport.width, config.viewport.height))
     task = next(item for item in LIVE_TASKS if item.key == key)
+    ledger, claim = claimed(config, task.url, f"{key} (browser-use)")
     needle = task.url.split("://", 1)[-1].split("?", 1)[0].rstrip("/")
     before = {item["id"]: (item.get("url") or "") for item in page_targets(cdp_url)}
     started = time.perf_counter()
@@ -212,6 +235,7 @@ def record_browser_use(key, out_dir, fps=DEFAULT_FPS, model=FLASH_MODEL):
             row = json.loads(line)
         except ValueError:
             continue
+    ledger.settle(claim, {"status": "done" if row.get("is_done") else "unfinished"})
     return write_manifest(
         directory_out,
         "browser-use flash_mode",

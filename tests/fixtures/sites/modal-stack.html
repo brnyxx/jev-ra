@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Settings - acme/alpha</title>
+<style>
+  body { font: 15px/1.5 system-ui; margin: 0; padding: 24px; max-width: 760px; }
+  .danger { border: 1px solid #d1242f; border-radius: 6px; padding: 16px; margin-top: 24px; }
+  dialog { width: 440px; border: 1px solid #ccc; border-radius: 8px; padding: 0; }
+  dialog::backdrop { background: rgba(0,0,0,.45); }
+  dialog header { display: flex; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid #eee; }
+  dialog .body { padding: 16px; }
+  dialog input { padding: 8px; width: 100%; box-sizing: border-box; }
+  dialog .danger-button { width: 100%; margin-top: 12px; padding: 8px; color: #d1242f; }
+  #toast { position: fixed; top: 16px; right: 16px; background: #1f883d; color: #fff; padding: 10px 16px; border-radius: 6px; }
+  #toast[hidden] { display: none; }
+</style>
+</head>
+<body>
+<!-- A repository's danger zone the way GitHub stacks it: the first dialog asks whether you are
+     sure, the second opens over it and keeps its button disabled until the repository's name is
+     typed in, and a toast reports the result for a few seconds before it goes away. -->
+<h1>acme/alpha</h1>
+<p>General settings</p>
+<div class="danger">
+  <strong>Delete this repository</strong>
+  <p>Once you delete a repository, there is no going back.</p>
+  <button type="button" id="start">Delete this repository</button>
+</div>
+<ul id="repos"><li>acme/alpha</li><li>acme/beta</li></ul>
+<dialog id="sure">
+  <header><strong>Delete acme/alpha</strong><button type="button" aria-label="Close" data-close>×</button></header>
+  <div class="body">
+    <p>This will permanently delete the acme/alpha repository, wiki, issues and comments.</p>
+    <button type="button" class="danger-button" id="understand">I want to delete this repository</button>
+  </div>
+</dialog>
+<dialog id="confirm">
+  <header><strong>Delete acme/alpha</strong><button type="button" aria-label="Close" data-close>×</button></header>
+  <div class="body">
+    <label for="verify">To confirm, type "acme/alpha" in the box below</label>
+    <input id="verify" autocomplete="off">
+    <button type="button" class="danger-button" id="delete" disabled>Delete this repository</button>
+  </div>
+</dialog>
+<div id="toast" role="status" hidden></div>
+<script>
+  const sure = document.getElementById('sure');
+  const confirmDialog = document.getElementById('confirm');
+  document.getElementById('start').addEventListener('click', () => sure.showModal());
+  document.getElementById('understand').addEventListener('click', () => confirmDialog.showModal());
+  for (const close of document.querySelectorAll('[data-close]')) close.addEventListener('click', () => close.closest('dialog').close());
+  document.getElementById('verify').addEventListener('input', event => {
+    document.getElementById('delete').disabled = event.target.value !== 'acme/alpha';
+  });
+  document.getElementById('delete').addEventListener('click', () => {
+    confirmDialog.close();
+    sure.close();
+    document.querySelector('#repos li').remove();
+    document.getElementById('start').disabled = true;
+    const toast = document.getElementById('toast');
+    toast.textContent = 'Your repository "acme/alpha" was successfully deleted.';
+    toast.hidden = false;
+    setTimeout(() => { toast.hidden = true; }, 3000);
+  });
+</script>
+</body>
+</html>

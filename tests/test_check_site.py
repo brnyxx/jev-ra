@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pytest
 
+from jev_ra.agent import Result
 from jev_ra.errors import ChromeError
 from tests.test_examples import load
 
@@ -80,3 +81,41 @@ def test_an_ordinary_fixture_is_not_a_wall_and_offers_its_control(check_site, se
     assert checked["status"] == 200
     assert checked["wall"] == ""
     assert checked["controls"] == 1
+
+
+class Unopened:
+    def __init__(self, _config=None):
+        raise AssertionError("a resting host was opened")
+
+
+def test_a_check_on_a_resting_host_is_turned_away_before_anything_opens(monkeypatch, check_site, open_ledger):
+    open_ledger.rest_s = 86400.0
+    open_ledger.settle(open_ledger.claim("https://shop.test/", "earlier"), {"status": "done", "http_status": 429})
+    monkeypatch.setattr(check_site, "Session", Unopened)
+    with pytest.raises(check_site.JevRaError, match=r"shop\.test pushed back today"):
+        check_site.open_once("https://shop.test/list", config=object())
+
+
+def test_a_check_is_written_to_the_ledger_with_what_the_site_answered(monkeypatch, check_site, open_ledger):
+    class Page:
+        def __init__(self, _config=None):
+            pass
+
+        def evaluate(self, _script):
+            return 403
+
+        def close(self):
+            pass
+
+    class Refused:
+        def __init__(self, **_kwargs):
+            pass
+
+        def run(self, *_args, **_kwargs):
+            return Result(status="escalate", reason="blocked_by_site", url="https://shop.test/", http_status=403)
+
+    monkeypatch.setattr(check_site, "Session", Page)
+    monkeypatch.setattr(check_site, "Agent", Refused)
+    assert check_site.open_once("https://shop.test/", config=object())["status"] == 403
+    (host,) = open_ledger.today()["hosts"]
+    assert (host["host"], host["attempts"], host["refused"]) == ("shop.test", 1, 1)

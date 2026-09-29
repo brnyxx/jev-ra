@@ -139,6 +139,7 @@ Every response carries `elapsed_ms`, and `decisions` plus `cost` whenever Jev wa
 | `doctor [--profile NAME]` | check the key, the endpoint, Chrome and one live decision |
 | `bench [--live]` | time the offline fixtures, and the live tasks with --live |
 | `corpus run` | run the real-site corpus |
+| `traffic` | show today's live attempts per host and the budget left |
 
 `open` … `close` share one browser across invocations through a target id in
 `$XDG_STATE_HOME/jev-ra/session.json`. Add `--json` to any command for the raw payload.
@@ -183,10 +184,13 @@ current value. You supply the value and call again. The default install has no t
 ## When it hands control back
 
 `Result.status` is `done`, `blocked`, `escalate` or `budget`. When a run stops short, `reason` is one
-of `needs_value`, `stuck_loop`, `unverified_done`, `stale`, `invalid_decision`, `too_many_controls`,
+of `needs_value`, `needs_file`, `stuck_loop`, `unverified_done`, `stale`, `invalid_decision`, `too_many_controls`,
 `provider_error`, `blocked`, `blocked_by_site` or `needs_human`. A run that ends on `budget` names the budget it hit (steps, decisions
 or time) in `reason` instead; `provider_error` is the provider refusing to answer at all, so check
-the key and the route rather than retrying the goal. An escalation
+the key and the route rather than retrying the goal. `needs_file` is the page asking for a file:
+`detail` names the control that asked (`field`), whether it takes several (`multiple`) and which
+kinds (`accept`). The file chooser is cancelled, and jev-ra never picks a file from the disk it runs
+on. An escalation
 also carries the top eight operation/target candidates with their probabilities, and up to 3,000
 characters of page text — enough to decide what to do without observing again.
 
@@ -196,7 +200,10 @@ takes from the page the run finished on, whatever the run ended as. With no text
 `null` and `detail` says so, and a goal that is an instruction never asks for one.
 
 Verification is deterministic: after every action jev-ra compares url, title, text and field state,
-and `page_changed` comes from a semantic page marker, not from the model.
+and `page_changed` comes from a semantic page marker, not from the model. A file an action downloads
+is part of what it did: the step waits for it within its settle budget, and `Result.downloads` lists
+each one with the name the site gave it, its url and whether it completed. Chrome saves it where it
+saves downloads.
 
 While the page settles after an action, jev-ra asks Jev the next question already, against the page
 as it should read with that input applied and nothing else changed. If the settled page offers
@@ -272,17 +279,29 @@ A single three-run pass moves by about five tasks on site weather alone, so a ch
 when a per-task rerun agrees.
 [Per-task rows and the noise measurement](https://github.com/brnyxx/jev-ra/blob/main/docs/BENCHMARKS.md).
 
+`jev-ra corpus run` and `jev-ra bench --live` write every live attempt to a ledger all processes on
+the machine share (`$XDG_STATE_HOME/jev-ra/traffic/`, one file a day). Each host gets at most 40
+attempts a day (`JEV_RA_HOST_DAILY_BUDGET`), at least 10 s apart (`JEV_RA_HOST_GAP_S`), and a host
+that pushed back - HTTP 429 or 403, an error page, a wall, a check - is left alone for the rest of
+the day (`JEV_RA_HOST_REST_S`, 86,400 s by default). An attempt that is not made is `skipped`:
+counted apart, like a run that needed a person, and named with its reason in one line; a pass that
+skipped any ends `INCOMPLETE`, and no task short of its runs gets a speed. `jev-ra traffic` prints
+today's counts, rests and budget left. Pages on this machine are never counted, and `jev-ra run` and
+the MCP tools are never limited.
+
 ## What it will not do
 
 | limit | what happens |
 |---|---|
 | Canvas drawing, games, anything painted rather than marked up | `blocked`: no observed control can advance the goal |
-| File upload | `blocked`: a file input is never offered, and never typed into |
+| Drag and drop, right-click menus | nothing is dragged or right-clicked: `blocked`, or `stuck_loop` after pressing what can only be dragged |
+| Controls painted only while the pointer is over their row | not offered: `blocked`, unless the page has another way to them, such as opening the row |
+| File upload | `needs_file`: the control that asked is named with the kinds of file it takes; no file is ever chosen |
 | CAPTCHA and other checks a person can clear | handed to the person at the window; `needs_human` with a `resume` token when nobody clears it |
 | Bot walls that refuse outright, stealth | `blocked_by_site` with `detail.kind` `refusal`; jev-ra never disguises itself |
 | Auth flows | `needs_value` with the field named; jev-ra never guesses a credential |
-| Pop-up windows, multi-tab workflows | the run stays on its own target |
-| Cross-origin iframes | reported as one opaque element; open shadow roots and same-origin iframes **are** traversed |
+| Multi-tab workflows | a window the page opens (a sign-in or payment pop-up) is followed until it closes itself, and a link to a new tab opens in the same tab; the run never switches between tabs |
+| Cross-origin iframes | reported as one opaque element, and an escalation on its page names it and the host it is served from in `detail.frames`; open shadow roots and same-origin iframes **are** traversed |
 | More than 250 visible controls | `omitted` is reported, and a stuck run escalates `too_many_controls` rather than guessing |
 
 Each returns an escalation with the page text and the ranked candidates.
@@ -330,6 +349,9 @@ supplied. You can still configure one with `JEV_RA_TEXT_MODEL`.
 | `JEV_RA_PACE_S` | least seconds between two navigations a run starts on one host; default `1`, `0` for none, this machine exempt |
 | `JEV_RA_NOTIFY` | `0` to stop the desktop notification a human check raises |
 | `JEV_RA_HUMAN_WAIT_S` | how long a run waits for a person to clear a human check; default `120`, `0` hands it back at once |
+| `JEV_RA_HOST_DAILY_BUDGET` | live attempts `corpus run` and `bench --live` make on one host a day, across every process; default `40` |
+| `JEV_RA_HOST_GAP_S` | least seconds between two of those attempts on one host; default `10`, `0` for none |
+| `JEV_RA_HOST_REST_S` | how long they leave a host that pushed back alone, within the day; default `86400`, `0` for none |
 | `JEV_RA_ALLOW_FILE_URLS` | `1` to let a session open `file:` URLs |
 | `JEV_RA_SEARCH_URL` | search endpoint template, `{query}` substituted |
 | `JEV_RA_TEXT_MODEL`, `JEV_RA_TEXT_BASE_URL`, `JEV_RA_TEXT_API_KEY` | optional text helper, off by default |

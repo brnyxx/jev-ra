@@ -1,0 +1,112 @@
+# The public-benchmark tasks the accuracy lane traced, with objective page-state checks of this
+# lane's own writing (no judge). Values are supplied where the task types, since no text helper
+# can be reached (OpenRouter 402). Measurement only; not part of the product corpus.
+
+[[task]]
+name = "pub_flightaware_aeroapi"
+family = "public"
+url = "https://www.flightaware.com/"
+goal = "Compare available plans for the AeroAPI on Flightaware."
+max_steps = 25
+verify = { url_contains = ["aeroapi"], text_any = ["Personal", "Standard", "Premium"] }
+
+[[task]]
+name = "pub_qatar_baggage"
+family = "public"
+url = "https://www.qatarairways.com/"
+goal = "Find the weight of baggage allowance for economy class on Qatar Airways."
+max_steps = 25
+verify = { url_contains = ["baggage"], text_any = ["kg"] }
+
+[[task]]
+name = "pub_discogs_submission"
+family = "public"
+url = "https://www.discogs.com/"
+goal = "Open the page with an overview of the submission of releases on Discogs."
+max_steps = 25
+verify = { text_any = ["Submission Guidelines For Releases", "Submission Guidelines for Releases"] }
+
+[[task]]
+name = "pub_traderjoes_store"
+family = "public"
+url = "https://www.traderjoes.com/"
+goal = "Find the store location and hours of the closest Trader Joe's to zip code 90028 and set it as my home store."
+values = { zip = "90028" }
+max_steps = 25
+verify = { text_any = ["Hollywood"] }
+
+[[task]]
+name = "pub_mta_brooklyn"
+family = "public"
+url = "https://new.mta.info/"
+goal = "Find the list of neighborhood maps for Brooklyn on new.mta.info."
+max_steps = 25
+verify = { url_contains = ["neighborhood-maps/brooklyn"] }
+
+[[task]]
+name = "pub_espn_east"
+family = "public"
+url = "https://www.espn.com/"
+goal = "Look up the current standings for the NBA Eastern Conference on ESPN."
+max_steps = 25
+verify = { url_contains = ["nba/standings"], text_any = ["Eastern Conference"] }
+
+[[task]]
+name = "pub_marriott_cards"
+family = "public"
+url = "https://www.marriott.com/"
+goal = "Browse Marriott Bonvoy credit cards on Marriott."
+max_steps = 25
+verify = { url_contains = ["credit-cards"], url_not_contains = [".com.cn"] }
+
+[[task]]
+name = "pub_apple_macbook_air"
+family = "public"
+url = "https://www.apple.com/"
+goal = "Compare the prices of the latest models of MacBook Air available on Apple's website."
+max_steps = 25
+verify = { url_contains = ["macbook-air"] }
+
+[[task]]
+name = "pub_coursera_3d"
+family = "public"
+url = "https://www.coursera.org/"
+goal = "Find a beginner-level online course about '3d printing' which lasts 1-3 months, and is provided by a renowned university."
+values = { query = "3d printing" }
+max_steps = 25
+verify = { url_contains = ["coursera.org/learn/"] }
+
+[[task]]
+name = "pub_github_stars"
+family = "public"
+url = "https://github.com/"
+goal = "Search for an open-source project related to 'climate change data visualization' on GitHub and report the project with the most stars."
+values = { query = "climate change data visualization" }
+max_steps = 25
+verify = { url_contains = ["s=stars"] }
+
+[[task]]
+name = "pub_arxiv_quantum"
+family = "public"
+url = "https://arxiv.org/"
+goal = "Search for the latest preprints about 'quantum computing'."
+values = { query = "quantum computing" }
+max_steps = 25
+verify = { url_contains = ["query=quantum"] }
+
+[[task]]
+name = "pub_bbc_renewable"
+family = "public"
+url = "https://www.bbc.com/news/"
+goal = "Find a report on the BBC News website about recent developments in renewable energy technologies in the UK."
+values = { query = "renewable energy UK" }
+max_steps = 25
+verify = { url_contains = ["/articles/"] }
+
+[[task]]
+name = "pub_booking_cancel"
+family = "public"
+url = "https://www.booking.com/"
+goal = "Find the Customer Service on the Booking website, browse the questions about cancellation, and tell me 'how do I know whether my booking has been cancelled'."
+max_steps = 25
+verify = { url_contains = ["help"], text_any = ["cancelled", "canceled"] }

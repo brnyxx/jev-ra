@@ -29,6 +29,12 @@ DEFAULT_LOCALE = "en-US"
 PACE_S = 1.0
 # How long a run waits for the person at the window to clear a check before it hands the run back.
 HUMAN_WAIT_S = 120.0
+# What the corpus and the live bench may ask of one host, counted across every process on this
+# machine: attempts in a day, the least time between two of them, and how long a host that refused
+# one is left alone. A user's own run is not a crawl and is never counted against these.
+HOST_DAILY_BUDGET = 40
+HOST_GAP_S = 10.0
+HOST_REST_S = 86400.0
 ENV_VARIABLES = (
     *KEY_VARIABLES,
     "JEV_RA_ENDPOINT",
@@ -45,6 +51,9 @@ ENV_VARIABLES = (
     "JEV_RA_PACE_S",
     "JEV_RA_NOTIFY",
     "JEV_RA_HUMAN_WAIT_S",
+    "JEV_RA_HOST_DAILY_BUDGET",
+    "JEV_RA_HOST_GAP_S",
+    "JEV_RA_HOST_REST_S",
     "JEV_RA_ALLOW_FILE_URLS",
     "JEV_RA_SEARCH_URL",
     "JEV_RA_TEXT_MODEL",
@@ -120,6 +129,9 @@ class Config:
     pace_s: float = PACE_S
     notify: bool = True
     human_wait_s: float = HUMAN_WAIT_S
+    host_daily_budget: int = HOST_DAILY_BUDGET
+    host_gap_s: float = HOST_GAP_S
+    host_rest_s: float = HOST_REST_S
 
     @property
     def provider(self):
@@ -344,5 +356,16 @@ def load(env=None, path=None):
         notify=read_flag(env.get("JEV_RA_NOTIFY", stored.get("notify")), True),
         human_wait_s=non_negative_float(
             env.get("JEV_RA_HUMAN_WAIT_S", stored.get("human_wait_s", HUMAN_WAIT_S)), HUMAN_WAIT_S, "human_wait_s"
+        ),
+        host_daily_budget=positive_int(
+            env.get("JEV_RA_HOST_DAILY_BUDGET", stored.get("host_daily_budget", HOST_DAILY_BUDGET)),
+            HOST_DAILY_BUDGET,
+            "host_daily_budget",
+        ),
+        host_gap_s=non_negative_float(
+            env.get("JEV_RA_HOST_GAP_S", stored.get("host_gap_s", HOST_GAP_S)), HOST_GAP_S, "host_gap_s"
+        ),
+        host_rest_s=non_negative_float(
+            env.get("JEV_RA_HOST_REST_S", stored.get("host_rest_s", HOST_REST_S)), HOST_REST_S, "host_rest_s"
         ),
     )

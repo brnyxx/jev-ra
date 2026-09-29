@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Aeron chair</title>
+<style>
+  body { font: 15px/1.5 system-ui; margin: 0; padding: 24px; max-width: 720px; }
+  [role=tablist] { display: flex; gap: 4px; border-bottom: 1px solid #ccc; }
+  [role=tab] { padding: 8px 14px; border: 0; background: none; border-bottom: 2px solid transparent; }
+  [role=tab][aria-selected=true] { border-bottom-color: #1a56db; font-weight: 600; }
+  [role=tabpanel] { padding: 16px 0; }
+  .accordion h3 { margin: 0; }
+  .accordion button { width: 100%; text-align: left; padding: 10px 0; border: 0; border-bottom: 1px solid #eee; background: none; font: inherit; }
+  .accordion [hidden] { display: none; }
+</style>
+</head>
+<body>
+<!-- A product page the way component libraries structure one: ARIA tabs, where only the selected
+     tab's panel is rendered, and inside a panel an accordion of disclosure buttons that each show
+     one section. The warranty terms exist on the page only once both have been opened. -->
+<h1>Aeron chair</h1>
+<div role="tablist" aria-label="Product information">
+  <button role="tab" id="tab-description" aria-selected="true" aria-controls="panel-description">Description</button>
+  <button role="tab" id="tab-specs" aria-selected="false" aria-controls="panel-specs" tabindex="-1">Specifications</button>
+  <button role="tab" id="tab-reviews" aria-selected="false" aria-controls="panel-reviews" tabindex="-1">Reviews</button>
+</div>
+<div role="tabpanel" id="panel-description" aria-labelledby="tab-description"><p>An office chair designed around the sitter.</p></div>
+<div role="tabpanel" id="panel-specs" aria-labelledby="tab-specs" hidden>
+  <div class="accordion">
+    <h3><button aria-expanded="false" aria-controls="sec-dimensions" id="acc-dimensions">Dimensions</button></h3>
+    <div id="sec-dimensions" hidden><p>Seat height 41-52 cm.</p></div>
+    <h3><button aria-expanded="false" aria-controls="sec-materials" id="acc-materials">Materials</button></h3>
+    <div id="sec-materials" hidden><p>Recycled aluminium and polymer mesh.</p></div>
+    <h3><button aria-expanded="false" aria-controls="sec-warranty" id="acc-warranty">Warranty</button></h3>
+    <div id="sec-warranty" hidden><p>12-year warranty covering all parts and labour.</p></div>
+  </div>
+</div>
+<div role="tabpanel" id="panel-reviews" aria-labelledby="tab-reviews" hidden><p>4.6 out of 5 from 812 reviews.</p></div>
+<script>
+  for (const tab of document.querySelectorAll('[role=tab]')) {
+    tab.addEventListener('click', () => {
+      for (const other of document.querySelectorAll('[role=tab]')) {
+        const on = other === tab;
+        other.setAttribute('aria-selected', String(on));
+        other.tabIndex = on ? 0 : -1;
+        document.getElementById(other.getAttribute('aria-controls')).hidden = !on;
+      }
+    });
+  }
+  for (const button of document.querySelectorAll('.accordion button')) {
+    button.addEventListener('click', () => {
+      const open = button.getAttribute('aria-expanded') === 'true';
+      button.setAttribute('aria-expanded', String(!open));
+      document.getElementById(button.getAttribute('aria-controls')).hidden = open;
+    });
+  }
+</script>
+</body>
+</html>

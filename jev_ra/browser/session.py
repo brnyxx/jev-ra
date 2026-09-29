@@ -3,15 +3,20 @@
 import base64
 import json
 import logging
+import math
+import re
 import sys
+import threading
 import time
+from collections import deque
+from concurrent.futures import Future, wait
 from urllib.parse import urlsplit
 
 from browser_harness.admin import ensure_daemon
 from browser_harness.helpers import cdp, drain_events
 
 from ..config import load
-from ..errors import BadUrl, ChromeError, StalePage
+from ..errors import BadUrl, BadValue, ChromeError, DialogOpen, StalePage
 from ..profile import NullTimer
 from . import CHALLENGE_JS, MAX_ELEMENTS, QUIET_STATE_JS, guard_expression, marker_expression, snapshot_expression
 from .chrome import ensure as ensure_chrome
@@ -41,9 +46,9 @@ PAINTED_JS = (
   if (("""
     + CHALLENGE_JS
     + """)()) return true;
-  const selector='a[href],button,input,select,textarea,summary,[contenteditable=""],'+
-    '[contenteditable="true"],[role="button"],[role="link"],[role="tab"],[role="checkbox"],'+
-    '[role="radio"],[role="option"],[role="combobox"],[role="textbox"],[role="searchbox"]';
+  const selector='a[href],button,input,select,textarea,summary,[contenteditable]:not([contenteditable="false"]),'+
+    '[role="button"],[role="link"],[role="tab"],[role="checkbox"],'+
+    '[role="radio"],[role="option"],[role="combobox"],[role="textbox"],[role="searchbox"],[role="slider"]';
   const deepest=(x,y)=>{
     let node=document.elementFromPoint(x,y);
     while (node?.shadowRoot) {
@@ -91,6 +96,28 @@ IDEMPOTENT = (
     "Runtime.releaseObject",
 )
 EVALUATE_TIMEOUT_S = 30.0
+# A JavaScript dialog holds the page's script until someone answers it, and every call the page
+# itself has to answer waits for as long as it stays open: a click on a button that asks
+# confirm() used to wait out the whole call budget and end the run as a browser that stopped
+# answering. A call still waiting after this long is asked whether a dialog is what holds it.
+DIALOG_CHECK_S = 0.05
+# What the page itself answers. The browser answers everything else while a dialog is up, which
+# is how the dialog gets answered at all.
+RENDERER = ("Runtime.", "Input.", "DOM.", "Page.captureScreenshot")
+# What else a dialog can hold: a navigation waits for the page it leaves to agree to be left.
+HELD = (*RENDERER, "Page.navigate", "Page.reload")
+# How many events one session keeps between two readings of them. The daemon keeps 500 for the
+# whole browser; a session reads its own at least once a call that waits.
+EVENTS_KEPT = 1000
+# What each kind of dialog is answered with, in the order Chrome draws its buttons. A before-unload
+# dialog says Chrome's own sentence; the page's words are never shown for it.
+DIALOG_ANSWERS = {
+    "alert": (("accept", "OK"),),
+    "confirm": (("accept", "OK"), ("dismiss", "Cancel")),
+    "prompt": (("accept", "OK"), ("dismiss", "Cancel")),
+    "beforeunload": (("accept", "Leave"), ("dismiss", "Cancel")),
+}
+LEAVE_TEXT = "Leave site?\nChanges you made may not be saved."
 WAIT_SLEEP_S = 0.1
 SETTLE_ATTEMPTS = 10
 # A page knows when it stopped changing, and asking it ten times a second is both slower and less
@@ -126,7 +153,8 @@ QUIESCENCE_JS = (
     // has gets the stillness its caller asked for, measured from the last time it moved.
     const still = !state.leaving && document.readyState === 'complete' &&
       (state.count === 0 || now - state.last >= options.quiet_ms) &&
-      (options.after === null || state.count > options.after);
+      (options.after === null || state.count > options.after ||
+        (options.origin !== undefined && performance.timeOrigin !== options.origin));
     // Two ticks, so a document that has only just been handed the input has had one to answer in.
     if (still && state.frames - first >= 2) return answer(true);
     if (now >= deadline) return answer(false);
@@ -177,6 +205,52 @@ ROUTE_BUDGET_S = 0.8
 # One budget for everything a step waits for. A page that has finished settling says so by going
 # still, and one that never does costs what it always did rather than being asked more often.
 SETTLE_BUDGET_S = 2.0
+# A step that loaded another document is read once that document has arrived: words showing in the
+# viewport or, where the viewport has no words, a control in reach. Two identical readings end a
+# step's wait, and an empty shell, a lone spinner or a screen of words still at opacity 0 reads the
+# same every time until it paints. Measured on the public benchmark: qatarairways.com's help page
+# was still loading and blank when the step read it at 1.4 s; traderjoes.com's store search was a
+# spinner at 0.3 s and painted at 0.4 s; espn.com laid its standings out at opacity 0 behind a
+# painted logo at 0.7 s and showed them at 1.9 s. Each of those runs ended BLOCKED or scrolled past
+# the answer. Words are enough on their own: a form's receipt or an API's JSON has nothing to press
+# and is finished, and a page still streaming its markup is readable once it shows some, which
+# reuters.com's section pages do seconds before they finish loading. Words below the fold are not
+# waited for; a page that has not arrived by the budget is read as it stands. open() keeps its own
+# wait for a first control, which a run's first page needs and pays for once.
+ARRIVAL_BUDGET_S = 5.0
+ARRIVAL_POLL_MS = 50
+ARRIVED_JS = (
+    """(options => new Promise(resolve => {
+  const painted = () => """
+    + PAINTED_JS
+    + """;
+  const words = () => {
+    const walker = document.createTreeWalker(document.body || document.documentElement, NodeFilter.SHOW_TEXT);
+    const range = document.createRange();
+    let veiled = false;
+    for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+      const parent = node.parentElement;
+      if (!parent || !node.textContent.trim() || parent.closest('script,style,noscript,template')) continue;
+      range.selectNodeContents(node);
+      const r = range.getBoundingClientRect();
+      if (!r.width || !r.height || r.bottom <= 0 || r.top >= innerHeight || r.right <= 0 || r.left >= innerWidth)
+        continue;
+      if (parent.checkVisibility({checkOpacity: true, checkVisibilityCSS: true})) return 'shown';
+      veiled = true;
+    }
+    return veiled ? 'veiled' : 'none';
+  };
+  const started = performance.now();
+  const check = () => {
+    const waited = Math.round(performance.now() - started);
+    const said = words();
+    if (said === 'shown' || (said === 'none' && painted())) return resolve({arrived: true, waited});
+    if (waited >= options.budget_ms) return resolve({arrived: false, waited});
+    setTimeout(check, options.poll_ms);
+  };
+  check();
+}))"""
+)
 ROUTE_WAIT_JS = """(options => new Promise(resolve => {
   const started = performance.now();
   const check = () => {
@@ -240,11 +314,29 @@ TARGETED = {"click", "select", "fill", "press"}
 # The daemon reports a document that moved under a call as a protocol error. It means the same
 # thing as any other stale reading - observe again - rather than a browser that has gone away.
 MOVED = ("navigated or closed", "context was destroyed", "cannot find context", "no frame for given id")
+# What the daemon says about a session whose target has gone. For a window this session followed
+# that is the window closing, which is how a sign-in pop-up ends; for the only page it has, it is
+# the browser losing the page, and that stays a Chrome error.
+CLOSED = "session with given id not found"
 KEYS = {
     "Enter": (13, "Enter", "\r"),
     "Escape": (27, "Escape", ""),
     "Tab": (9, "Tab", ""),
 }
+# The keys every slider answers to, by the ARIA slider pattern: a step either way, a larger step
+# either way, and either end.
+SLIDER_KEYS = {"ArrowRight": 39, "ArrowLeft": 37, "PageUp": 33, "PageDown": 34, "Home": 36, "End": 35}
+# How many keys one value may cost. A price range of 5,000 in steps of 100 is five larger steps.
+SLIDER_PRESSES = 60
+# A larger step is worth learning only when the value is further away than this many steps.
+SLIDER_FAR = 10
+# Where an observed slider stands and the range it moves in, as it announces them.
+SLIDER_JS = """(node => {
+  const e=window.__jevRa?.nodes.get(node);
+  if (!e?.isConnected || !e.checkVisibility({checkVisibilityCSS:true})) return null;
+  const number=name=>{ const v=parseFloat(e.getAttribute(name)); return Number.isFinite(v) ? v : null; };
+  return {now:number('aria-valuenow'), min:number('aria-valuemin'), max:number('aria-valuemax')};
+})"""
 
 # The element a keystroke lands on: the focused element, followed into open shadow roots and
 # same-origin frames.
@@ -279,9 +371,12 @@ RESOLVE_JS = (
   if (!local) return null;
   const [dx,dy]=cache.offset(e), x=local.x+dx, y=local.y+dy;
   if (action.kind==='select') {
-    if (e.tagName!=='SELECT' || ![...e.options].some(o=>o.value===action.value &&
-        !o.disabled && !o.closest('optgroup[disabled]'))) return null;
-    e.value=action.value;
+    const option=e.tagName==='SELECT' ? [...e.options].find(o=>o.value===action.value &&
+      !o.disabled && !o.closest('optgroup[disabled]')) : null;
+    if (!option) return null;
+    // A list that keeps every option chosen gains or loses this one and keeps the rest.
+    if (e.multiple) option.selected=action.selected!==false;
+    else e.value=action.value;
     e.dispatchEvent(new Event('input',{bubbles:true}));
     e.dispatchEvent(new Event('change',{bubbles:true}));
   }
@@ -322,12 +417,52 @@ SETTLE_JS = """(action => new Promise(resolve => {
   requestAnimationFrame(ready);
 }))"""
 
-# Whether the observed field itself holds focus, wherever it lives: a document, a shadow root or
-# a same-origin frame. Typing is only safe once this is true.
-FOCUSED_JS = """(node => {
-  const e=window.__jevRa?.nodes.get(node);
-  return !!e && (e.ownerDocument.activeElement===e || e.getRootNode()?.activeElement===e);
+# A field the browser draws itself takes its value the way its own picker gives it one: set on the
+# element, then announced with the input and change events a picker fires. The setter is the
+# element's own prototype's, because a framework that tracks a controlled input's value hears a
+# plain assignment as no change at all. Whether the browser would keep the value is asked first,
+# of a detached input of the same kind and scale, so a refused value never touches the page: a
+# date the browser cannot read becomes empty, a colour black, and a slider rounds and clamps.
+SET_JS = """(args => {
+  const cache=window.__jevRa, e=cache?.nodes.get(args.node);
+  if (!e?.isConnected || e.disabled || e.readOnly || !e.checkVisibility({checkVisibilityCSS:true}) ||
+      !cache.point(e)) return null;
+  const text=args.text.trim(), probe=e.ownerDocument.createElement('input');
+  probe.type=e.type;
+  for (const key of ['min', 'max', 'step'])
+    if (e.getAttribute(key) !== null) probe.setAttribute(key, e.getAttribute(key));
+  probe.value=text;
+  const took = e.type==='color' ? probe.value===text.toLowerCase() :
+    e.type==='range' ? text!=='' && Number(probe.value)===Number(text) : probe.value!=='' || text==='';
+  if (!took) return {took, min: e.min || '0', max: e.max || '100', step: e.step || '1'};
+  e.focus();
+  Object.getOwnPropertyDescriptor(e.ownerDocument.defaultView.HTMLInputElement.prototype, 'value').set.call(e, text);
+  e.dispatchEvent(new Event('input', {bubbles: true}));
+  e.dispatchEvent(new Event('change', {bubbles: true}));
+  return {took};
 })"""
+# What a field the browser draws itself takes, said the way a caller has to supply it.
+FORMATS = {
+    "date": "a date as yyyy-mm-dd, like 2026-10-05",
+    "time": "a time as HH:MM on a 24-hour clock, like 19:30",
+    "datetime-local": "a date and time as yyyy-mm-ddTHH:MM, like 2026-10-05T19:30",
+    "month": "a month as yyyy-mm, like 2026-10",
+    "week": "a week as yyyy-Www, like 2026-W41",
+    "color": "a colour as #rrggbb, like #ff6600",
+}
+
+# Whether the observed field itself holds focus, wherever it lives: a document, a shadow root or
+# a same-origin frame. Typing is only safe once this is true. A frame keeps its own focused
+# element after the page around it has moved focus elsewhere, so what counts is where a key
+# would land now, followed from the top.
+FOCUSED_JS = (
+    """(node => {
+  const e=window.__jevRa?.nodes.get(node);
+  return !!e && ("""
+    + ACTIVE_JS
+    + """)()===e;
+})"""
+)
 # Whether pressing the observed field moved focus onto another text field, which is where a
 # person's keystrokes now go. A flight search's origin opens a dialog over the form with an input
 # of its own and focuses it; forcing focus back onto the covered field types the value where
@@ -345,6 +480,50 @@ HANDED_JS = (
 )
 
 
+class Inbox:
+    """The daemon's one queue of CDP events, read on behalf of every session in this process.
+
+    Reading the queue empties it of every event there is, whoever it belongs to, so a session that
+    read it for itself threw away what the others were waiting for: a search reads its result pages
+    in parallel tabs, and each tab learns what its own page did only from events. Every session here
+    is handed what was addressed to it - or, for what the browser says about a session rather than
+    through it, such as its target going away, what names it - and the rest is dropped.
+    """
+
+    def __init__(self, kept=EVENTS_KEPT):
+        self.lock = threading.Lock()
+        self.kept = kept
+        self.boxes = {}
+
+    def open(self, session_id):
+        """Start keeping the events addressed to one session."""
+        with self.lock:
+            self.boxes.setdefault(session_id, deque(maxlen=self.kept))
+
+    def close(self, session_id):
+        """Stop keeping a session's events."""
+        with self.lock:
+            self.boxes.pop(session_id, None)
+
+    def take(self, session_id):
+        """Every event addressed to this session since it last asked, oldest first."""
+        with self.lock:
+            for event in drain_events():
+                about = event.get("session_id") or (event.get("params") or {}).get("sessionId")
+                box = self.boxes.get(about)
+                if box is not None:
+                    box.append(event)
+            box = self.boxes.get(session_id)
+            if box is None:
+                return []
+            taken = list(box)
+            box.clear()
+            return taken
+
+
+INBOX = Inbox()
+
+
 class Session:
     """One CDP target: observe it, act on it, and never act on a stale reading of it."""
 
@@ -353,6 +532,21 @@ class Session:
     # follows is still the settled reading, taken exactly as it always was. A caller sets it for
     # the duration of one open or observation; a session nobody listens to never calls anything.
     preview = None
+    # The JavaScript dialog holding the page, as Chrome announced it, or None. While one is open it
+    # is the page: observing shows its message and its answers, and answering it is an action.
+    dialog = None
+    dialogs = 0
+    title = ""
+    # The windows the page had already opened before the last input, which it did not just open.
+    windows_before = None
+    # Whether Chrome said the target under this session went away: a window that closed itself.
+    detached = False
+    # The file chooser the last input opened, as Chrome announced it, or None. The chooser itself
+    # was cancelled; what it asked for is the page's question to whoever holds the file.
+    chooser = None
+    # How many of this session's downloads had begun before the last input: the ones after are
+    # what that input saved.
+    downloads_before = 0
 
     def __init__(self, config=None, target_id=None, max_elements=MAX_ELEMENTS, profile=None):
         self.config = config or load()
@@ -365,6 +559,12 @@ class Session:
         self.cache = {}
         self.http_status = None
         self.frame_id = None
+        # The pages this session left for a window one of them opened, newest last, to return to
+        # when that window closes.
+        self.openers = []
+        # Every file a page of this session downloaded, by Chrome's id for the download, in the
+        # order they began: the name the site gave it, its url, and how it ended.
+        self.downloads = {}
         viewport = self.config.viewport
         self.cdp_url, self.chrome_source = ensure_chrome(
             viewport=(viewport.width, viewport.height),
@@ -384,7 +584,31 @@ class Session:
             cdp("Target.createTarget", url="about:blank", background=True)["targetId"] if created else target_id
         )
         try:
-            self.session_id = cdp("Target.attachToTarget", targetId=self.target_id, flatten=True)["sessionId"]
+            self.attach(self.target_id)
+        except Exception:
+            # Nobody else has the id of a target whose setup failed, so this is the only chance to
+            # close it. A target we were only handed stays open: its owner decides when it goes.
+            if created:
+                try:
+                    cdp("Target.closeTarget", targetId=self.target_id)
+                except Exception:
+                    logger.warning("Could not close target %s after its setup failed", self.target_id)
+            raise
+
+    def attach(self, target_id):
+        """Attach to one target and set it up the way every page this session drives is set up."""
+        self.session_id = cdp("Target.attachToTarget", targetId=target_id, flatten=True)["sessionId"]
+        self.detached = False
+        INBOX.open(self.session_id)
+        try:
+            # Chrome tells only the sessions that listen to the page domain that a dialog opened,
+            # and only they can answer it.
+            self.call("Page.enable")
+            # A file chooser is a window of the operating system, which nothing here drives and a
+            # headless browser cannot even show. It is cancelled the way a person dismissing it
+            # would, and the page's question comes back as an event instead.
+            self.call("Page.setInterceptFileChooserDialog", enabled=True, cancel=True)
+            viewport = self.config.viewport
             self.call(
                 "Emulation.setDeviceMetricsOverride",
                 width=viewport.width,
@@ -397,14 +621,48 @@ class Session:
             self.speak(self.config.locale)
             self.blocked = self.block_resources() if self.config.block_resources else []
         except Exception:
-            # Nobody else has the id of a target whose setup failed, so this is the only chance to
-            # close it. A target we were only handed stays open: its owner decides when it goes.
-            if created:
-                try:
-                    cdp("Target.closeTarget", targetId=self.target_id)
-                except Exception:
-                    logger.warning("Could not close target %s after its setup failed", self.target_id)
+            INBOX.close(self.session_id)
             raise
+
+    def windows(self):
+        """The pages the target this session is on has opened."""
+        return {
+            info["targetId"]
+            for info in cdp("Target.getTargets")["targetInfos"]
+            if info.get("type") == "page" and info.get("openerId") == self.target_id
+        }
+
+    def follow(self, target_id):
+        """Go where a person's attention goes when a page opens a window: into it.
+
+        A sign-in or payment provider answers in a window of its own and tells the page that opened
+        it when it is done; the page it came from reads exactly as before until then. The page this
+        session was on is kept, to return to once the window closes.
+        """
+        logger.info("The page opened a window; following it")
+        self.openers.append((self.target_id, self.session_id, self.frame_id, self.http_status, self.title))
+        self.target_id, self.frame_id, self.http_status, self.dialog = target_id, None, None, None
+        self.invalidate()
+        self.attach(target_id)
+        self.load()
+        self.paint()
+
+    def returned(self):
+        """Whether the window this session followed has closed, which puts it back on its opener."""
+        if not self.openers:
+            return False
+        try:
+            cdp("Target.getTargetInfo", targetId=self.target_id)
+            return False
+        except RuntimeError:
+            logger.info("The window closed; back on the page that opened it")
+        INBOX.close(self.session_id)
+        self.target_id, self.session_id, self.frame_id, self.http_status, self.title = self.openers.pop()
+        self.dialog, self.detached = None, False
+        self.after_input = self.moved_from = self.before_input = None
+        self.invalidate()
+        self.events()
+        return True
 
     def speak(self, locale):
         """Ask this target for one language, so an attached Chrome serves what a launched one does.
@@ -451,12 +709,22 @@ class Session:
         self.settled = None
         self.cache.clear()
 
-    def call(self, method, timeout=CALL_TIMEOUT_S, **params):
-        """One CDP call on this target's session, with a budget the caller can widen."""
+    def call(self, method, timeout=CALL_TIMEOUT_S, leave=False, **params):
+        """One CDP call on this target's session, with a budget the caller can widen.
+
+        A call the page has to answer is never sent while a dialog holds the page, and one that a
+        dialog starts holding, or whose target closes, while it waits is given up on: see
+        `answered`. `leave` lets a
+        navigation the caller asked for leave a page that asks whether it may be left.
+        """
+        if self.dialog is not None and method.startswith(RENDERER):
+            raise DialogOpen(f"A {self.dialog['type']} dialog holds the page, so {method} was not sent.")
         attempts = CALL_ATTEMPTS if method in IDEMPOTENT else 1
         for attempt in range(attempts):
             try:
-                return cdp(method, session_id=self.session_id, _response_timeout=timeout, **params)
+                if not method.startswith(HELD):
+                    return cdp(method, session_id=self.session_id, _response_timeout=timeout, **params)
+                return self.answered(method, timeout, leave, params)
             except (TimeoutError, OSError) as error:
                 # A browser with thirty tabs open answers late now and then. One slow answer is
                 # not a browser that has gone away, and ending the run over it loses the work.
@@ -464,10 +732,85 @@ class Session:
                     raise ChromeError(f"Chrome stopped answering during {method}: {error}") from error
                 logger.info("Chrome was slow to answer %s; asking once more", method)
             except RuntimeError as error:
-                if any(phrase in str(error).lower() for phrase in MOVED):
+                said = str(error).lower()
+                if any(phrase in said for phrase in MOVED):
                     raise StalePage(f"The page moved during {method}. Observe again.") from error
+                if self.openers and CLOSED in said:
+                    raise StalePage(f"The window closed during {method}. Observe again.") from error
                 raise ChromeError(f"Chrome refused {method}: {error}") from error
         raise ChromeError(f"Chrome stopped answering during {method}")
+
+    def answered(self, method, timeout, leave, params):
+        """The answer to a call a dialog can hold, or what the dialog that is holding it means.
+
+        The call is sent from a thread of its own, so that while it waits this one can read what
+        the page announced. Input that a dialog is holding has landed - the dialog is what it did -
+        so it counts as sent. Anything else the dialog holds is refused as a page that moved, and a
+        before-unload dialog that holds a navigation the caller asked for is answered by leaving.
+        """
+        answer = Future()
+
+        def ask():
+            try:
+                answer.set_result(cdp(method, session_id=self.session_id, _response_timeout=timeout, **params))
+            except BaseException as error:
+                answer.set_exception(error)
+
+        threading.Thread(target=ask, name=f"jev-ra {method}", daemon=True).start()
+        while not wait([answer], timeout=DIALOG_CHECK_S).done:
+            self.events()
+            if self.detached:
+                # A call pending on a target that goes away is never answered at all.
+                if self.openers:
+                    raise StalePage(f"The window closed during {method}. Observe again.")
+                raise ChromeError(f"The page this session drives closed during {method}.")
+            if self.dialog is None:
+                continue
+            if method.startswith("Input."):
+                return {}
+            if leave and self.dialog["type"] == "beforeunload":
+                logger.info("Leaving a page that asked to be kept, because the caller asked to go")
+                self.reply({"dialog": "accept"})
+                continue
+            raise DialogOpen(f"A {self.dialog['type']} dialog opened during {method}.")
+        return answer.result()
+
+    def events(self):
+        """Read what the browser announced about this target since the last time, and keep what matters.
+
+        The status of the main document is the last one it was served with. A dialog is open from
+        the moment Chrome says so until Chrome says it closed; the next one is a new dialog.
+        """
+        try:
+            events = INBOX.take(self.session_id)
+        except (RuntimeError, TimeoutError, OSError) as error:
+            logger.info("The browser would not report its events: %s", error)
+            return
+        for event in events:
+            method, params = event.get("method"), event.get("params") or {}
+            if method == "Page.javascriptDialogOpening":
+                self.dialogs += 1
+                self.dialog = {**params, "id": self.dialogs}
+            elif method == "Page.javascriptDialogClosed":
+                self.dialog = None
+            elif method in {"Inspector.detached", "Target.detachedFromTarget"}:
+                self.detached = True
+            elif method == "Page.fileChooserOpened":
+                self.chooser = params
+            elif method == "Page.downloadWillBegin":
+                self.downloads[params.get("guid")] = {
+                    "file": params.get("suggestedFilename", ""),
+                    "url": params.get("url", ""),
+                    "state": "inProgress",
+                }
+            elif method == "Page.downloadProgress" and params.get("guid") in self.downloads:
+                self.downloads[params["guid"]]["state"] = params.get("state", "inProgress")
+            elif method == "Network.responseReceived" and params.get("type") == "Document":
+                if self.frame_id and params.get("frameId") != self.frame_id:
+                    continue
+                status = (params.get("response") or {}).get("status")
+                if isinstance(status, int):
+                    self.http_status = status
 
     def evaluate(self, expression, await_promise=False):
         """Evaluate an expression in the page, refusing a document that moved under it."""
@@ -496,25 +839,76 @@ class Session:
         arrived with; the network events can. Only this session's main-frame document responses
         count, and the last one wins, so a redirect chain ends on the answer the site settled on.
         """
-        try:
-            events = drain_events()
-        except (RuntimeError, TimeoutError, OSError) as error:
-            logger.info("The browser would not report its network events: %s", error)
-            return self.http_status
-        for event in events:
-            if event.get("session_id") != self.session_id or event.get("method") != "Network.responseReceived":
-                continue
-            params = event.get("params") or {}
-            if params.get("type") != "Document" or (self.frame_id and params.get("frameId") != self.frame_id):
-                continue
-            status = (params.get("response") or {}).get("status")
-            if isinstance(status, int):
-                self.http_status = status
+        self.events()
         return self.http_status
 
     def observed(self, page):
-        """One snapshot payload with the status the site answered its document with."""
-        return {**page, "http_status": self.read_status()}
+        """One snapshot payload with the status the site answered its document with.
+
+        A file chooser the last input opened stays part of every reading until the next input.
+        """
+        if not page.get("dialog"):
+            self.title = page.get("title", "")
+        page = {**page, "http_status": self.read_status()}
+        saved = self.saved()
+        if saved:
+            page = {**page, "downloads": saved}
+        chooser = self.chooser
+        return {**page, "file_chooser": self.asked_file(chooser)} if chooser is not None else page
+
+    def saved(self):
+        """The downloads the last input started, as they stand now."""
+        return [dict(known) for known in list(self.downloads.values())[self.downloads_before :]]
+
+    def fetching(self, budget_s=SETTLE_BUDGET_S):
+        """Wait, within one settle budget, for the downloads the last input started to finish.
+
+        A person who clicked Download waits for the file before calling it downloaded, and a report
+        or an invoice takes a moment to arrive. A download still going when the budget runs out is
+        reported as it stands.
+        """
+        deadline = time.monotonic() + budget_s
+        self.events()
+        while any(item["state"] == "inProgress" for item in self.saved()) and time.monotonic() < deadline:
+            time.sleep(WAIT_SLEEP_S)
+            self.events()
+
+    def asked_file(self, chooser):
+        """What a file chooser the page opened asked for: one file or several, and of which kinds."""
+        asked = {"multiple": chooser.get("mode") == "selectMultiple"}
+        node = chooser.get("backendNodeId")
+        if node is None:
+            return asked
+        try:
+            described = self.call("DOM.describeNode", backendNodeId=node, depth=0)
+        except (ChromeError, StalePage):
+            return asked
+        attributes = (described.get("node") or {}).get("attributes") or []
+        accept = dict(zip(attributes[::2], attributes[1::2], strict=True)).get("accept", "").strip()
+        return {**asked, "accept": accept} if accept else asked
+
+    def dialog_page(self):
+        """The open dialog as the page in front of the page."""
+        viewport = self.config.viewport
+        return dialog_page(self.dialog, self.title, viewport.width, viewport.height)
+
+    def reply(self, action, text=None):
+        """Answer the open dialog the way an observed action says, or keep what was typed into it."""
+        dialog = self.dialog
+        if dialog is None:
+            raise StalePage("No dialog is open to answer. Observe again.")
+        if action["dialog"] == "text":
+            self.dialog = {**dialog, "text": text}
+            return
+        accept = action["dialog"] == "accept"
+        params = {"accept": accept}
+        if accept and dialog["type"] == "prompt":
+            params["promptText"] = prompt_text(dialog)
+        self.dialog = None
+        try:
+            self.call("Page.handleJavaScriptDialog", **params)
+        except ChromeError as error:
+            raise StalePage(f"The {dialog['type']} dialog was already gone. Observe again.") from error
 
     def open(self, url):
         """Navigate, wait for the load to finish, and observe."""
@@ -523,12 +917,13 @@ class Session:
         # Events still queued belong to the page this call is leaving; the status that matters is
         # what the new document is served with, and read_status only keeps the latest answer.
         self.read_status()
+        self.chooser, self.downloads_before = None, len(self.downloads)
         # An address that names a fragment may be answered by the router of the document already
         # open rather than by a new one, and then there is a view to wait for. Read where the page
         # stands before asking for it; an address without a fragment never pays for this.
         was = self.reading() if urlsplit(url).fragment else None
         self.invalidate()
-        moved = self.call("Page.navigate", timeout=NAVIGATE_TIMEOUT_S, url=url)
+        moved = self.call("Page.navigate", timeout=NAVIGATE_TIMEOUT_S, leave=True, url=url)
         self.frame_id = moved.get("frameId") or self.frame_id
         if moved.get("errorText"):
             # A navigation the browser itself refused never had a response, so no status of an
@@ -571,20 +966,23 @@ class Session:
         """Ask for the current document again, wait for it, and observe."""
         self.after_input = None
         self.invalidate()
-        self.call("Page.reload", timeout=NAVIGATE_TIMEOUT_S)
+        self.call("Page.reload", timeout=NAVIGATE_TIMEOUT_S, leave=True)
         self.load()
         self.paint()
         return self.observe(timer)
 
-    def quiet(self, budget_s, after=None, quiet_ms=QUIET_MS):
+    def quiet(self, budget_s, after=None, quiet_ms=QUIET_MS, origin=None):
         """Wait in the page until it stops changing, and say whether it did.
 
         `{"quiet": ..., "count": ...}`: whether the document went still inside the budget rather
         than running out of it, and how many times it has mutated, which a caller waiting for
-        something that has not happened yet passes back as `after`. None when the document moved
-        under the probe, which is the answer to observe again.
+        something that has not happened yet passes back as `after`. A document other than the one
+        born at `origin` counts as changed whatever its count, which started again at nothing. None
+        when the document moved under the probe, which is the answer to observe again.
         """
         options = {"quiet_ms": quiet_ms, "budget_ms": max(0, round(budget_s * 1000)), "after": after}
+        if origin is not None:
+            options["origin"] = origin
         try:
             return self.evaluate(f"{QUIESCENCE_JS}({json.dumps(options)})", await_promise=True)
         except StalePage:
@@ -596,7 +994,7 @@ class Session:
         deadline = time.monotonic() + budget
         while True:
             remaining = deadline - time.monotonic()
-            if remaining <= 0:
+            if remaining <= 0 or self.dialog is not None:
                 return False
             expression = f"{READY_JS}({json.dumps({'budget_ms': round(remaining * 1000)})})"
             try:
@@ -622,7 +1020,7 @@ class Session:
             except StalePage:
                 logger.debug("The document changed while waiting for it to paint")
             remaining = deadline - time.monotonic()
-            if remaining <= 0:
+            if remaining <= 0 or self.dialog is not None:
                 return False
             answer = self.quiet(remaining, after=seen)
             if answer is None:
@@ -637,8 +1035,24 @@ class Session:
         action, self.after_input = self.after_input, None
         was, self.moved_from = self.moved_from, None
         before, self.before_input = self.before_input, None
+        windows, self.windows_before = self.windows_before, None
         if action is None:
             return
+        opened = self.windows() - windows if windows is not None else set()
+        if opened:
+            self.follow(min(opened))
+            return
+        if action["kind"] == "wait":
+            # A wait was chosen because something has not arrived yet: the next batch of a feed,
+            # the results a search is still fetching. What it waits for is the page's next change
+            # after the reading it was chosen on, then the settling any other step gets.
+            with timer.measure("wait"):
+                self.quiet(
+                    SETTLE_BUDGET_S,
+                    after=action.get("mutations"),
+                    quiet_ms=0,
+                    origin=was[MARKER_ORIGIN] if was else None,
+                )
         # Read-only, and only after the action was already recorded: navigation may cut it short.
         first = None
         settling = f"{SETTLE_JS}({json.dumps(action)}).then(() => {snapshot_expression(self.max_elements)})"
@@ -650,6 +1064,47 @@ class Session:
                 # waited for: the timeout is logged and the step goes on to read the marker.
                 logger.debug("Post-input settle was interrupted: %s", error)
         self.wait_out(action, was, before, first, timer)
+        if was:
+            self.arrive(was, timer)
+        with timer.measure("wait"):
+            self.fetching()
+
+    def arrive(self, was, timer):
+        """Wait for a document the input loaded to arrive, when the step's wait ended before it did.
+
+        A reading that already shows words has arrived, wherever it is, and is kept without asking
+        the page anything more; so is one on the document the step started on. A document that
+        replaces itself while this waits is asked again until the budget runs out.
+        """
+        reading, self.settled = self.settled, None
+        if reading and reading.get("text"):
+            self.settled = reading
+            return
+        try:
+            origin = reading["marker"][MARKER_ORIGIN] if reading else self.evaluate("performance.timeOrigin")
+        except StalePage:
+            origin = None
+        if origin == was[MARKER_ORIGIN]:
+            self.settled = reading
+            return
+        deadline = time.monotonic() + ARRIVAL_BUDGET_S
+        with timer.measure("wait"):
+            while True:
+                if self.dialog is not None or self.detached:
+                    # A dialog holds the page, and a window that closed itself has none: neither
+                    # is a document on its way, and the reading after this says which it was.
+                    return
+                options = {"budget_ms": max(0, round((deadline - time.monotonic()) * 1000)), "poll_ms": ARRIVAL_POLL_MS}
+                try:
+                    answer = self.evaluate(f"{ARRIVED_JS}({json.dumps(options)})", await_promise=True)
+                except StalePage:
+                    answer = None
+                if answer is not None:
+                    if answer["arrived"] and not answer["waited"]:
+                        self.settled = reading
+                    return
+                if time.monotonic() >= deadline:
+                    return
 
     def wait_out(self, action, was, before, first=None, timer=None):
         """One budget and one reading per turn for everything a step waits for.
@@ -748,14 +1203,21 @@ class Session:
     def observe(self, timer=None):
         """One atomic reading of the page: text, elements, actions, guards and marker."""
         timer = timer or NullTimer()
+        self.returned()
         self.settle(timer)
+        # A window that closes itself does so while its last input is still settling.
+        self.returned()
         with timer.measure("snapshot"):
             settled, self.settled = self.settled, None
+            if self.dialog is not None:
+                return self.observed(self.dialog_page())
             if settled is not None:
                 return self.observed(settled)
             for attempt in range(SETTLE_ATTEMPTS):
                 try:
                     page = self.evaluate(snapshot_expression(self.max_elements))
+                except DialogOpen:
+                    return self.observed(self.dialog_page())
                 except StalePage:
                     page = None
                 if page is not None:
@@ -766,7 +1228,11 @@ class Session:
 
     def fresh(self, page, action=None):
         """Whether the observed page still describes what is about to be acted on."""
-        if action is not None and action.get("kind") in TARGETED:
+        if action is not None and action.get("dialog"):
+            self.events()
+            return self.dialog is not None and page.get("marker") == self.dialog_page()["marker"]
+        # A key that names no field - Escape out of a dialog - is fresh while the whole page is.
+        if action is not None and action.get("kind") in TARGETED and "node" in action:
             node = action["node"]
             current = self.evaluate(guard_expression(node))
             return current == [page["page_key"], page["guards"].get(str(node))]
@@ -787,27 +1253,41 @@ class Session:
         if not self.fresh(page, action):
             raise StalePage("Page changed since this decision. Observe again.")
         self.before_input = (page.get("url", ""), control_set(page.get("elements")))
+        self.chooser, self.downloads_before = None, len(self.downloads)
         kind = action["kind"]
-        if kind == "wait":
-            time.sleep(WAIT_SLEEP_S)
+        # Any input can open a window - a button, a key, even the answer to a confirm - and the
+        # windows already open before it are not what it opened.
+        self.windows_before = self.windows() if kind not in {"wait", "scroll"} else None
+        if action.get("dialog"):
+            self.reply(action, text)
         elif kind == "press":
             self.submit(action)
         elif kind == "scroll":
-            viewport = self.config.viewport
-            self.call(
-                "Input.dispatchMouseEvent",
-                type="mouseWheel",
-                x=viewport.width // 2,
-                y=viewport.height // 2,
-                deltaX=0,
-                deltaY=action["delta"],
-            )
-        else:
+            point = self.wheel(action)
+            self.call("Input.dispatchMouseEvent", type="mouseWheel", deltaX=0, deltaY=action["delta"], **point)
+        elif kind != "wait":
             self.input(action, text)
-        self.after_input = action if kind != "wait" else None
-        self.moved_from = page.get("marker") if kind != "wait" else None
+        # A wait sends nothing: waiting is what the settle after it does, for the page's next change.
+        self.after_input = {**action, "mutations": page.get("mutations")} if kind == "wait" else action
+        self.moved_from = page.get("marker")
         self.invalidate()
         return {"executed": action["id"], "kind": kind, "text": text}
+
+    def wheel(self, action):
+        """Where the wheel goes for a scroll: a point from which it moves the box the action names.
+
+        A scroll without a box is the document's, and the middle of the viewport is where it has
+        always gone when the page gives no better point.
+        """
+        node = action.get("node")
+        box = "null" if node is None else observed(node)
+        point = self.evaluate(f"window.__jevRa?.wheel({box}, {json.dumps(action['delta'])}) ?? null")
+        if point is not None:
+            return {"x": point["x"], "y": point["y"]}
+        if node is not None:
+            raise StalePage("The box that scrolls is gone. Observe again.")
+        viewport = self.config.viewport
+        return {"x": viewport.width // 2, "y": viewport.height // 2}
 
     def hover(self, node):
         """Move the pointer onto one observed node, without pressing anything."""
@@ -831,7 +1311,12 @@ class Session:
             if self.evaluate(f"{RESOLVE_JS}({json.dumps(action)})") is None:
                 raise StalePage("Dropdown execution was not confirmed. Observe again.")
             return
+        if action["kind"] == "fill" and action.get("format"):
+            self.set_value(action, text)
+            return
         self.click(self.resolve(action))
+        if self.dialog is not None:
+            return
         if action["kind"] == "fill" and not self.focused(action["node"]):
             time.sleep(FOCUS_SLEEP_S)
             if not self.focused(action["node"]) and not self.handed(action["node"]) and not self.focus(action["node"]):
@@ -839,6 +1324,86 @@ class Session:
         if action["kind"] == "fill":
             self.select_all()
             self.call("Input.insertText", text=text)
+
+    def set_value(self, action, text):
+        """Give a field the browser draws itself its value, or say what it takes when it will not keep it."""
+        if action["format"] == "slider":
+            self.slide(action, text)
+            return
+        answer = self.evaluate(f"{SET_JS}({json.dumps({'node': observed(action['node']), 'text': text})})")
+        if answer is None:
+            raise StalePage("Target changed or is covered. Observe again.")
+        if answer["took"]:
+            return
+        kind = action["format"]
+        takes = FORMATS.get(kind) or (f"a number from {answer['min']} to {answer['max']} in steps of {answer['step']}")
+        raise BadValue(f"{action.get('label') or 'The field'} takes {takes}, and {text!r} is not one.")
+
+    def slide(self, action, text):
+        """Move a slider a page draws itself to a value by the keys its role promises, or refuse the value.
+
+        One arrow says how far a step goes, and a value between two steps is refused with the
+        handle put back. A far value is reached by the larger step once it is known to land on a
+        step, and an end of the range by Home or End. A handle that stops moving - held back by the
+        other handle of a range - is reported where it stopped.
+        """
+        node = observed(action["node"])
+        label = action.get("label") or "The slider"
+        start = self.slider(node)
+        low, high, now = start["min"], start["max"], start["now"]
+        target = amount(text)
+        if target is None or now is None or (low is not None and target < low) or (high is not None and target > high):
+            span = f" from {low:g} to {high:g}" if low is not None and high is not None else ""
+            raise BadValue(f"{label} takes a number{span}, and {text!r} is not one.")
+        if same(target, now):
+            return
+        if not self.focused(node) and not self.focus(node):
+            raise StalePage("The slider never took focus. Observe again.")
+        if target in (low, high):
+            self.keystroke(SLIDER_KEYS["End" if target == high else "Home"], "End" if target == high else "Home")
+            return
+        rising = target > now
+        arrow, back = ("ArrowRight", "ArrowLeft") if rising else ("ArrowLeft", "ArrowRight")
+        after = self.nudge(node, arrow)
+        step = abs(after - now)
+        if not step:
+            return
+        if not whole((target - now) / step):
+            self.nudge(node, back)
+            raise BadValue(f"{label} moves in steps of {step:g} from {now:g}, and {text!r} is not one of them.")
+        now, page, presses = after, None, 1
+        while not same(now, target) and presses < SLIDER_PRESSES:
+            far = abs(target - now)
+            if page is None and far > SLIDER_FAR * step:
+                larger, smaller = ("PageUp", "PageDown") if rising else ("PageDown", "PageUp")
+                moved = self.nudge(node, larger)
+                presses += 1
+                page = abs(moved - now)
+                if (moved - target) * (now - target) < 0 or not whole(page / step) or page <= step:
+                    moved, page = self.nudge(node, smaller), 0
+                    presses += 1
+                now = moved
+                continue
+            key = ("PageUp" if rising else "PageDown") if page and far >= page else arrow
+            moved = self.nudge(node, key)
+            presses += 1
+            if same(moved, now):
+                break
+            now = moved
+        if not same(now, target):
+            raise BadValue(f"{label} stopped at {now:g}, and {text!r} is past where it goes from here.")
+
+    def slider(self, node):
+        """Where an observed slider stands and the range it moves in."""
+        held = self.evaluate(f"({SLIDER_JS})({node})")
+        if held is None:
+            raise StalePage("The slider is gone. Observe again.")
+        return held
+
+    def nudge(self, node, key):
+        """Press one slider key and read where the slider went."""
+        self.keystroke(SLIDER_KEYS[key], key)
+        return self.slider(node)["now"]
 
     def resolve(self, action):
         """The target's live top-level coordinates, or a stale page when it moved or is covered."""
@@ -854,6 +1419,8 @@ class Session:
         # the pointer stays where it was put, so the next observation sees what opened.
         self.call("Input.dispatchMouseEvent", type="mouseMoved", x=target["x"], y=target["y"])
         for event in ("mousePressed", "mouseReleased"):
+            if self.dialog is not None:
+                return
             self.call(
                 "Input.dispatchMouseEvent",
                 type=event,
@@ -922,8 +1489,17 @@ class Session:
         """Press one of the supported keys."""
         if key not in KEYS:
             raise ValueError(f"press supports {', '.join(KEYS)}")
-        code, name, text = KEYS[key]
+        self.keystroke(*KEYS[key])
+        self.after_input = None
+        self.invalidate()
+        time.sleep(WAIT_SLEEP_S)
+        return {"executed": f"press:{key}", "kind": "press"}
+
+    def keystroke(self, code, name, text=""):
+        """One key pressed and released wherever focus is, unless a dialog takes it first."""
         for event in ("keyDown", "keyUp"):
+            if self.dialog is not None:
+                return
             self.call(
                 "Input.dispatchKeyEvent",
                 type=event,
@@ -933,10 +1509,6 @@ class Session:
                 nativeVirtualKeyCode=code,
                 **({"text": text} if text and event == "keyDown" else {}),
             )
-        self.after_input = None
-        self.invalidate()
-        time.sleep(WAIT_SLEEP_S)
-        return {"executed": f"press:{key}", "kind": "press"}
 
     def front(self):
         """Bring this target's tab to the front, and its window back when it was minimized.
@@ -958,7 +1530,15 @@ class Session:
         return base64.b64decode(shot["data"])
 
     def close(self):
-        """Close the target this session owns."""
+        """Close the target this session owns, and any window it followed out of it."""
+        INBOX.close(self.session_id)
+        while self.openers:
+            try:
+                cdp("Target.closeTarget", targetId=self.target_id)
+            except RuntimeError:
+                logger.info("The window this session followed had already closed")
+            self.target_id, self.session_id, *_rest = self.openers.pop()
+            INBOX.close(self.session_id)
         if self.target_id:
             cdp("Target.closeTarget", targetId=self.target_id)
             self.target_id = None
@@ -968,6 +1548,74 @@ class Session:
 
     def __exit__(self, *_args):
         self.close()
+
+
+def prompt_text(dialog):
+    """What a prompt answers with: what was typed into it, or what it offered to begin with."""
+    return dialog.get("text", dialog.get("defaultPrompt") or "")
+
+
+def dialog_page(dialog, title, width, height):
+    """A JavaScript dialog observed the way a person meets it: what it says, and its answers.
+
+    It is the page in front of the page, as a consent wall is, and the only thing a run can do while
+    it is up. Chrome heads it with the host that asked; a prompt adds the field it asks to fill. Its
+    controls are named nodes of the dialog's own rather than of the page, and answering one is
+    `Page.handleJavaScriptDialog`, never input sent to a page that is not listening.
+    """
+    url = dialog.get("url", "")
+    said = LEAVE_TEXT if dialog["type"] == "beforeunload" else dialog.get("message", "")
+    host = urlsplit(url).netloc
+    text = f"{host} says\n{said}" if host else said
+    offered = []
+    if dialog["type"] == "prompt":
+        offered.append(("text", "textbox", "fill", dialog.get("message") or "Answer", prompt_text(dialog)))
+    offered += [(answer, "button", "click", label, "") for answer, label in DIALOG_ANSWERS[dialog["type"]]]
+    elements, actions = [], []
+    for index, (answer, role, kind, label, value) in enumerate(offered, 1):
+        ref, node = f"e{index}", f"dialog:{answer}"
+        elements.append({"node": node, "ref": ref, "role": role, "label": label, "value": value})
+        actions.append(
+            {"id": ref, "node": node, "role": role, "kind": kind, "label": label, "value": value, "dialog": answer}
+        )
+    fields = [["dialog:text", prompt_text(dialog)]] if dialog["type"] == "prompt" else []
+    # Laid out as a page's marker is - origin, address, scroll, size, then the page itself - so a
+    # reading of the dialog compares with a reading of the page the way two page readings do.
+    marker = [f"dialog:{dialog['id']}", url, 0, 0, width, height, title, text, elements, actions, fields]
+    return {
+        "url": url,
+        "title": title,
+        "w": width,
+        "h": height,
+        "text": text,
+        "doc_text": text,
+        "scroll": {"y": 0, "height": height},
+        "elements": elements,
+        "actions": actions,
+        "marker": marker,
+        "page_key": [marker[0], url, 0, 0, width, height, fields],
+        "guards": {},
+        "omitted": 0,
+        "dialog": dialog["type"],
+    }
+
+
+def amount(text):
+    """The number a value names, however it is written: 2000, 2,000 or $2,000. None when it names none."""
+    try:
+        return float(re.sub(r"[^\d.\-]", "", text or ""))
+    except ValueError:
+        return None
+
+
+def same(one, other):
+    """Whether two positions a slider announces are the same one."""
+    return one is not None and other is not None and math.isclose(one, other, rel_tol=1e-9, abs_tol=1e-9)
+
+
+def whole(ratio):
+    """Whether a distance is a whole number of steps."""
+    return math.isclose(ratio, round(ratio), abs_tol=1e-6)
 
 
 def check_url(url, config):
@@ -999,7 +1647,7 @@ def observed(node):
 # aria-expanded, a filter flips checked, a tab flips selected, a panel relabels what is already
 # there. None of that reaches the action list, which carries only an id and a kind, so the state
 # has to be read from the element view the snapshot builds beside it.
-CONTROL_KEYS = ("ref", "role", "label", "value", "checked", "selected", "expanded", "current")
+CONTROL_KEYS = ("ref", "role", "label", "value", "checked", "selected", "expanded", "pressed", "current")
 
 
 def control_set(elements):

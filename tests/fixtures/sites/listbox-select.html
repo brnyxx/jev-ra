@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Shipping address</title>
+<style>
+  body { font: 15px/1.5 system-ui; margin: 0; padding: 24px; }
+  label, .label { display: block; margin: 12px 0 4px; }
+  input { padding: 8px; width: 280px; }
+  #country { width: 298px; text-align: left; padding: 8px; background: #fff; border: 1px solid #bbb; border-radius: 4px; }
+  .backdrop { position: fixed; inset: 0; background: transparent; }
+  .menu { position: absolute; margin: 0; padding: 4px 0; list-style: none; background: #fff; width: 298px;
+          border: 1px solid #ccc; box-shadow: 0 4px 12px rgba(0,0,0,.15); max-height: 360px; overflow-y: auto; }
+  [role=option] { padding: 6px 12px; cursor: pointer; }
+  [role=option][aria-selected=true] { background: #e8f0fe; }
+</style>
+</head>
+<body>
+<!-- A select built from divs, the way MUI and Headless UI draw one: a button that says what is
+     chosen, and a listbox mounted at the end of the document behind a transparent backdrop that
+     covers the whole page while the menu is open. The real value rides in a hidden input. -->
+<h1>Shipping address</h1>
+<form id="address">
+  <label for="city">City</label>
+  <input id="city" name="city">
+  <span class="label" id="country-label">Country</span>
+  <button type="button" id="country" aria-haspopup="listbox" aria-expanded="false"
+          aria-labelledby="country-label country-value"><span id="country-value">Select a country</span> ▾</button>
+  <input type="hidden" name="country" id="country-input">
+</form>
+<p id="status"></p>
+<script>
+  const countries = ['Australia', 'Austria', 'Belgium', 'Brazil', 'Canada', 'Chile', 'Denmark', 'Finland', 'France', 'Germany'];
+  const button = document.getElementById('country');
+  let layer = null;
+  const close = () => { layer?.remove(); layer = null; button.setAttribute('aria-expanded', 'false'); };
+  button.addEventListener('click', () => {
+    if (layer) return close();
+    layer = document.createElement('div');
+    layer.innerHTML = '<div class="backdrop"></div><ul class="menu" role="listbox" aria-labelledby="country-label"></ul>';
+    const menu = layer.querySelector('ul');
+    const r = button.getBoundingClientRect();
+    menu.style.left = r.left + scrollX + 'px';
+    menu.style.top = r.bottom + scrollY + 2 + 'px';
+    for (const name of countries) {
+      const option = document.createElement('li');
+      option.setAttribute('role', 'option');
+      option.setAttribute('aria-selected', String(document.getElementById('country-input').value === name));
+      option.tabIndex = -1;
+      option.textContent = name;
+      option.addEventListener('click', () => {
+        document.getElementById('country-input').value = name;
+        document.getElementById('country-value').textContent = name;
+        document.getElementById('status').textContent = 'Country: ' + name;
+        close();
+      });
+      menu.appendChild(option);
+    }
+    layer.querySelector('.backdrop').addEventListener('click', close);
+    document.body.appendChild(layer);
+    button.setAttribute('aria-expanded', 'true');
+  });
+</script>
+</body>
+</html>

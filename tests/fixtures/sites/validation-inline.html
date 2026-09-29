@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Shipping details</title>
+<style>
+  body { font: 15px/1.5 system-ui; margin: 0; padding: 24px; max-width: 480px; }
+  label { display: block; margin: 12px 0 4px; }
+  input, select { padding: 8px; width: 300px; box-sizing: border-box; }
+  [aria-invalid=true] { border: 1px solid #c00; }
+  .error { color: #c00; margin: 4px 0 0; font-size: 13px; }
+  button { margin-top: 16px; padding: 10px 18px; }
+</style>
+</head>
+<body>
+<!-- A form validated by a form library, the way React Hook Form or Formik render it: nothing is
+     checked until the first submit, then each bad field is marked aria-invalid and gets an error
+     line under it, linked with aria-describedby. The postcode must match the country's format. -->
+<h1>Shipping details</h1>
+<form id="shipping" novalidate>
+  <label for="fullname">Full name</label>
+  <input id="fullname" name="fullname" aria-describedby="fullname-error">
+  <p class="error" id="fullname-error"></p>
+  <label for="country">Country</label>
+  <select id="country" name="country" aria-describedby="country-error">
+    <option value="">Choose a country</option><option value="CH">Switzerland</option><option value="DE">Germany</option><option value="US">United States</option>
+  </select>
+  <p class="error" id="country-error"></p>
+  <label for="postcode">Postcode</label>
+  <input id="postcode" name="postcode" aria-describedby="postcode-error">
+  <p class="error" id="postcode-error"></p>
+  <button type="submit">Continue to payment</button>
+</form>
+<p id="status"></p>
+<script>
+  const rules = {
+    fullname: form => form.fullname.value.trim() ? '' : 'Enter your full name.',
+    country: form => form.country.value ? '' : 'Choose the country you are shipping to.',
+    postcode: form => {
+      const value = form.postcode.value.trim();
+      if (!value) return 'Enter a postcode.';
+      const pattern = {CH: /^\d{4}$/, DE: /^\d{5}$/, US: /^\d{5}(-\d{4})?$/}[form.country.value];
+      return !pattern || pattern.test(value) ? '' : 'That postcode does not match the country.';
+    },
+  };
+  document.getElementById('shipping').addEventListener('submit', event => {
+    event.preventDefault();
+    const form = event.target;
+    let ok = true;
+    for (const [name, rule] of Object.entries(rules)) {
+      const message = rule(form);
+      form[name].setAttribute('aria-invalid', String(!!message));
+      document.getElementById(name + '-error').textContent = message;
+      if (message) ok = false;
+    }
+    if (ok) document.getElementById('status').textContent = 'Shipping to ' + form.fullname.value + ', ' + form.postcode.value + ' ' + form.country.value + '.';
+  });
+</script>
+</body>
+</html>

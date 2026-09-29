@@ -1,0 +1,326 @@
+# The capability matrix: one common kind of web interaction per entry, each on a local page built
+# the way popular sites and UI libraries build it.
+#
+# `goal` and `values` are what a run is given. `check` is a JavaScript expression evaluated in the
+# page the run ends on; it is true only when the goal was really reached. `plan` is the sequence
+# of (operation, target label, value name) a scripted decider answers with, which proves the
+# mechanism can do the thing at all; the live pass asks Jev instead. An entry without a plan has no
+# operation that reaches it, and `expect` names how a run has to end instead of reaching it.
+# `gap` marks a plan the mechanism cannot carry out yet, and says why.
+
+[[capability]]
+name = "iframe_same_origin_form"
+pattern = "Iframe: same-origin embedded form"
+page = "/sites/embedded-form.html"
+goal = "Subscribe ada@example.com to the newsletter."
+values = { email = "ada@example.com" }
+plan = [["TYPE_TEXT", "Email address", "email"], ["CLICK", "Subscribe"]]
+check = "document.getElementById('status').textContent === 'Subscribed: ada@example.com'"
+
+[[capability]]
+name = "iframe_cross_origin_payment"
+pattern = "Iframe: cross-origin payment frame"
+page = "/sites/payment-frame.html"
+goal = "Pay for the annual plan with the card supplied."
+values = { name = "Ada Lovelace", card_number = "4242 4242 4242 4242", expiry = "12 / 30", cvc = "123" }
+plan = [["TYPE_TEXT", "Name on card", "name"], ["BLOCKED"]]
+expect = ["blocked", "needs_value"]
+check = "document.getElementById('status').textContent === 'Not paid.'"
+
+[[capability]]
+name = "shadow_dom_form"
+pattern = "Shadow DOM: design-system form components"
+page = "/sites/web-components-form.html"
+goal = "Request beta access for ada@example.com and agree to the beta terms."
+values = { email = "ada@example.com" }
+plan = [
+  ["TYPE_TEXT", "Work email", "email"],
+  ["CLICK", "I agree to the beta terms"],
+  ["CLICK", "Request access"],
+]
+check = "document.getElementById('status').textContent === 'Requested access for ada@example.com.'"
+
+[[capability]]
+name = "shadow_dom_enter"
+pattern = "Shadow DOM: search box submitted with Enter"
+page = "/sites/shadow-search.html"
+goal = "Search the communities for mechanical keyboards."
+values = { query = "mechanical keyboards" }
+plan = [["TYPE_TEXT", "Search Communities", "query"], ["PRESS_ENTER"]]
+check = "document.getElementById('heading').textContent === 'Search results for \"mechanical keyboards\"'"
+
+[[capability]]
+name = "rich_text_editor"
+pattern = "contenteditable rich-text editor"
+page = "/sites/rich-text-editor.html"
+goal = "Post the comment supplied on this issue."
+values = { comment = "Looks good to me, merging after CI." }
+plan = [["TYPE_TEXT", "Comment body", "comment"], ["CLICK", "button Comment"]]
+check = "[...document.querySelectorAll('#comments .comment p')].at(-1)?.textContent === 'Looks good to me, merging after CI.'"
+
+[[capability]]
+name = "chat_composer_enter"
+pattern = "contenteditable composer sent with Enter"
+page = "/sites/chat-composer.html"
+goal = "Send the message supplied to #deploys."
+values = { message = "Deploy 1841 is live." }
+plan = [["TYPE_TEXT", "Message #deploys", "message"], ["PRESS_ENTER"]]
+check = "document.querySelector('#log .message:last-child')?.textContent === 'you Deploy 1841 is live.'"
+
+[[capability]]
+name = "aria_listbox"
+pattern = "Custom dropdown: ARIA listbox built from divs"
+page = "/sites/listbox-select.html"
+goal = "Set the shipping country to Canada."
+plan = [["CLICK", "Country"], ["CLICK", "option Canada"]]
+check = "document.getElementById('country-input').value === 'Canada'"
+
+[[capability]]
+name = "select_multiple"
+pattern = "Native <select multiple>"
+page = "/sites/select-multiple.html"
+goal = "Add mushrooms and olives to the toppings, keeping the extra cheese."
+plan = [["SELECT", "Toppings → add Mushrooms"], ["SELECT", "Toppings → add Olives"]]
+check = "[...document.getElementById('toppings').selectedOptions].map(o => o.value).join() === 'cheese,mushrooms,olives'"
+
+[[capability]]
+name = "choice_cards"
+pattern = "Radios drawn as cards, a switch toggle"
+page = "/sites/choice-cards.html"
+goal = "Choose Express delivery and turn on email delivery updates."
+plan = [["CLICK", "radio Express"], ["CLICK", "switch Email me delivery updates"]]
+check = "document.getElementById('summary').textContent === 'Delivery: express, updates: on'"
+
+[[capability]]
+name = "file_upload"
+pattern = "File upload: styled button and drop zone"
+page = "/sites/file-upload.html"
+goal = "Apply for the job as Ada Lovelace with her resume attached."
+values = { name = "Ada Lovelace" }
+plan = [["TYPE_TEXT", "Full name", "name"], ["CLICK", "Attach resume/CV"]]
+expect = ["needs_file"]
+check = "document.getElementById('resume').files.length === 0"
+
+[[capability]]
+name = "alert_dialog"
+pattern = "window.alert on a failed check"
+page = "/sites/alert-validation.html"
+goal = "Submit the certificate request for Ada Lovelace with the phone number supplied."
+values = { name = "Ada Lovelace", phone = "010-1234-5678" }
+plan = [
+  ["TYPE_TEXT", "Applicant name", "name"],
+  ["TYPE_TEXT", "Mobile phone", "phone"],
+  ["CLICK", "Submit request"],
+  ["CLICK", "OK"],
+  ["CLICK", "I agree to the collection"],
+  ["CLICK", "Submit request"],
+]
+check = "document.getElementById('status').textContent === 'Your request has been submitted.'"
+
+[[capability]]
+name = "confirm_dialog"
+pattern = "window.confirm before a destructive action"
+page = "/sites/confirm-delete.html"
+goal = "Delete the Work address."
+plan = [["CLICK", "Delete Work address"], ["CLICK", "OK"]]
+check = "!document.querySelector('[data-name=Work]') && !!document.querySelector('[data-name=Home]')"
+
+[[capability]]
+name = "prompt_dialog"
+pattern = "window.prompt asking for a name"
+page = "/sites/prompt-folder.html"
+goal = "Create a new folder with the name supplied."
+values = { folder = "Invoices" }
+plan = [["CLICK", "New folder"], ["TYPE_TEXT", "Name the new folder", "folder"], ["CLICK", "OK"]]
+check = "[...document.querySelectorAll('#folders li')].some(li => li.textContent === '📁 Invoices')"
+
+[[capability]]
+name = "modal_stack"
+pattern = "Stacked modal dialogs and a toast"
+page = "/sites/modal-stack.html"
+goal = "Delete the acme/alpha repository."
+values = { confirmation = "acme/alpha" }
+plan = [
+  ["CLICK", "Delete this repository"],
+  ["CLICK", "I want to delete this repository"],
+  ["TYPE_TEXT", "To confirm", "confirmation"],
+  ["CLICK", "button Delete this repository"],
+]
+check = "![...document.querySelectorAll('#repos li')].some(li => li.textContent === 'acme/alpha')"
+
+[[capability]]
+name = "escape_closes_modal"
+pattern = "Keyboard: Escape closes a modal with no close button"
+page = "/sites/search-modal-escape.html"
+goal = "Open the Pricing page."
+plan = [["PRESS_ESCAPE"], ["CLICK", "Pricing"]]
+check = "document.getElementById('view').textContent === 'Pricing'"
+
+[[capability]]
+name = "infinite_scroll"
+pattern = "Infinite scroll: the target is fetched as the reader nears it"
+page = "/sites/infinite-feed.html"
+goal = "Open the post titled 'Post 27: The station in Hanoi'."
+plan = [["SCROLL_DOWN"], ["WAIT"], ["SCROLL_DOWN"], ["SCROLL_DOWN"], ["CLICK", "Post 27: The station in Hanoi"]]
+check = "document.getElementById('opened').textContent === 'Reading: Post 27: The station in Hanoi'"
+max_steps = 12
+
+[[capability]]
+name = "load_more"
+pattern = "A 'Show more' button appends results in place"
+page = "/sites/load-more.html"
+goal = "Open 'Result 24: Oak standing desk, 120 cm'."
+plan = [
+  ["CLICK", "Show more results"],
+  ["WAIT"],
+  ["SCROLL_DOWN"],
+  ["CLICK", "Show more results"],
+  ["WAIT"],
+  ["SCROLL_DOWN"],
+  ["CLICK", "Result 24: Oak standing desk, 120 cm"],
+]
+check = "document.getElementById('opened').textContent === 'Viewing: Result 24: Oak standing desk, 120 cm'"
+max_steps = 12
+
+[[capability]]
+name = "virtual_list"
+pattern = "Virtualized list inside its own scroll box"
+page = "/sites/virtual-list.html"
+goal = "Open invoice INV-0062."
+plan = [
+  ["SCROLL_DOWN"], ["SCROLL_DOWN"], ["SCROLL_DOWN"], ["SCROLL_DOWN"], ["SCROLL_DOWN"], ["SCROLL_DOWN"], ["SCROLL_DOWN"],
+  ["CLICK", "INV-0062"],
+]
+check = "document.getElementById('opened').textContent === 'Opened INV-0062'"
+max_steps = 12
+
+[[capability]]
+name = "inner_scroll_container"
+pattern = "App shell: content scrolls inside <main>, not the window"
+page = "/sites/inner-scroll.html"
+goal = "Export all of the workspace's data."
+plan = [["SCROLL_DOWN"], ["CLICK", "Export all data"]]
+check = "document.getElementById('status').textContent === 'Export started. We will email you a link.'"
+max_steps = 10
+
+[[capability]]
+name = "popup_window"
+pattern = "window.open pop-up that answers its opener and closes"
+page = "/sites/popup-signin.html"
+goal = "Sign in to Notes with Acme ID."
+plan = [["CLICK", "Continue with Acme ID"], ["CLICK", "Allow"]]
+check = "document.getElementById('status').textContent === 'Signed in as Ada Lovelace.'"
+
+[[capability]]
+name = "tabs_accordion"
+pattern = "ARIA tabs and an accordion"
+page = "/sites/tabs-accordion.html"
+goal = "Show the warranty section of the chair's specifications."
+plan = [["CLICK", "Specifications"], ["CLICK", "Warranty"]]
+check = "document.getElementById('tab-specs').getAttribute('aria-selected') === 'true' && !document.getElementById('sec-warranty').hidden"
+
+[[capability]]
+name = "client_side_table"
+pattern = "Filter chips, sort and pagination without navigation"
+page = "/sites/client-table.html"
+goal = "Show in-stock monitors sorted by price from low to high, on page 2."
+plan = [["CLICK", "In stock"], ["SELECT", "Sort by → Price: low to high"], ["CLICK", "Page 2"]]
+check = "tableState.stock && !tableState.usbc && tableState.sort === 'price-asc' && tableState.page === 2"
+
+[[capability]]
+name = "native_date_time"
+pattern = "Native date, time and number inputs"
+page = "/sites/native-inputs.html"
+goal = "Find a table for 3 guests on 2026-10-05 at 19:30."
+values = { date = "2026-10-05", time = "19:30", guests = "3" }
+plan = [
+  ["TYPE_TEXT", "Date", "date"],
+  ["TYPE_TEXT", "Time", "time"],
+  ["TYPE_TEXT", "Guests", "guests"],
+  ["CLICK", "Find a table"],
+]
+check = "document.getElementById('status').textContent === 'Looking for a table for 3 on 2026-10-05 at 19:30.'"
+
+[[capability]]
+name = "native_range_color"
+pattern = "Native range slider and colour input"
+page = "/sites/settings-sliders.html"
+goal = "Set the text size to 18 and the accent colour to #ff6600."
+values = { size = "18", accent = "#ff6600" }
+plan = [["TYPE_TEXT", "Text size", "size"], ["TYPE_TEXT", "Accent colour", "accent"]]
+check = "document.getElementById('preview').textContent === 'Saved: text 18 px, accent #ff6600'"
+
+[[capability]]
+name = "aria_slider"
+pattern = "Custom slider: role=slider handles moved by keys or dragging"
+page = "/sites/price-slider.html"
+goal = "Set the maximum price to $2,000."
+values = { max_price = "2000" }
+plan = [["TYPE_TEXT", "Maximum price", "max_price"]]
+check = "document.getElementById('range').textContent === '$0 - $2,000'"
+
+[[capability]]
+name = "validation_native"
+pattern = "Browser validation bubble on submit"
+page = "/sites/validation-native.html"
+goal = "Create an account with the email and username supplied."
+values = { email = "ada@example.com", handle = "ada_l" }
+plan = [
+  ["TYPE_TEXT", "Email", "email"],
+  ["TYPE_TEXT", "Username", "handle"],
+  ["CLICK", "Create account"],
+  ["CLICK", "I accept the Terms of Service"],
+  ["CLICK", "Create account"],
+]
+check = "document.getElementById('status').textContent === 'Account created for ada@example.com as @ada_l.'"
+
+[[capability]]
+name = "validation_inline"
+pattern = "Form-library errors written under the fields"
+page = "/sites/validation-inline.html"
+goal = "Continue to payment, shipping to Ada Lovelace at 8001 Zurich, Switzerland."
+values = { fullname = "Ada Lovelace", postcode = "8001" }
+plan = [
+  ["TYPE_TEXT", "Full name", "fullname"],
+  ["TYPE_TEXT", "Postcode", "postcode"],
+  ["CLICK", "Continue to payment"],
+  ["SELECT", "Country → Switzerland"],
+  ["CLICK", "Continue to payment"],
+]
+check = "document.getElementById('status').textContent === 'Shipping to Ada Lovelace, 8001 CH.'"
+
+[[capability]]
+name = "download_link"
+pattern = "A link that downloads a file"
+page = "/sites/download-report.html"
+goal = "Download the August 2026 revenue report as CSV."
+plan = [["CLICK", "Download CSV"]]
+check = "true"
+downloaded = "revenue-2026-08.csv"
+
+[[capability]]
+name = "hover_row_actions"
+pattern = "Row actions painted only while the row is hovered"
+page = "/sites/row-hover-actions.html"
+goal = "Archive the message from Grace Hopper."
+plan = [["BLOCKED"]]
+expect = ["blocked"]
+check = "document.querySelectorAll('#list .row').length === 3 && !document.getElementById('status').textContent"
+
+[[capability]]
+name = "context_menu"
+pattern = "Custom right-click menu"
+page = "/sites/context-menu.html"
+goal = "Move budget.xlsx to the trash."
+plan = [["BLOCKED"]]
+expect = ["blocked"]
+check = "!!document.querySelector('[data-name=\"budget.xlsx\"]')"
+
+[[capability]]
+name = "drag_and_drop"
+pattern = "Drag a card to another column"
+page = "/sites/sortable-board.html"
+goal = "Move 'Write tests' to the Done column."
+plan = [["CLICK", "Write tests"], ["CLICK", "Write tests"], ["BLOCKED"]]
+expect = ["blocked", "stuck_loop"]
+check = "!document.querySelector('[data-column=done] .card')"

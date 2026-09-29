@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pytest
 
+from jev_ra.agent import Result
 from tests.test_examples import load
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -94,6 +95,7 @@ def test_an_empty_soak_reports_nothing_rather_than_dividing_by_zero(soak):
         "site_error": 0,
         "human": 0,
         "human_wait_ms": 0,
+        "skipped": {},
     }
 
 
@@ -202,3 +204,47 @@ def test_no_mode_at_all_is_refused(soak):
     with pytest.raises(SystemExit) as caught:
         soak.main([])
     assert caught.value.code == 2
+
+
+def agent_ending(result, runs):
+    class Agent:
+        def __init__(self, **_kwargs):
+            runs.append(self)
+
+        def run(self, *_args, **_kwargs):
+            return result
+
+    return Agent
+
+
+def test_a_soak_attempt_goes_through_the_machine_ledger(monkeypatch, soak, open_ledger):
+    runs = []
+    open_ledger.rest_s = 86400.0
+    monkeypatch.setattr(soak, "Agent", agent_ending(Result(status="done", http_status=429), runs))
+    task = soak.task_named("httpbin_form_submit")
+    first = soak.run_once(task, object(), object(), lambda *_: None)
+    assert first["status"] == "done" and first["http_status"] == 429
+    assert [(row["host"], row["refused"]) for row in open_ledger.today()["hosts"]] == [("httpbin.org", 1)]
+    second = soak.run_once(task, object(), object(), lambda *_: None)
+    assert (second["status"], second["reason"], second["passed"]) == ("skipped", "host_resting", None)
+    assert len(runs) == 1
+
+
+def test_a_soak_stops_at_its_first_skipped_attempt_and_is_incomplete(monkeypatch, capsys, soak):
+    rows = iter(
+        [
+            result_row("done", "goal_achieved", 1000, 3, True),
+            dict(result_row("skipped", "host_budget", 0, 0, None), url="https://httpbin.org/forms/post"),
+            result_row("done", "goal_achieved", 1000, 3, True),
+        ]
+    )
+    calls = []
+    monkeypatch.setattr(soak, "load", lambda: type("C", (), {"api_key": "k"})())
+    monkeypatch.setattr(soak, "Session", Closer)
+    monkeypatch.setattr(soak, "DecisionClient", Client)
+    monkeypatch.setattr(soak, "run_once", lambda *_args: calls.append(1) or next(rows))
+    assert soak.main(["--task", "wikipedia_godel", "--runs", "3"]) == 1
+    out = capsys.readouterr().out
+    assert len(calls) == 2
+    assert "passed 1/1" in out
+    assert "1 attempt(s) skipped" in out and "host_budget x1 (httpbin.org)" in out

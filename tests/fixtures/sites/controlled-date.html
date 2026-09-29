@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Check-in</title>
+<style>body { font: 15px/1.5 system-ui; margin: 0; padding: 24px; } label { display: block; margin: 8px 0 4px; }</style>
+</head>
+<body>
+<!-- A date field controlled by a framework the way React controls one: the framework wraps the
+     element's value property to remember what it last set, and an input event whose value it
+     already knows is not a change. Only a value the browser itself put there is heard. -->
+<h1>Check-in</h1>
+<label for="checkin">Check-in date</label>
+<input type="date" id="checkin">
+<p id="state">No date chosen.</p>
+<script>
+  const input = document.getElementById('checkin');
+  const own = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value');
+  let known = input.value;
+  Object.defineProperty(input, 'value', {
+    configurable: true,
+    get() { return own.get.call(this); },
+    set(value) { known = String(value); own.set.call(this, value); },
+  });
+  input.addEventListener('input', () => {
+    if (input.value === known) return;
+    known = input.value;
+    document.getElementById('state').textContent = 'Checking in on ' + known + '.';
+  });
+</script>
+</body>
+</html>

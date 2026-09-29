@@ -37,3 +37,16 @@ def test_the_word_active_in_ordinary_prose_marks_nothing(session, fixture_server
         for element in page["elements"]
         if element["role"] != "link" or element["label"] not in {"신상품순", "2"}
     )
+
+
+def test_the_decision_is_told_which_sort_and_page_are_already_active(session, fixture_server):
+    from jev_ra.browser import actions
+    from jev_ra.decide.policy import build_state
+
+    page = session.open(fixture_server + FIXTURE)
+    state = build_state(page, actions.build(page), "Sort the list by 신상품순.")
+    rows = {row["label"]: row for row in state["elements"]}
+    assert rows["신상품순"].get("current") == "true"
+    assert rows["2"].get("current") == "true"
+    assert "current" not in rows["인기순"]
+    assert "current" not in rows["1"]

@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Apply - Senior Engineer</title>
+<style>
+  body { font: 15px/1.5 system-ui; margin: 0; padding: 24px; max-width: 620px; }
+  label.text { display: block; margin: 12px 0 4px; }
+  input[type=text] { padding: 8px; width: 300px; }
+  .upload { display: inline-block; margin-top: 12px; padding: 8px 14px; border: 1px solid #1a56db; color: #1a56db;
+            border-radius: 6px; cursor: pointer; position: relative; }
+  .upload input { position: absolute; width: 0; height: 0; opacity: 0; }
+  .dropzone { margin-top: 16px; border: 2px dashed #aaa; border-radius: 8px; padding: 24px; text-align: center; color: #555; cursor: pointer; }
+  button[type=submit] { display: block; margin-top: 20px; padding: 10px 18px; }
+</style>
+</head>
+<body>
+<!-- A job application the way applicant-tracking forms ask for files: the resume input sits
+     inside a label styled as a button and has no pixels of its own, and the cover letter goes into
+     a drop zone whose hidden input is opened by clicking anywhere on the zone. -->
+<h1>Senior Engineer</h1>
+<form id="apply" novalidate>
+  <label class="text" for="name">Full name</label>
+  <input type="text" id="name" name="name" autocomplete="name">
+  <div><label class="upload">Attach resume/CV
+    <input type="file" id="resume" name="resume" accept=".pdf,.doc,.docx,.txt"></label>
+    <span id="resume-name">No file chosen</span></div>
+  <div class="dropzone" role="presentation" tabindex="0" id="zone">
+    <input type="file" id="cover" name="cover" accept=".pdf,.txt" style="display:none">
+    <p>Drag your cover letter here, or click to choose a file</p>
+    <p id="cover-name"></p>
+  </div>
+  <button type="submit">Submit application</button>
+</form>
+<p id="status" role="status"></p>
+<script>
+  const resume = document.getElementById('resume');
+  const cover = document.getElementById('cover');
+  const zone = document.getElementById('zone');
+  resume.addEventListener('change', () => {
+    document.getElementById('resume-name').textContent = resume.files[0]?.name || 'No file chosen';
+  });
+  cover.addEventListener('change', () => {
+    document.getElementById('cover-name').textContent = cover.files[0]?.name || '';
+  });
+  zone.addEventListener('click', event => { if (event.target !== cover) cover.click(); });
+  zone.addEventListener('dragover', event => event.preventDefault());
+  zone.addEventListener('drop', event => {
+    event.preventDefault();
+    cover.files = event.dataTransfer.files;
+    cover.dispatchEvent(new Event('change'));
+  });
+  document.getElementById('apply').addEventListener('submit', event => {
+    event.preventDefault();
+    const status = document.getElementById('status');
+    if (!document.getElementById('name').value.trim()) status.textContent = 'Enter your full name.';
+    else if (!resume.files.length) status.textContent = 'Attach your resume to apply.';
+    else status.textContent = 'Application received with ' + resume.files[0].name + '.';
+  });
+</script>
+</body>
+</html>

@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Build your pizza</title>
+<style>
+  body { font: 15px/1.5 system-ui; margin: 0; padding: 24px; }
+  label { display: block; margin: 12px 0 4px; }
+  select { width: 220px; }
+</style>
+</head>
+<body>
+<!-- A native multi-select, the way admin forms and older shops still ship one: a listbox that
+     keeps every option it was given, where each choice is added to the ones already made. -->
+<h1>Build your pizza</h1>
+<form id="order">
+  <label for="size">Size</label>
+  <select id="size" name="size"><option>Medium</option><option>Large</option></select>
+  <label for="toppings">Toppings</label>
+  <select id="toppings" name="toppings" multiple size="7">
+    <option value="cheese" selected>Extra cheese</option>
+    <option value="mushrooms">Mushrooms</option>
+    <option value="onions">Onions</option>
+    <option value="peppers">Green peppers</option>
+    <option value="olives">Olives</option>
+    <option value="pineapple">Pineapple</option>
+    <option value="basil">Fresh basil</option>
+  </select>
+</form>
+<p id="summary"></p>
+<script>
+  const toppings = document.getElementById('toppings');
+  const show = () => {
+    document.getElementById('summary').textContent =
+      'Toppings: ' + ([...toppings.selectedOptions].map(o => o.text).join(', ') || 'none');
+  };
+  toppings.addEventListener('change', show);
+  show();
+</script>
+</body>
+</html>

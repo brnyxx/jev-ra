@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Delivery options</title>
+<style>
+  body { font: 15px/1.5 system-ui; margin: 0; padding: 24px; }
+  .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden;
+             clip: rect(0, 0, 0, 0); white-space: nowrap; border-width: 0; }
+  ul { list-style: none; padding: 0; display: grid; grid-template-columns: repeat(3, 200px); gap: 12px; }
+  li { position: relative; }
+  label.card { display: block; border: 1px solid #ccc; border-radius: 8px; padding: 14px; cursor: pointer; }
+  input:checked + label.card { border-color: #1a56db; box-shadow: 0 0 0 2px #1a56db; }
+  .row { display: flex; align-items: center; gap: 12px; margin-top: 16px; }
+  button[role=switch] { width: 44px; height: 24px; border-radius: 12px; border: 0; background: #ccc; position: relative; }
+  button[role=switch][aria-checked=true] { background: #1a56db; }
+  button[role=switch] span { position: absolute; top: 2px; left: 2px; width: 20px; height: 20px; border-radius: 50%; background: #fff; }
+  button[role=switch][aria-checked=true] span { left: 22px; }
+</style>
+</head>
+<body>
+<!-- Radio buttons drawn as cards, the way Tailwind component kits build them: the input is
+     visually hidden with the sr-only utility and its label is the sibling that follows it, so the
+     label is the only thing on screen. The notification toggle is a Headless UI switch: a button
+     with role="switch" and aria-checked, labelled by text beside it. -->
+<h1>Delivery</h1>
+<ul>
+  <li><input type="radio" id="standard" name="delivery" value="standard" class="sr-only" checked>
+      <label class="card" for="standard"><strong>Standard</strong><br>4-6 business days - Free</label></li>
+  <li><input type="radio" id="express" name="delivery" value="express" class="sr-only">
+      <label class="card" for="express"><strong>Express</strong><br>2 business days - $9</label></li>
+  <li><input type="radio" id="overnight" name="delivery" value="overnight" class="sr-only">
+      <label class="card" for="overnight"><strong>Overnight</strong><br>Next day - $24</label></li>
+</ul>
+<div class="row">
+  <button type="button" role="switch" aria-checked="false" aria-labelledby="updates-label" id="updates"><span aria-hidden="true"></span></button>
+  <span id="updates-label">Email me delivery updates</span>
+</div>
+<p id="summary"></p>
+<script>
+  const summary = () => {
+    const delivery = document.querySelector('input[name=delivery]:checked').value;
+    const updates = document.getElementById('updates').getAttribute('aria-checked') === 'true';
+    document.getElementById('summary').textContent = 'Delivery: ' + delivery + ', updates: ' + (updates ? 'on' : 'off');
+  };
+  for (const input of document.querySelectorAll('input[name=delivery]')) input.addEventListener('change', summary);
+  document.getElementById('updates').addEventListener('click', event => {
+    const on = event.currentTarget.getAttribute('aria-checked') === 'true';
+    event.currentTarget.setAttribute('aria-checked', String(!on));
+    summary();
+  });
+  summary();
+</script>
+</body>
+</html>

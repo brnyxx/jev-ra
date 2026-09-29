@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Saved addresses</title>
+<style>
+  body { font: 15px/1.5 system-ui; margin: 0; padding: 24px; max-width: 600px; }
+  li { display: flex; justify-content: space-between; border: 1px solid #ddd; padding: 10px 14px; margin: 8px 0; }
+  #toast { position: fixed; bottom: 16px; left: 16px; background: #222; color: #fff; padding: 8px 14px; border-radius: 6px; }
+  #toast[hidden] { display: none; }
+</style>
+</head>
+<body>
+<!-- An account page the way many shops confirm a destructive action: the Delete button asks with
+     window.confirm(), and only an OK removes the address. A toast says so and disappears. -->
+<h1>Saved addresses</h1>
+<ul id="addresses">
+  <li data-name="Home"><span><strong>Home</strong> - 12 Elm Street, Springfield</span><button type="button">Delete</button></li>
+  <li data-name="Work"><span><strong>Work</strong> - 400 Market Street, Springfield</span><button type="button">Delete</button></li>
+</ul>
+<div id="toast" role="status" hidden></div>
+<script>
+  for (const item of document.querySelectorAll('#addresses li')) {
+    item.querySelector('button').setAttribute('aria-label', 'Delete ' + item.dataset.name + ' address');
+    item.querySelector('button').addEventListener('click', () => {
+      if (!confirm('Delete the ' + item.dataset.name + ' address? This cannot be undone.')) return;
+      item.remove();
+      const toast = document.getElementById('toast');
+      toast.textContent = item.dataset.name + ' address deleted';
+      toast.hidden = false;
+      setTimeout(() => { toast.hidden = true; }, 3000);
+    });
+  }
+</script>
+</body>
+</html>

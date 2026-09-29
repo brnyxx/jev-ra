@@ -5,6 +5,8 @@ is where each answer is recorded. This is how one row is measured: it opens the 
 way a corpus run opens it, and reports the main document's HTTP status, the address the open landed
 on, the Agent's own wall verdict, and how much the page offered. The wall check is the Agent's, not
 a copy of it: the first decision is scripted to finish, so the run stops after the page it opened.
+The open goes through the machine's live-traffic ledger, so a host resting after a refusal today is
+not asked again.
 
 Usage:
     uv run python scripts/check_site.py gov_kr_search
@@ -18,6 +20,7 @@ from pathlib import Path
 if str(Path(__file__).resolve().parents[1]) not in sys.path:
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from jev_ra import traffic
 from jev_ra.agent import Agent
 from jev_ra.browser.session import Session
 from jev_ra.config import load
@@ -50,15 +53,29 @@ def scripted_decide(_state, _questions):
     return Reply(answers={**answers, "goal_achieved": {"noul": 1.0}}, model="check_site", latency_ms=0)
 
 
-def open_once(url, session=None, config=None):
+def open_once(url, session=None, config=None, ledger=None):
     """Open one address and report what the site answered, with the Agent's wall verdict."""
-    own = session is None
     config = config or load()
+    ledger = ledger or traffic.ledger(config)
+    claim = ledger.claim(url, "check_site")
+    if claim.skipped:
+        raise JevRaError(claim.said, "`jev-ra traffic` shows today's ledger.")
+    own = session is None
     session = session or Session(config)
     try:
         agent = Agent(session=session, config=config, decide=scripted_decide, prefetch=False)
         result = agent.run("Check what this site answers.", max_steps=1, url=url)
         status = session.evaluate(HTTP_STATUS_JS)
+        ledger.settle(
+            claim,
+            {
+                "status": result.status,
+                "reason": result.reason,
+                "http_status": status if isinstance(status, int) else result.http_status,
+                "site_error": result.site_error,
+                "human_wait_ms": result.human_wait_ms,
+            },
+        )
         return {
             "requested": url,
             "url": result.url,

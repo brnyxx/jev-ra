@@ -106,3 +106,10 @@ def test_acting_on_a_cross_origin_frame_does_not_raise(session, fixture_server):
     frame = next(a for a in page["actions"] if a["label"] == "Cross origin frame")
     assert session.act(frame, page)["executed"] == frame["id"]
     assert session.observe()["url"].endswith("/iframe.html")
+
+
+def test_a_web_component_button_is_named_by_the_words_slotted_into_it(session, fixture_server):
+    page = session.open(f"{fixture_server}/sites/web-components-form.html")
+    button = by_label(page, "Request access")
+    assert (button["role"], button["nested"]) == ("button", True)
+    assert "button" not in labels(page)

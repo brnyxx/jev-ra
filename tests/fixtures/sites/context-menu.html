@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>My files</title>
+<style>
+  body { font: 14px/1.5 system-ui; margin: 0; padding: 24px; max-width: 640px; }
+  .file { padding: 10px 12px; border-bottom: 1px solid #eee; user-select: none; }
+  #menu { position: fixed; background: #fff; border: 1px solid #ccc; box-shadow: 0 4px 12px rgba(0,0,0,.2); padding: 4px 0; list-style: none; margin: 0; }
+  #menu[hidden] { display: none; }
+  #menu [role=menuitem] { padding: 6px 18px; cursor: pointer; }
+</style>
+</head>
+<body>
+<!-- A file browser the way cloud drives build one: a file is a row, and what can be done to it is
+     in a custom menu that opens where the right mouse button is pressed. There is no other button
+     for it on the row. -->
+<h1>My files</h1>
+<div id="files">
+  <div class="file" data-name="budget.xlsx">📊 budget.xlsx</div>
+  <div class="file" data-name="notes.txt">📄 notes.txt</div>
+  <div class="file" data-name="photo.jpg">🖼 photo.jpg</div>
+</div>
+<ul id="menu" role="menu" hidden>
+  <li role="menuitem" data-action="rename">Rename</li>
+  <li role="menuitem" data-action="delete">Move to trash</li>
+</ul>
+<p id="status"></p>
+<script>
+  const menu = document.getElementById('menu');
+  let target = null;
+  for (const file of document.querySelectorAll('.file')) {
+    file.addEventListener('contextmenu', event => {
+      event.preventDefault();
+      target = file;
+      menu.style.left = event.clientX + 'px';
+      menu.style.top = event.clientY + 'px';
+      menu.hidden = false;
+    });
+  }
+  addEventListener('click', event => { if (!menu.contains(event.target)) menu.hidden = true; });
+  for (const item of menu.querySelectorAll('[role=menuitem]')) {
+    item.addEventListener('click', () => {
+      menu.hidden = true;
+      if (!target) return;
+      if (item.dataset.action === 'delete') {
+        target.remove();
+        document.getElementById('status').textContent = target.dataset.name + ' moved to trash.';
+      }
+    });
+  }
+</script>
+</body>
+</html>

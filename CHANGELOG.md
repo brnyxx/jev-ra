@@ -1,5 +1,43 @@
 # Changelog
 
+## Unreleased
+
+### Added
+- `jev-ra corpus run` and `jev-ra bench --live` are a polite client by construction. Every live
+  attempt is written to a ledger that every process on the machine shares under a file lock
+  (`$XDG_STATE_HOME/jev-ra/traffic/<date>.jsonl`), and each host gets at most 40 attempts a day
+  (`JEV_RA_HOST_DAILY_BUDGET`), at least 10 s apart (`JEV_RA_HOST_GAP_S`). A host that answers 429 or
+  403, keeps serving an error page, walls the run or puts up a check is left alone for the rest of
+  the day (`JEV_RA_HOST_REST_S`). The check sits in `corpus.run_task` and the bench's live measures,
+  so a script that calls them directly is covered too; pages on this machine are never counted, and
+  `jev-ra run` and the MCP tools are never limited. One machine had asked its busiest hosts 100-273
+  times in a day, until Olive Young started refusing it.
+- An attempt the ledger does not send is `skipped` (`host_budget` or `host_resting`): counted apart
+  like a run that needed a person, named with its reason and hosts in one line, and the corpus and
+  bench verdict is `INCOMPLETE` instead of PASS or FAIL.
+- `jev-ra traffic` prints today's attempts per host, the hosts resting and why, and the budget left.
+- `scripts/soak.py`, `scripts/check_site.py`, `scripts/record_bench.py` and `scripts/bu_corpus.py`
+  claim their live attempts from the same ledger; a soak stops at its first attempt the ledger
+  will not send and exits 1.
+
+### Changed
+- `jev-ra bench` makes no speed claim for a task measured on fewer runs than `--runs` asked for,
+  whether the rest were skipped or set aside for a person: its medians and ratio are left out and it
+  does not clear the bar. Bench rows now carry `http_status` and `site_error`.
+
+### Fixed
+- A step that loads another document is read once that document has arrived: words showing in the
+  viewport or, on a page without words, a control in reach, for up to 5 s. An empty shell, a lone
+  spinner or text still at opacity 0 reads the same twice and used to end the wait. A page that
+  already shows words costs nothing more. On the public benchmark tasks this took Discogs from 0/3
+  to 3/3 and halved the runs that ended on a blank page (docs/benchmarks/2026-09-23-accuracy).
+- A choice that twice in a row changed nothing sits out the next question, so the run tries the
+  control beside it instead of pressing the dead one a third time and ending `stuck_loop`. A wait
+  never counts, and one retry of a swallowed first press stays on offer.
+- The decision is told which item of a group is already the current one (`aria-current`, or a class
+  that says active or current: the sort or page in effect), as the snapshot always recorded but the decision input dropped.
+- A tool description reaches the MCP client without its source indentation on Python 3.12.
+
 ## 0.2.7 - 2026-09-23
 
 ### Added

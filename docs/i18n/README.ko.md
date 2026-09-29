@@ -125,6 +125,7 @@ Python을 따로 갖추기 싫다면 `npx -y jev-ra install claude`가 npm 런�
 | `doctor` | 키, 엔드포인트, Chrome, 라이브 결정 하나를 점검한다 |
 | `bench [--live]` | 오프라인 픽스처를 재고, `--live`면 라이브 과제도 잰다 |
 | `corpus run` | 실제 사이트 코퍼스를 실행한다 |
+| `traffic` | 오늘 호스트별 라이브 시도 수와 남은 예산을 보여 준다 |
 
 `open` … `close`는 `$XDG_STATE_HOME/jev-ra/session.json`의 target id를 통해 하나의 브라우저를
 여러 호출에 걸쳐 공유한다. 어느 명령에든 `--json`을 붙이면 원본 페이로드가 나온다.
@@ -153,15 +154,19 @@ Jev가 *당신이 준* 값 중 어느 것이 그 필드에 들어갈지 고른�
 ## 제어를 되돌려줄 때
 
 `Result.status`는 `done`, `blocked`, `escalate`, `budget` 중 하나다. 실행이 중간에 멈추면 `reason`은
-`needs_value`, `stuck_loop`, `unverified_done`, `stale`, `invalid_decision`, `too_many_controls`,
+`needs_value`, `needs_file`, `stuck_loop`, `unverified_done`, `stale`, `invalid_decision`, `too_many_controls`,
 `provider_error`, `blocked`, `blocked_by_site`, `needs_human` 중 하나다. `budget`으로 끝난 실행은 소진된 예산(스텝, 결정, 시간)을
 `reason`에 담는다. `provider_error`는 공급자가 답하기를 거부한 것이므로, 목표를 다시 시도하지
-말고 키와 경로를 확인한다. escalate에는 확률이
+말고 키와 경로를 확인한다. `needs_file`은 페이지가 파일을 요구한 것이다. `detail`에는 요구한 컨트롤
+(`field`), 여러 개를 받는지(`multiple`), 받는 파일 종류(`accept`)가 담긴다. 파일 선택 창은 취소되고,
+jev-ra는 자기가 실행되는 디스크에서 파일을 고르지 않는다. escalate에는 확률이
 붙은 상위 8개 연산/대상 후보와 최대 3,000자의 페이지 텍스트가 담긴다. 다시 관측하지 않고도 판단할
 수 있을 만큼이다.
 
 검증은 결정론적이다. 매 행동 뒤 url, title, text, 필드 상태를 비교하고, `page_changed`는 모델의
-의견이 아니라 페이지의 의미 기반 marker에서 나온다.
+의견이 아니라 페이지의 의미 기반 marker에서 나온다. 행동이 내려받은 파일도 그 행동이 한 일이다. 스텝은
+정착 예산 안에서 내려받기가 끝나길 기다리고, `Result.downloads`는 사이트가 붙인 파일 이름, url, 완료 여부를
+하나씩 담는다. 파일은 Chrome이 내려받기를 저장하는 곳에 저장된다.
 
 에러 페이지로 답하는 사이트(HTTP 5xx·429, 또는 스스로 에러라고 말하는 짧은 페이지)는 무엇도 결정하기 전에
 2초 기다렸다가 한 번 다시 불러온다. 그래도 에러면 실행은 `blocked_by_site`로 멈추고 `detail.wall`에
@@ -227,17 +232,28 @@ browser-use 0.13.10 `flash_mode`는 2026-09-22 에 한 번씩 돌려 **29 / 40 =
 세 번 돌리는 한 판은 사이트 사정만으로 다섯 과제쯤 흔들리므로, 변경은 과제별 재실행이 같은 결과를 낼 때만
 득실로 센다. [과제별 행과 흔들림 측정](https://github.com/brnyxx/jev-ra/blob/main/docs/BENCHMARKS.md).
 
+`jev-ra corpus run`과 `jev-ra bench --live`는 라이브 시도를 빠짐없이 이 머신의 모든 프로세스가 함께 쓰는
+장부(`$XDG_STATE_HOME/jev-ra/traffic/`, 하루에 파일 하나)에 적는다. 호스트마다 하루 최대 40번
+(`JEV_RA_HOST_DAILY_BUDGET`), 최소 10 s 간격(`JEV_RA_HOST_GAP_S`)으로만 시도하고, 거절한 호스트(HTTP 429나
+403, 오류 페이지, 벽, 확인)는 그날 남은 시간 동안 건드리지 않는다(`JEV_RA_HOST_REST_S`, 기본 86,400 s).
+하지 않은 시도는 `skipped`다. 사람이 필요했던 실행처럼 따로 세고 이유와 함께 한 줄로 알리며, 건너뛴 시도가
+하나라도 있는 판은 `INCOMPLETE`로 끝나고, 요청한 횟수를 채우지 못한 과제에는 속도를 매기지 않는다.
+`jev-ra traffic`은 오늘의 시도 수, 쉬는 호스트, 남은 예산을 출력한다. 이 머신 안의 페이지는 세지 않고,
+`jev-ra run`과 MCP 도구는 제한하지 않는다.
+
 ## 하지 않는 것
 
 | 한계 | 결과 |
 |---|---|
 | 캔버스 드로잉, 게임 등 마크업이 아니라 그려진 것 | `blocked`: 목표를 진행시킬 수 있는 관측된 컨트롤이 없음 |
-| 파일 업로드 | `blocked`: 파일 입력은 제시되지도, 입력되지도 않음 |
+| 드래그 앤 드롭, 오른쪽 클릭 메뉴 | 드래그도 오른쪽 클릭도 하지 않음: `blocked`, 또는 끌어야만 하는 것을 누른 뒤 `stuck_loop` |
+| 포인터가 행 위에 있을 때만 그려지는 컨트롤 | 제시하지 않음: 행을 여는 것처럼 페이지에 다른 길이 없으면 `blocked` |
+| 파일 업로드 | `needs_file`: 요구한 컨트롤과 받는 파일 종류를 알려줌. 파일은 절대 고르지 않음 |
 | CAPTCHA 등 사람이 풀 수 있는 확인 | 창 앞의 사람에게 넘김. 아무도 풀지 않으면 `resume` 토큰을 담은 `needs_human` |
 | 아예 거절하는 봇 차단, 스텔스 | `detail.kind`가 `refusal`인 `blocked_by_site`. jev-ra는 자신을 위장하지 않음 |
 | 인증 흐름 | 필드 이름을 담은 `needs_value`. 자격 증명을 추측하지 않음 |
-| 팝업 창, 멀티 탭 워크플로 | 실행은 자기 타깃에 머무름 |
-| 교차 출처 iframe | 불투명한 요소 하나로 보고. 열린 shadow root와 동일 출처 iframe은 **순회함** |
+| 멀티 탭 워크플로 | 페이지가 연 창(로그인·결제 팝업)은 스스로 닫힐 때까지 따라가고, 새 탭 링크는 같은 탭에서 연다. 실행이 탭 사이를 오가지는 않음 |
+| 교차 출처 iframe | 불투명한 요소 하나로 보고하고, 그 페이지에서의 에스컬레이션은 `detail.frames`에 그 iframe과 제공 호스트를 적음. 열린 shadow root와 동일 출처 iframe은 **순회함** |
 | 보이는 컨트롤이 250개를 넘을 때 | `omitted`를 보고하고, 막힌 실행은 추측 대신 `too_many_controls`로 에스컬레이션 |
 
 각각 페이지 텍스트와 순위가 매겨진 후보를 담은 에스컬레이션을 돌려준다.
@@ -279,6 +295,9 @@ browser-use 0.13.10 `flash_mode`는 2026-09-22 에 한 번씩 돌려 **29 / 40 =
 | `JEV_RA_PACE_S` | 한 실행이 같은 호스트로 여는 두 이동 사이의 최소 초. 기본 `1`, `0`이면 끔, 이 머신은 제외 |
 | `JEV_RA_NOTIFY` | `0`이면 사람 확인이 띄우는 데스크톱 알림을 끔 |
 | `JEV_RA_HUMAN_WAIT_S` | 사람 확인을 사람이 풀어 주기를 기다리는 시간. 기본 `120`, `0`이면 바로 돌려줌 |
+| `JEV_RA_HOST_DAILY_BUDGET` | `corpus run`과 `bench --live`가 모든 프로세스를 통틀어 한 호스트에 하루 동안 하는 라이브 시도 수. 기본 `40` |
+| `JEV_RA_HOST_GAP_S` | 한 호스트에 대한 그 시도들 사이의 최소 초. 기본 `10`, `0`이면 끔 |
+| `JEV_RA_HOST_REST_S` | 거절한 호스트를 그날 안에서 건드리지 않는 시간. 기본 `86400`, `0`이면 끔 |
 | `JEV_RA_ALLOW_FILE_URLS` | `1`이면 세션이 `file:` URL을 열 수 있다 |
 | `JEV_RA_SEARCH_URL` | 검색 엔드포인트 템플릿, `{query}`가 치환된다 |
 | `JEV_RA_TEXT_MODEL`, `JEV_RA_TEXT_BASE_URL`, `JEV_RA_TEXT_API_KEY` | 선택적 텍스트 헬퍼, 기본은 꺼짐 |

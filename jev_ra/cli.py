@@ -14,7 +14,7 @@ from pathlib import Path
 
 from . import __version__, runs
 from .agent import Agent
-from .browser import MAX_ELEMENTS, actions
+from .browser import MAX_ELEMENTS, actions, outside_page
 from .browser.chrome import alive, find_browser, forget_pid, forget_port, profile_dir, read_pid, read_port, url_for
 from .browser.session import Session
 from .config import (
@@ -152,6 +152,7 @@ def page_summary(page, session):
         "text": page.get("text", "")[:SUMMARY_TEXT_CHARS],
         "elements": len(space.elements),
         "omitted": space.omitted,
+        **outside_page(page),
     }
 
 
@@ -168,10 +169,18 @@ def emit(args, data, lines=None):
 
 def summary_lines(data):
     """The human rendering of a page summary."""
-    return [
+    lines = [
         f"{data['title']} — {data['url']}",
         f"{data['elements']} elements" + (f", {data['omitted']} omitted" if data.get("omitted") else ""),
     ]
+    asked = data.get("file_chooser")
+    if asked is not None:
+        kinds = f" ({asked['accept']})" if asked.get("accept") else ""
+        lines.append(
+            f"The page asked for {'files' if asked['multiple'] else 'a file'}{kinds}, which jev-ra never chooses."
+        )
+    lines += [f"Downloaded {item['file']} ({item['state']})" for item in data.get("downloads", [])]
+    return lines
 
 
 def result_lines(result):
@@ -642,6 +651,7 @@ SUMMARY_COLUMNS = (
     "runs",
     "successes",
     "human",
+    "skipped",
     "success_rate",
     "median_ms",
     "p90_ms",
@@ -658,6 +668,10 @@ def summary_line(row):
     verified = f"{row['successes']}/{row['runs']} verified"
     if row.get("human"):
         verified += f", {row['human']} set aside for a person"
+    if row.get("skipped"):
+        verified += f", {row['skipped']} skipped"
+    if row.get("short"):
+        return f"  {row['task']}: {verified}; {row['runs']} of {row['requested']} runs measured, no speed claim"
     if not row["median_ms"]:
         return f"  {row['task']}: {verified}; {', '.join(row['failures']) or 'no successful run'}"
     return (
@@ -670,7 +684,10 @@ def ratio_line(row):
     """The human rendering of one ratio row."""
     reference = f"{row['flash_mode_ms']} ms" if row["flash_mode_ms"] else "no baseline row"
     ratio = f"{row['ratio']}x" if row["ratio"] else "n/a"
-    ours = f"{row['jev_ra_ms']} ms" if row["jev_ra_ms"] else "never verified"
+    if row.get("short"):
+        ours = f"{row['runs']} of {row['requested']} runs measured"
+    else:
+        ours = f"{row['jev_ra_ms']} ms" if row["jev_ra_ms"] else "never verified"
     rate = f"{row['success_rate']:.0%} of {row['runs']} runs"
     return f"  {row['task']}: {ours} / {reference} = {ratio}, {rate}  {'PASS' if row['passed'] else 'FAIL'}"
 
@@ -702,6 +719,16 @@ def cmd_search(args):
     return emit(args, payload, lines)
 
 
+def skipped_line(found):
+    """One line saying how many attempts were never sent to their host, why, and which hosts."""
+    total = sum(item["attempts"] for item in found.values())
+    said = "; ".join(f"{reason} x{item['attempts']} ({', '.join(item['hosts'])})" for reason, item in found.items())
+    return (
+        f"{total} attempt(s) skipped, never sent and counted as neither a pass nor a failure: {said}."
+        " `jev-ra traffic` shows today's ledger."
+    )
+
+
 def cmd_bench(args):
     """Time the offline fixtures, and the live tasks with --live."""
     from .bench import (
@@ -716,11 +743,12 @@ def cmd_bench(args):
         run_offline,
         summarise,
     )
+    from .traffic import skips
 
     config = load()
     runs = args.runs
     offline_runs = run_offline(config, runs=runs)
-    offline = summarise(offline_runs)
+    offline = summarise(offline_runs, runs)
     payload = {
         "runs": runs,
         "route": {"provider": config.provider, "endpoint": config.endpoint, "model": config.model},
@@ -740,23 +768,35 @@ def cmd_bench(args):
         emit(args, payload, lines)
         return 0
     live_runs = run_live(config, runs=runs)
-    live = summarise(live_runs)
+    live = summarise(live_runs, runs)
     rows = ratio_rows(live)
+    passed_over = skips(live_runs)
     payload["live"] = live
     payload["ratios"] = rows
-    payload["passed"] = all(row["passed"] for row in rows)
+    payload["skipped"] = passed_over
+    payload["passed"] = all(row["passed"] for row in rows) and not passed_over
     payload["markdown"] = markdown_table(rows, RATIO_COLUMNS)
     lines.append(f"live, {runs} run(s) each, verified on the page:")
     lines += [summary_line(row) for row in live]
+    if passed_over:
+        lines.append(skipped_line(passed_over))
     lines.append(f"ratio (jev-ra median / browser-use flash_mode, >= {ACCEPTANCE_RATIO}x to pass):")
     lines += [ratio_line(row) for row in rows]
     lines += ["", markdown_table(live, SUMMARY_COLUMNS), ""]
     if args.profile:
         payload["profile"] = profile_rows(live_runs)
         lines += ["where the time goes:", profile_table(live_runs), ""]
-    lines.append("PASS: every task clears the bar" if payload["passed"] else "FAIL: at least one task is short")
+    lines.append(verdict(payload["passed"], passed_over, "every task clears the bar", "at least one task is short"))
     emit(args, payload, lines)
     return 0 if payload["passed"] else 1
+
+
+def verdict(passed, passed_over, clears, short_of):
+    """The last line of a measurement: PASS, FAIL, or INCOMPLETE when attempts were never sent."""
+    if passed_over:
+        total = sum(item["attempts"] for item in passed_over.values())
+        return f"INCOMPLETE: {total} attempt(s) were skipped, so this pass is not a clean one"
+    return f"PASS: {clears}" if passed else f"FAIL: {short_of}"
 
 
 CORPUS_COLUMNS = (
@@ -767,6 +807,7 @@ CORPUS_COLUMNS = (
     "pass_rate",
     "site",
     "human",
+    "skipped",
     "median_ms",
     "decisions",
     "cost",
@@ -776,13 +817,15 @@ CORPUS_COLUMNS = (
 
 def corpus_line(row):
     """The human rendering of one corpus summary row."""
-    verdict = f"{row['passed']}/{row['runs']}"
+    said = f"{row['passed']}/{row['runs']}"
     if row.get("human"):
-        verdict += f", {row['human']} set aside for a person"
+        said += f", {row['human']} set aside for a person"
+    if row.get("skipped"):
+        said += f", {row['skipped']} skipped"
     if row["median_ms"] is None:
-        return f"  {row['task']}: {verdict} - {'; '.join(row['why'])}"
+        return f"  {row['task']}: {said} - {'; '.join(row['why'])}"
     tail = f" - {'; '.join(row['why'])}" if row["why"] else ""
-    return f"  {row['task']}: {verdict} in {row['median_ms']} ms, {row['decisions']} decisions{tail}"
+    return f"  {row['task']}: {said} in {row['median_ms']} ms, {row['decisions']} decisions{tail}"
 
 
 def cmd_corpus(args):
@@ -798,6 +841,7 @@ def cmd_corpus(args):
         summarise,
         write_results,
     )
+    from .traffic import skips
 
     if args.list:
         tasks = load_tasks()
@@ -810,12 +854,14 @@ def cmd_corpus(args):
     histogram = reasons(rows)
     path = write_results(rows)
     people = sum(1 for row in rows if needed_person(row))
+    passed_over = skips(rows)
     payload = {
         "runs": args.runs,
         "attempts": len(rows),
         "human": people,
+        "skipped": passed_over,
         "pass_rate": rate,
-        "passed": rate >= PASS_RATE,
+        "passed": rate >= PASS_RATE and not passed_over,
         "tasks": table,
         "escalations": histogram,
         "results": str(path),
@@ -826,12 +872,39 @@ def cmd_corpus(args):
     lines += ["", f"pass rate {rate:.0%} (bar is {PASS_RATE:.0%})"]
     if people:
         lines.append(f"{people} attempt(s) needed a person and count as neither a pass nor a failure")
+    if passed_over:
+        lines.append(skipped_line(passed_over))
     if histogram:
         lines.append("failures by reason: " + ", ".join(f"{k} x{v}" for k, v in histogram.items()))
     lines += ["", markdown_table(table, CORPUS_COLUMNS), "", f"rows appended to {path}"]
-    lines.append("PASS: the corpus clears the bar" if payload["passed"] else "FAIL: the corpus is under the bar")
+    lines.append(verdict(payload["passed"], passed_over, "the corpus clears the bar", "the corpus is under the bar"))
     emit(args, payload, lines)
     return 0 if payload["passed"] else 1
+
+
+def traffic_lines(report):
+    """The human rendering of today's ledger."""
+    lines = [
+        f"live corpus and bench attempts on {report['day']}: {report['budget']} per host,"
+        f" {report['gap_s']:g} s apart, a host that pushes back is left alone for {report['rest_s']:g} s"
+    ]
+    if not report["hosts"]:
+        lines.append("  none yet")
+    for row in report["hosts"]:
+        line = f"  {row['host']}: {row['attempts']} attempt(s), {row['left']} left"
+        if row["resting_until"]:
+            line += f", resting until {row['resting_until_said']} ({row['why']})"
+        lines.append(line)
+    lines.append(f"ledger: {report['path']}")
+    return lines
+
+
+def cmd_traffic(args):
+    """Print today's live corpus and bench attempts per host, the hosts resting and the budget left."""
+    from . import traffic
+
+    report = traffic.ledger(load()).today()
+    return emit(args, report, traffic_lines(report))
 
 
 def skill_text():
@@ -1043,6 +1116,9 @@ def build_parser():
     corpus_run.add_argument("--list", action="store_true", help="list the tasks instead of running them")
     corpus_run.set_defaults(handler=cmd_corpus)
     corpus.set_defaults(handler=lambda _args: corpus.print_help() or 0)
+
+    traffic = add_json(sub.add_parser("traffic", help="show today's live attempts per host and the budget left"))
+    traffic.set_defaults(handler=cmd_traffic)
     return parser
 
 

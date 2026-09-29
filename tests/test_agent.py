@@ -515,6 +515,7 @@ def test_select_picks_the_option_by_its_label():
         "kind": "select",
         "label": "Shipping → Express",
         "value": "express",
+        "option": "Express",
     }
     session = FakeSession(pages=[{**page(0), "actions": [option]}])
     agent = agent_with(decider([DONE]), session=session)
@@ -1098,6 +1099,13 @@ def test_a_typed_field_is_speculated_holding_what_was_typed():
     assert speculate(before, FORM_ACTIONS[2], None) is None
 
 
+def test_a_field_typed_into_inside_a_dialog_is_speculated_with_the_dialog_still_closable():
+    escape = {"id": "press_escape", "kind": "press", "key": "Escape", "label": "Press Escape to close Search"}
+    before = {**page(0), "actions": [*FORM_ACTIONS[:3], escape, FORM_ACTIONS[3]]}
+    guessed = speculate(before, FORM_ACTIONS[0], "London")
+    assert [action["id"] for action in guessed["actions"][-3:]] == ["press_enter", "press_escape", "wait"]
+
+
 def test_the_next_decision_is_asked_while_the_page_is_still_settling():
     decide = decider([TYPE_CITY, DONE])
     agent = agent_with(decide, session=FakeSession([page(0), filled(1)]))
@@ -1125,3 +1133,14 @@ def test_a_decider_that_answers_by_position_is_never_asked_ahead_of_time():
     result = agent.run("search for a city", values={"city": "London"})
     assert (result.speculations, result.prefetched) == (0, 0)
     assert len(decide.seen) == 2
+
+
+def test_an_escalation_on_a_page_with_a_frame_it_cannot_read_names_the_frame():
+    frame = {"ref": "e3", "node": 3, "role": "frame", "label": "Secure card payment input frame", "rect": {}}
+    framed = {**page(0), "elements": [*FORM_ELEMENTS, {**frame, "host": "js.stripe.com"}]}
+    blocked = {"operation": answer("BLOCKED"), "goal_achieved": {"noul": 0.05}}
+    result = agent_with(decider([blocked]), session=FakeSession(pages=[framed])).run("pay for the plan")
+    assert result.status == "blocked"
+    assert result.detail["frames"] == [{"label": "Secure card payment input frame", "host": "js.stripe.com"}]
+    plain = agent_with(decider([blocked])).run("pay for the plan")
+    assert "frames" not in plain.detail

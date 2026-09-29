@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Widget docs</title>
+<style>
+  body { font: 15px/1.5 system-ui; margin: 0; }
+  header { display: flex; gap: 20px; align-items: center; padding: 12px 24px; border-bottom: 1px solid #ddd; }
+  main { padding: 24px; }
+  .DocSearch-Container { position: fixed; inset: 0; background: rgba(40,40,60,.6); z-index: 10; }
+  .DocSearch-Modal { margin: 60px auto; width: 560px; background: #fff; border-radius: 8px; padding: 12px; }
+  .DocSearch-Modal input { width: 100%; box-sizing: border-box; padding: 10px; font: inherit; }
+  .DocSearch-Footer { color: #666; font-size: 13px; margin-top: 12px; }
+  kbd { border: 1px solid #aaa; border-radius: 3px; padding: 0 4px; }
+</style>
+</head>
+<body>
+<!-- A documentation site's search modal the way DocSearch draws it on a desktop: a full-screen
+     container over the page, a search box inside, and no close button - the footer says Escape
+     closes it, and on a desktop that is the way out. Everything in the header is behind it. -->
+<header>
+  <strong>Widget</strong>
+  <a href="#docs">Docs</a>
+  <a href="#pricing" id="pricing">Pricing</a>
+  <button type="button" id="open-search">Search</button>
+</header>
+<main><h1 id="view">Getting started</h1><p id="body">Install the package and import it.</p></main>
+<div class="DocSearch-Container" role="button" tabindex="0" id="search">
+  <div class="DocSearch-Modal" role="dialog" aria-modal="true" aria-label="Search the docs">
+    <input type="search" aria-label="Search docs" placeholder="Search docs" autofocus>
+    <div class="DocSearch-Dropdown"><p>No recent searches</p></div>
+    <div class="DocSearch-Footer"><kbd>↵</kbd> to select <kbd>esc</kbd> to close</div>
+  </div>
+</div>
+<script>
+  const search = document.getElementById('search');
+  const close = () => { search.hidden = true; search.style.display = 'none'; };
+  addEventListener('keydown', event => { if (event.key === 'Escape' && !search.hidden) close(); });
+  search.addEventListener('click', event => { if (event.target === search) close(); });
+  document.getElementById('open-search').addEventListener('click', () => { search.hidden = false; search.style.display = ''; });
+  document.getElementById('pricing').addEventListener('click', () => {
+    document.getElementById('view').textContent = 'Pricing';
+    document.getElementById('body').textContent = 'Free for open source. Teams from $12 a seat.';
+  });
+</script>
+</body>
+</html>

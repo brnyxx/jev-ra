@@ -18,6 +18,8 @@ TAXONOMY = (
     errors.JevBadResponse,
     errors.BadUrl,
     errors.StalePage,
+    errors.DialogOpen,
+    errors.BadValue,
     errors.Escalated,
 )
 

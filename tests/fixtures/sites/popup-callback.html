@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Signing you in</title>
+</head>
+<body>
+<!-- The provider's redirect back to the site, the way an OAuth callback page ends a pop-up sign-in:
+     it hands the answer to the page that opened the window and closes the window itself. -->
+<p>Signing you in…</p>
+<script>
+  const granted = new URLSearchParams(location.search).get('granted') === '1';
+  opener?.postMessage({type: 'acme-id', granted, user: 'Ada Lovelace'}, location.origin);
+  window.close();
+</script>
+</body>
+</html>

@@ -123,6 +123,7 @@ uvx jev-ra run https://en.wikipedia.org/wiki/Main_Page "Open the Godel incomplet
 | `doctor` | 检查密钥、端点、Chrome 和一次实时决策 |
 | `bench [--live]` | 为离线测试页计时，加 `--live` 也为实时任务计时 |
 | `corpus run` | 运行真实网站语料 |
+| `traffic` | 显示今天每个主机的实时尝试次数和剩余预算 |
 
 `open` … `close` 通过 `$XDG_STATE_HOME/jev-ra/session.json` 里的 target id 在多次调用之间共享同一个
 浏览器。任何命令加上 `--json` 都会输出原始负载。
@@ -150,14 +151,15 @@ TYPE_TEXT 需要一个字符串，而 jev-ra 不会凭空造一个。在选定�
 ## 交还控制权时
 
 `Result.status` 为 `done`、`blocked`、`escalate` 或 `budget` 之一。运行中途停下时，`reason` 是
-`needs_value`、`stuck_loop`、`unverified_done`、`stale`、`invalid_decision`、`too_many_controls`、
+`needs_value`、`needs_file`、`stuck_loop`、`unverified_done`、`stale`、`invalid_decision`、`too_many_controls`、
 `provider_error`、`blocked`、`blocked_by_site` 或 `needs_human` 之一。以 `budget` 结束的运行会把被耗尽的预算（步数、决策数、时间）
 放进 `reason`；`provider_error` 是提供方根本拒绝作答，应检查密钥与路径，而不是重试目标。
 escalate 还会带上按概率排序的前八个
 操作/目标候选，以及最多 3,000 个字符的页面文本，足够在不重新观测的情况下做判断。
 
 校验是确定性的：每次操作后都会比较 url、title、text 和字段状态，`page_changed` 来自页面的语义
-marker，而不是来自模型。
+marker，而不是来自模型。操作下载的文件也是该操作的结果：步骤会在其稳定预算内等待下载完成，
+`Result.downloads` 逐条列出站点给出的文件名、url 以及是否完成。文件保存在 Chrome 保存下载的位置。
 
 以错误页应答的站点(HTTP 5xx、429，或自称出错的短页面)，在做出任何决定之前先等待 2 秒并重新加载一次；
 若仍是错误，运行以 `blocked_by_site` 停止，并在 `detail.wall` 中写明状态(`"http 502"`)。站点短暂的故障
@@ -217,17 +219,26 @@ PASS/FAIL。0.2.5 经 TypeSafe 直连路径(2026-09-23)时，前三个任务分�
 jev-ra 版本都不同，不是同等条件下的比较。一轮 3 次的测量仅因站点状况就会浮动约 5 个任务，
 因此只有逐任务重跑结果一致时，变更才算得失。[逐任务数据与波动测量](https://github.com/brnyxx/jev-ra/blob/main/docs/BENCHMARKS.md)。
 
+`jev-ra corpus run` 和 `jev-ra bench --live` 会把每一次实时尝试写进本机所有进程共享的台账
+(`$XDG_STATE_HOME/jev-ra/traffic/`，每天一个文件)。每个主机每天最多 40 次尝试(`JEV_RA_HOST_DAILY_BUDGET`)，
+间隔至少 10 s(`JEV_RA_HOST_GAP_S`)；拒绝过的主机(HTTP 429 或 403、错误页、拦截墙、验证)在当天剩余时间内
+不再访问(`JEV_RA_HOST_REST_S`，默认 86,400 s)。没有进行的尝试记为 `skipped`：像需要人工的运行一样单独计数，
+并用一行写明原因；只要有跳过，这一轮就以 `INCOMPLETE` 结束，运行次数不足的任务不给出速度。`jev-ra traffic`
+打印今天的次数、正在休息的主机和剩余预算。本机上的页面从不计数，`jev-ra run` 和 MCP 工具从不受限。
+
 ## 不做的事
 
 | 限制 | 会发生什么 |
 |---|---|
 | 画布绘图、游戏等绘制而非标记的内容 | `blocked`：没有任何观测到的控件能推进目标 |
-| 文件上传 | `blocked`：文件输入既不提供，也不输入 |
+| 拖放、右键菜单 | 不会拖动也不会右键点击：`blocked`，或在按下只能拖动的元素后 `stuck_loop` |
+| 只在指针悬停于所在行时才绘制的控件 | 不提供：除非页面另有途径（例如打开该行），否则为 `blocked` |
+| 文件上传 | `needs_file`：指明提出要求的控件及其接受的文件类型；从不选择任何文件 |
 | CAPTCHA 等人可以完成的验证 | 交给窗口前的人；无人完成时返回带 `resume` 令牌的 `needs_human` |
 | 直接拒绝的机器人墙、隐身 | 返回 `detail.kind` 为 `refusal` 的 `blocked_by_site`；jev-ra 从不伪装自己 |
 | 认证流程 | 返回 `needs_value` 并指明字段；jev-ra 从不猜测凭据 |
-| 弹出窗口、多标签页工作流 | 运行始终停留在自己的目标上 |
-| 跨源 iframe | 报告为一个不透明元素；开放的 shadow root 与同源 iframe **会**被遍历 |
+| 多标签页工作流 | 页面打开的窗口（登录或支付弹窗）会一直跟随到它自行关闭，指向新标签页的链接在同一标签页中打开；运行不会在标签页之间切换 |
+| 跨源 iframe | 报告为一个不透明元素，该页面上的升级会在 `detail.frames` 中写明该 iframe 及其来源主机；开放的 shadow root 与同源 iframe **会**被遍历 |
 | 可见控件超过 250 个 | 报告 `omitted`，卡住的运行升级为 `too_many_controls` 而不是猜测 |
 
 以上每一种都会返回带页面文本和候选排名的上报。
@@ -269,6 +280,9 @@ jev-ra 版本都不同，不是同等条件下的比较。一轮 3 次的测量�
 | `JEV_RA_PACE_S` | 一次运行对同一主机发起的两次导航之间的最短秒数；默认 `1`，`0` 为关闭，本机不受限 |
 | `JEV_RA_NOTIFY` | `0` 关闭人工验证触发的桌面通知 |
 | `JEV_RA_HUMAN_WAIT_S` | 等待人完成人工验证的时长；默认 `120`，`0` 为立即交还 |
+| `JEV_RA_HOST_DAILY_BUDGET` | `corpus run` 和 `bench --live` 在所有进程合计下每天对一个主机的实时尝试次数；默认 `40` |
+| `JEV_RA_HOST_GAP_S` | 这些尝试在同一主机上的最短间隔秒数；默认 `10`，`0` 为关闭 |
+| `JEV_RA_HOST_REST_S` | 拒绝过的主机在当天内不再被访问的时长；默认 `86400`，`0` 为关闭 |
 | `JEV_RA_ALLOW_FILE_URLS` | 设为 `1` 可让会话打开 `file:` URL |
 | `JEV_RA_SEARCH_URL` | 搜索端点模板，`{query}` 会被替换 |
 | `JEV_RA_TEXT_MODEL`, `JEV_RA_TEXT_BASE_URL`, `JEV_RA_TEXT_API_KEY` | 可选的文本助手，默认关闭 |

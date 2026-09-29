@@ -26,6 +26,7 @@ def session_for(env, monkeypatch):
     made.after_input = None
     made.http_status = None
     made.frame_id = None
+    made.downloads = {}
     return made
 
 

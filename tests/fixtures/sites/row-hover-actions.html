@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Inbox</title>
+<style>
+  body { font: 14px/1.5 system-ui; margin: 0; padding: 24px; max-width: 760px; }
+  .row { display: flex; align-items: center; gap: 16px; padding: 10px 12px; border-bottom: 1px solid #eee; }
+  .row .from { width: 160px; font-weight: 600; }
+  .row .subject { flex: 1; }
+  .row .actions { visibility: hidden; display: flex; gap: 6px; }
+  .row:hover .actions { visibility: visible; }
+  .row:hover { background: #f6f8fa; }
+</style>
+</head>
+<body>
+<!-- A mail list the way webmail draws its row actions: Archive and Delete exist for every row but
+     are only painted while the pointer is over that row, the way Gmail and Outlook show them. -->
+<h1>Inbox</h1>
+<div id="list">
+  <div class="row" data-from="Grace Hopper"><span class="from">Grace Hopper</span><span class="subject">Compiler notes for Friday</span>
+    <span class="actions"><button type="button" aria-label="Archive">🗄</button><button type="button" aria-label="Delete">🗑</button></span></div>
+  <div class="row" data-from="Alan Turing"><span class="from">Alan Turing</span><span class="subject">Re: tape length</span>
+    <span class="actions"><button type="button" aria-label="Archive">🗄</button><button type="button" aria-label="Delete">🗑</button></span></div>
+  <div class="row" data-from="Katherine Johnson"><span class="from">Katherine Johnson</span><span class="subject">Trajectory tables</span>
+    <span class="actions"><button type="button" aria-label="Archive">🗄</button><button type="button" aria-label="Delete">🗑</button></span></div>
+</div>
+<p id="status"></p>
+<script>
+  for (const row of document.querySelectorAll('.row')) {
+    const [archive, remove] = row.querySelectorAll('.actions button');
+    archive.addEventListener('click', () => { row.remove(); document.getElementById('status').textContent = 'Archived the message from ' + row.dataset.from + '.'; });
+    remove.addEventListener('click', () => { row.remove(); document.getElementById('status').textContent = 'Deleted the message from ' + row.dataset.from + '.'; });
+  }
+</script>
+</body>
+</html>

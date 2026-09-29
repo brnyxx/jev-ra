@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Communities</title>
+<style>
+  body { font: 16px/1.5 system-ui; margin: 0; }
+  header { display: flex; align-items: center; gap: 24px; padding: 12px 24px; border-bottom: 1px solid #ddd; }
+  main { padding: 24px; }
+</style>
+</head>
+<body>
+<!-- A site header search the way a forum built from web components draws it: the input lives in
+     an open shadow root, there is no search button, and Enter is the only way to submit it. -->
+<header>
+  <strong>Communities</strong>
+  <search-box></search-box>
+  <a href="#popular">Popular</a>
+</header>
+<main>
+  <h1 id="heading">Popular posts</h1>
+  <ul id="results"><li>What is your favourite keyboard?</li><li>Show us your desk</li></ul>
+</main>
+<script>
+  class SearchBox extends HTMLElement {
+    connectedCallback() {
+      const root = this.attachShadow({mode: 'open'});
+      root.innerHTML =
+        '<style>input{padding:8px 12px;width:320px;border-radius:20px;border:1px solid #bbb}</style>' +
+        '<input type="search" name="q" placeholder="Search Communities" aria-label="Search Communities" enterkeyhint="search">';
+      root.querySelector('input').addEventListener('keydown', event => {
+        if (event.key !== 'Enter') return;
+        const query = event.target.value.trim();
+        if (!query) return;
+        document.getElementById('heading').textContent = 'Search results for "' + query + '"';
+        document.getElementById('results').innerHTML = '<li>' + query + ' - 42 posts</li>';
+      });
+    }
+  }
+  customElements.define('search-box', SearchBox);
+</script>
+</body>
+</html>
