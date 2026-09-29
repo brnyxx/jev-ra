@@ -63,11 +63,16 @@ def test_the_release_workflow_is_well_formed():
     assert text.count("steps:") == 3
 
 
+def uses(text, action):
+    """Whether a workflow runs this action at some major version: dependabot moves the version, not the step."""
+    return re.search(rf"uses: {re.escape(action)}@v\d+\b", text) is not None
+
+
 def test_the_release_workflow_builds_and_uploads_on_tags():
     text = RELEASE.read_text()
     assert 'tags: ["v*"]' in text
     assert "run: uv build" in text
-    assert "actions/upload-artifact@v4" in text
+    assert uses(text, "actions/upload-artifact")
     assert "jev-ra --version" in text
 
 

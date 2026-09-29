@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from tests.test_ci_workflow import blocks
+from tests.test_ci_workflow import blocks, uses
 
 WORKFLOW = Path(__file__).resolve().parents[1] / ".github" / "workflows" / "public-bench.yml"
 
@@ -47,13 +47,13 @@ def test_both_runners_run_and_the_task_count_is_an_input():
 
 def test_the_trajectories_are_uploaded_so_a_run_can_be_read_after_it():
     body = text()
-    assert "actions/upload-artifact@v4" in body
+    assert uses(body, "actions/upload-artifact")
     assert "path: bench/public/runs/" in body
 
 
 def test_the_job_drives_a_real_chrome_it_started_itself():
     body = text()
-    assert "browser-actions/setup-chrome@v1" in body
+    assert uses(body, "browser-actions/setup-chrome")
     assert "--remote-debugging-port=9222" in body
     assert "BU_CDP_URL: http://127.0.0.1:9222" in body
     assert "--lang=en-US" in body

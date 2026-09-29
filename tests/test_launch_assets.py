@@ -5,6 +5,8 @@ from pathlib import Path
 
 import pytest
 
+from tests.test_ci_workflow import uses
+
 ROOT = Path(__file__).resolve().parents[1]
 LANDING = ROOT / "docs" / "index.html"
 PAGES = ROOT / ".github" / "workflows" / "pages.yml"
@@ -68,7 +70,7 @@ def test_the_pages_workflow_assembles_the_landing_page_with_its_assets():
     # The page says `assets/...`, and assets live at the repo root, so the site has to carry a copy.
     assert "cp docs/index.html site/index.html" in text
     assert "cp -R assets site/assets" in text
-    assert "actions/deploy-pages@v4" in text
+    assert uses(text, "actions/deploy-pages")
     assert "pages: write" in text
     for line in text.splitlines():
         indent = len(line) - len(line.lstrip(" "))
